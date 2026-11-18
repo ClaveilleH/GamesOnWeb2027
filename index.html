@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#10242a">
+    <title>Games on Web 2027 · Test de physique</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/src/style.css">
+  </head>
+  <body>
+    <header>
+      <h1>Games on Web <span>2027</span></h1>
+      <p>Babylon.js <span aria-hidden="true">/</span> Havok</p>
+    </header>
+    <main>
+      <canvas id="scene" role="img" aria-label="Une balle orange rebondit sur une plateforme circulaire."></canvas>
+      <p id="status" role="status">Chargement de la scène…</p>
+      <noscript>Activez JavaScript pour lancer la simulation.</noscript>
+    </main>
+    <footer>
+      <p class="counter">Rebonds <strong id="bounces">0</strong></p>
+      <button id="drop" type="button" disabled>Relancer la balle</button>
+    </footer>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
