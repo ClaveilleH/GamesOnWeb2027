@@ -1,12 +1,22 @@
 const CAPTURE_SETTLE_MS = 100;
 const MAX_MOUSE_DELTA = 250;
+const LOCK_RETRY_MARGIN_MS = 20;
+const LOCK_RETRY_MIN_MS = 50;
+const LOCK_RETRY_FALLBACK_MS = 250;
+const LOCK_RETRIES = 6;
+const SYSTEM_KEYS = new Set(["MetaLeft", "MetaRight", "OSLeft", "OSRight"]);
 
-export function createInput(canvas, bindings, { isPaused, openMenu, onCapture, toggleDebug }) {
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function createInput(canvas, bindings, platform, { isPaused, openMenu, onCapture, toggleDebug }) {
   const listeners = new AbortController();
   const options = { signal: listeners.signal };
   const held = new Set();
   let captured = false;
   let capturePending = false;
+  let relockOnRelease = null;
+  let awaitingLock = false;
+  let userExitAt = -Infinity;
   let ignoreMouseUntil = 0;
   let jump = false;
   let respawn = false;
@@ -18,7 +28,12 @@ export function createInput(canvas, bindings, { isPaused, openMenu, onCapture, t
   }
 
   function canLook() {
-    return hasCapture() && document.hasFocus() && !isPaused();
+    return (hasCapture() || awaitingLock) && document.hasFocus() && !isPaused();
+  }
+
+  function setAwaitingLock(value) {
+    awaitingLock = value;
+    canvas.classList.toggle("awaiting-lock", value);
   }
 
   function reset() {
@@ -29,40 +44,91 @@ export function createInput(canvas, bindings, { isPaused, openMenu, onCapture, t
 
   function pause() {
     captured = false;
+    relockOnRelease = null;
     reset();
     openMenu();
     onCapture(false);
     document.exitPointerLock?.();
   }
 
+  // Délai avant de retenter une capture refusée, ou null si le refus est définitif.
+  // Seul le délai imposé après une sortie par Échap mérite une nouvelle tentative,
+  // et seulement tant que le geste qui a demandé la capture reste valide.
+  function lockRetryDelay(error) {
+    const delay = platform.lockDelayAfterUserExitMs;
+    if (!delay || error?.name !== "SecurityError" || navigator.userActivation?.isActive === false) return null;
+    if (!Number.isFinite(userExitAt)) return LOCK_RETRY_FALLBACK_MS;
+    return Math.max(LOCK_RETRY_MIN_MS, userExitAt + delay + LOCK_RETRY_MARGIN_MS - performance.now());
+  }
+
+  function onLocked() {
+    if (isPaused() || document.hidden || !document.hasFocus()) {
+      pause();
+      return;
+    }
+    lookX = lookY = 0;
+    ignoreMouseUntil = performance.now() + CAPTURE_SETTLE_MS;
+    captured = true;
+    onCapture(true);
+  }
+
   async function capture() {
     if (isPaused()) return;
+    relockOnRelease = null;
     canvas.focus({ preventScroll: true });
-    const locked = hasCapture();
-    onCapture(locked);
-    if (locked || capturePending) return;
+    // Le navigateur peut avoir gardé le verrou pendant la pause (blur, sortie refusée) :
+    // il suffit alors de le reprendre, une nouvelle demande serait sans effet.
+    if (document.pointerLockElement === canvas) {
+      if (!captured) onLocked();
+      return;
+    }
+    onCapture(false);
+    if (capturePending) return;
     capturePending = true;
     try {
-      await canvas.requestPointerLock?.();
-    } catch {
-      // Un refus laisse le clavier actif et l’indice de capture visible.
+      for (let attempt = 0; ; attempt++) {
+        let delay;
+        try {
+          await canvas.requestPointerLock?.();
+          return;
+        } catch (error) {
+          // Un refus définitif laisse le clavier actif et l’indice de capture visible.
+          delay = attempt < LOCK_RETRIES ? lockRetryDelay(error) : null;
+          if (delay === null) return;
+        }
+        if (platform.lookDuringLockDelay && !awaitingLock) {
+          setAwaitingLock(true);
+          onCapture(true);
+        }
+        await wait(delay);
+        if (listeners.signal.aborted || isPaused() || document.pointerLockElement === canvas) return;
+      }
     } finally {
       capturePending = false;
+      if (awaitingLock) {
+        setAwaitingLock(false);
+        if (!isPaused() && document.pointerLockElement !== canvas) onCapture(false);
+      }
     }
+  }
+
+  // Reprise depuis le menu : `key` est la touche qui l’a fermé, s’il y en a une.
+  function resume(key) {
+    if (key === "Escape" && platform.relockAfterEscapeRelease) {
+      canvas.focus({ preventScroll: true });
+      relockOnRelease = key;
+      return;
+    }
+    capture();
   }
 
   canvas.addEventListener("click", capture, options);
   document.addEventListener("pointerlockchange", () => {
     if (document.pointerLockElement === canvas) {
-      if (isPaused() || document.hidden || !document.hasFocus()) {
-        pause();
-        return;
-      }
-      lookX = lookY = 0;
-      ignoreMouseUntil = performance.now() + CAPTURE_SETTLE_MS;
-      captured = true;
-      onCapture(true);
+      onLocked();
     } else if (captured) {
+      // Libération voulue par le navigateur (Échap, touche système) : on la date.
+      userExitAt = performance.now();
       pause();
     }
   }, options);
@@ -89,7 +155,11 @@ export function createInput(canvas, bindings, { isPaused, openMenu, onCapture, t
       if (!event.repeat) pause();
       return;
     }
-    if (!event.repeat && !hasCapture()) capture();
+    if (platform.pauseOnSystemKey && SYSTEM_KEYS.has(code) && hasCapture()) {
+      pause();
+      return;
+    }
+    if (!event.repeat && document.pointerLockElement !== canvas) capture();
     const action = bindings.actionFor(code);
     if (action || code === "Space" || code.startsWith("Arrow")) event.preventDefault();
     if (!action || event.repeat || held.has(code)) return;
@@ -97,7 +167,10 @@ export function createInput(canvas, bindings, { isPaused, openMenu, onCapture, t
     if (action === "jump") jump = true;
     if (action === "respawn") respawn = true;
   }, options);
-  window.addEventListener("keyup", (event) => held.delete(event.code), options);
+  window.addEventListener("keyup", (event) => {
+    held.delete(event.code);
+    if (event.code === relockOnRelease) capture();
+  }, options);
   window.addEventListener("blur", pause, options);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) pause();
@@ -105,7 +178,7 @@ export function createInput(canvas, bindings, { isPaused, openMenu, onCapture, t
 
   const pressed = (action) => bindings.keys(action).some((code) => held.has(code));
   return {
-    capture,
+    resume,
     read() {
       const looking = canLook();
       const input = {

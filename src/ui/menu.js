@@ -55,11 +55,12 @@ export function createMenu(bindings, layout, onResume) {
     }
   }
 
-  function resume() {
+  // `key` indique la touche qui ferme le menu, pour que la reprise s’adapte au navigateur.
+  function resume(key) {
     recording = null;
     dialog.close();
     play.textContent = "Reprendre";
-    onResume();
+    onResume(key);
   }
 
   function escape() {
@@ -68,7 +69,7 @@ export function createMenu(bindings, layout, onResume) {
       refresh();
       announce("Modification annulée.", true);
     } else {
-      resume();
+      resume("Escape");
     }
   }
 
@@ -113,7 +114,7 @@ export function createMenu(bindings, layout, onResume) {
     event.preventDefault();
     escape();
   }, options);
-  play.addEventListener("click", resume, options);
+  play.addEventListener("click", () => resume(), options);
   select.addEventListener("change", () => layout.setPreference(select.value), options);
   reset.addEventListener("click", () => {
     recording = null;

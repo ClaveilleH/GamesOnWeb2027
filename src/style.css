@@ -21,6 +21,8 @@ main {
 }
 canvas { display: block; width: 100%; height: 100%; }
 canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* La caméra suit déjà la souris pendant que le navigateur fait attendre la capture. */
+canvas.awaiting-lock { cursor: none; }
 h1, h2, p { margin: 0; }
 button, select { font: inherit; cursor: pointer; }
 button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

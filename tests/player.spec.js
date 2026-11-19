@@ -18,8 +18,8 @@ function cameraAngles(hud) {
   }));
 }
 
-async function startOnGround(page) {
-  await page.goto("/");
+async function startOnGround(page, url = "/") {
+  await page.goto(url);
   await play(page).click();
   const hud = page.locator("#player-state");
   await expect(hud).toHaveAttribute("data-grounded", "true", landing);
@@ -46,6 +46,49 @@ async function refuseCapture(page) {
     HTMLCanvasElement.prototype.requestPointerLock = () => Promise.reject(new DOMException("Capture refusée", "NotAllowedError"));
   });
 }
+
+// Imite le pointer lock réel : le navigateur intercepte Échap pendant la capture,
+// Chromium le libère à l’appui et refuse une recapture pendant 1250 ms,
+// Firefox le libère au relâchement. Une capture exige un geste utilisateur.
+async function emulatePointerLock(page, browser) {
+  await page.addInitScript((browser) => {
+    let locked = null;
+    let userExitAt = -Infinity;
+    window.lockRequests = 0;
+    Object.defineProperty(document, "pointerLockElement", { configurable: true, get: () => locked });
+    const changed = () => document.dispatchEvent(new Event("pointerlockchange"));
+    HTMLCanvasElement.prototype.requestPointerLock = async function () {
+      window.lockRequests++;
+      if (!navigator.userActivation.isActive) throw new DOMException("Geste requis", "NotAllowedError");
+      if (browser === "chromium" && performance.now() - userExitAt < 1250) {
+        throw new DOMException("Pointer lock cannot be acquired immediately after the user has exited the lock.", "SecurityError");
+      }
+      locked = this;
+      window.lockedAt = performance.now();
+      changed();
+    };
+    document.exitPointerLock = () => {
+      if (!locked) return;
+      locked = null;
+      changed();
+    };
+    const exitOn = browser === "firefox" ? "keyup" : "keydown";
+    for (const type of ["keydown", "keyup"]) {
+      window.addEventListener(type, (event) => {
+        if (event.code !== "Escape" || !locked) return;
+        // Le navigateur consomme cet Échap : la page ne le voit pas.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (type === exitOn) {
+          userExitAt = window.userExitAt = performance.now();
+          document.exitPointerLock();
+        }
+      }, true);
+    }
+  }, browser);
+}
+
+const lockedId = (page) => page.evaluate(() => document.pointerLockElement?.id ?? null);
 
 async function startWithManualFrames(page) {
   await refuseCapture(page);
@@ -245,50 +288,96 @@ test("Échap fige le jeu, garde le focus dans le menu et reprend au clavier", as
 });
 
 test("après une reprise par Échap, KeyW recapture la souris et fait avancer le personnage", async ({ page }) => {
-  await page.addInitScript(() => {
-    let locked = null;
-    Object.defineProperty(document, "pointerLockElement", { get: () => locked });
-    HTMLCanvasElement.prototype.requestPointerLock = async function () {
-      if (!navigator.userActivation.isActive) throw new DOMException("Capture refusée", "NotAllowedError");
-      locked = this;
-      document.dispatchEvent(new Event("pointerlockchange"));
-    };
-    document.exitPointerLock = () => {
-      if (!locked) return;
-      locked = null;
-      document.dispatchEvent(new Event("pointerlockchange"));
-    };
-    // Le navigateur intercepte le premier Échap pour libérer la souris.
-    window.addEventListener("keydown", (event) => {
-      if (event.code !== "Escape" || !locked) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      document.exitPointerLock();
-    }, true);
-  });
+  await emulatePointerLock(page, "chromium");
   const hud = await startOnGround(page);
   const dialog = page.getByRole("dialog");
   const hint = page.locator("#capture-hint");
-  const lockedId = () => page.evaluate(() => document.pointerLockElement?.id ?? null);
-  expect(await lockedId()).toBe("scene");
+  expect(await lockedId(page)).toBe("scene");
 
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
-  expect(await lockedId()).toBeNull();
+  expect(await lockedId(page)).toBeNull();
 
   // L’activation du clic sur Jouer doit avoir expiré avant le second Échap.
   await page.waitForFunction(() => !navigator.userActivation.isActive);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  expect(await lockedId()).toBeNull();
+  expect(await lockedId(page)).toBeNull();
   await expect(hint).toBeVisible();
 
   const start = await position(hud);
   await page.keyboard.down("KeyW");
-  expect(await lockedId()).toBe("scene");
+  await expect.poll(() => lockedId(page)).toBe("scene");
   await expect(hint).toBeHidden();
   await expect.poll(async () => (await position(hud)).z).toBeGreaterThan(start.z + 0.3);
   await page.keyboard.up("KeyW");
+});
+
+test("Chromium : après Reprendre, la caméra suit la souris pendant le délai puis la capture arrive", async ({ page }) => {
+  await emulatePointerLock(page, "chromium");
+  const hud = await startOnGround(page, "/?browser=chromium");
+  const dialog = page.getByRole("dialog");
+  const canvas = page.locator("#scene");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Reprendre" }).click();
+  await expect(dialog).toBeHidden();
+  expect(await lockedId(page)).toBeNull();
+  await expect(canvas).toHaveClass(/awaiting-lock/);
+  await expect(page.locator("#capture-hint")).toBeHidden();
+
+  const before = await cameraAngles(hud);
+  await page.evaluate(() => document.dispatchEvent(new MouseEvent("mousemove", { movementX: 80, movementY: 0 })));
+  await expect.poll(async () => (await cameraAngles(hud)).yaw).not.toBe(before.yaw);
+
+  await expect.poll(() => lockedId(page), { timeout: 3000 }).toBe("scene");
+  const wait = await page.evaluate(() => window.lockedAt - window.userExitAt);
+  // Capture dès la fin du délai de 1250 ms, sans attente superflue.
+  expect(wait).toBeGreaterThanOrEqual(1250);
+  expect(wait).toBeLessThan(1350);
+  await expect(canvas).not.toHaveClass(/awaiting-lock/);
+  await expect(page.locator("#capture-hint")).toBeHidden();
+  // Une demande refusée, puis une seule à la fin du délai.
+  expect(await page.evaluate(() => window.lockRequests)).toBe(3);
+});
+
+test("Firefox : Échap ferme le menu et recapture la souris seulement au relâchement", async ({ page }) => {
+  await emulatePointerLock(page, "firefox");
+  await startOnGround(page, "/?browser=firefox");
+  const dialog = page.getByRole("dialog");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  expect(await lockedId(page)).toBeNull();
+
+  // Un clic dans le menu donne le geste qui autorise la recapture au clavier.
+  await dialog.getByRole("heading", { name: "Commandes" }).click();
+  const requests = await page.evaluate(() => window.lockRequests);
+  await page.keyboard.down("Escape");
+  await expect(dialog).toBeHidden();
+  expect(await page.evaluate(() => window.lockRequests)).toBe(requests);
+  await page.keyboard.up("Escape");
+  await expect.poll(() => lockedId(page)).toBe("scene");
+  await page.waitForTimeout(150);
+  await expect(dialog).toBeHidden();
+  expect(await lockedId(page)).toBe("scene");
+});
+
+test("Firefox : la touche système met en pause et libère la souris", async ({ page }) => {
+  await emulatePointerLock(page, "firefox");
+  await startOnGround(page, "/?browser=firefox");
+  expect(await lockedId(page)).toBe("scene");
+  await page.keyboard.press("Meta");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  expect(await lockedId(page)).toBeNull();
+});
+
+test("Chromium : la touche système laisse le navigateur gérer la souris", async ({ page }) => {
+  await emulatePointerLock(page, "chromium");
+  await startOnGround(page, "/?browser=chromium");
+  await page.keyboard.press("Meta");
+  await page.waitForTimeout(100);
+  await expect(page.getByRole("dialog")).toBeHidden();
+  expect(await lockedId(page)).toBe("scene");
 });
 
 test("Avancer accepte I immédiatement, persiste après rechargement et revient à W après réinitialisation", async ({ page }) => {

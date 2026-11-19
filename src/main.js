@@ -16,6 +16,7 @@ import { createSkeletonVisual } from "./player/skeletonVisual.js";
 import { createThirdPersonCamera } from "./player/thirdPersonCamera.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
+import { createPlatform } from "./platform/browser.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
 const canvas = document.querySelector("#scene");
@@ -59,14 +60,15 @@ async function start() {
     scene.onDisposeObservable.addOnce(hud.dispose);
     let previousFrameTime = 0;
     let accumulatedTime = 0;
-    const menu = createMenu(bindings, layout, () => {
+    const platform = createPlatform();
+    const menu = createMenu(bindings, layout, (key) => {
       previousFrameTime = performance.now();
       accumulatedTime = 0;
       player.syncPreviousPose();
-      input.capture();
+      input.resume(key);
     });
     scene.onDisposeObservable.addOnce(menu.dispose);
-    const input = createInput(canvas, bindings, {
+    const input = createInput(canvas, bindings, platform, {
       isPaused: () => menu.isOpen,
       openMenu: menu.open,
       onCapture: (captured) => hud.showCaptureHint(!menu.isOpen && !captured),
