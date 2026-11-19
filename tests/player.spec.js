@@ -111,7 +111,7 @@ test("KeyW pendant une seconde déplace de plus d’un mètre même si la captur
   await refuseCapture(page);
   const hud = await startOnGround(page);
   expect(await page.evaluate(() => document.pointerLockElement)).toBeNull();
-  await expect(page.getByText("Cliquez pour contrôler la caméra")).toBeVisible();
+  await expect(page.getByText("Cliquez ou appuyez sur une touche pour contrôler la caméra")).toBeVisible();
   const start = await position(hud);
   const yaw = await hud.getAttribute("data-camera-yaw");
   await page.locator("#scene").dispatchEvent("mousemove", { movementX: 240, movementY: 90 });
@@ -242,6 +242,53 @@ test("Échap fige le jeu, garde le focus dans le menu et reprend au clavier", as
   expect(await position(hud)).toMatchObject({ x: paused.x, z: paused.z });
   await page.keyboard.up("KeyW");
   await advancePast(page, hud, "KeyW", paused.z + 0.3);
+});
+
+test("après une reprise par Échap, KeyW recapture la souris et fait avancer le personnage", async ({ page }) => {
+  await page.addInitScript(() => {
+    let locked = null;
+    Object.defineProperty(document, "pointerLockElement", { get: () => locked });
+    HTMLCanvasElement.prototype.requestPointerLock = async function () {
+      if (!navigator.userActivation.isActive) throw new DOMException("Capture refusée", "NotAllowedError");
+      locked = this;
+      document.dispatchEvent(new Event("pointerlockchange"));
+    };
+    document.exitPointerLock = () => {
+      if (!locked) return;
+      locked = null;
+      document.dispatchEvent(new Event("pointerlockchange"));
+    };
+    // Le navigateur intercepte le premier Échap pour libérer la souris.
+    window.addEventListener("keydown", (event) => {
+      if (event.code !== "Escape" || !locked) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      document.exitPointerLock();
+    }, true);
+  });
+  const hud = await startOnGround(page);
+  const dialog = page.getByRole("dialog");
+  const hint = page.locator("#capture-hint");
+  const lockedId = () => page.evaluate(() => document.pointerLockElement?.id ?? null);
+  expect(await lockedId()).toBe("scene");
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  expect(await lockedId()).toBeNull();
+
+  // L’activation du clic sur Jouer doit avoir expiré avant le second Échap.
+  await page.waitForFunction(() => !navigator.userActivation.isActive);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  expect(await lockedId()).toBeNull();
+  await expect(hint).toBeVisible();
+
+  const start = await position(hud);
+  await page.keyboard.down("KeyW");
+  expect(await lockedId()).toBe("scene");
+  await expect(hint).toBeHidden();
+  await expect.poll(async () => (await position(hud)).z).toBeGreaterThan(start.z + 0.3);
+  await page.keyboard.up("KeyW");
 });
 
 test("Avancer accepte I immédiatement, persiste après rechargement et revient à W après réinitialisation", async ({ page }) => {

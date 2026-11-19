@@ -6,14 +6,19 @@ export function createInput(canvas, bindings, { isPaused, openMenu, onCapture, t
   const options = { signal: listeners.signal };
   const held = new Set();
   let captured = false;
+  let capturePending = false;
   let ignoreMouseUntil = 0;
   let jump = false;
   let respawn = false;
   let lookX = 0;
   let lookY = 0;
 
+  function hasCapture() {
+    return captured && document.pointerLockElement === canvas;
+  }
+
   function canLook() {
-    return captured && document.pointerLockElement === canvas && document.hasFocus() && !isPaused();
+    return hasCapture() && document.hasFocus() && !isPaused();
   }
 
   function reset() {
@@ -33,12 +38,16 @@ export function createInput(canvas, bindings, { isPaused, openMenu, onCapture, t
   async function capture() {
     if (isPaused()) return;
     canvas.focus({ preventScroll: true });
-    onCapture(captured);
-    if (captured && document.pointerLockElement === canvas) return;
+    const locked = hasCapture();
+    onCapture(locked);
+    if (locked || capturePending) return;
+    capturePending = true;
     try {
       await canvas.requestPointerLock?.();
     } catch {
-      // Un refus de recapture laisse le clavier actif et l'indice de clic visible.
+      // Un refus laisse le clavier actif et l’indice de capture visible.
+    } finally {
+      capturePending = false;
     }
   }
 
@@ -80,6 +89,7 @@ export function createInput(canvas, bindings, { isPaused, openMenu, onCapture, t
       if (!event.repeat) pause();
       return;
     }
+    if (!event.repeat && !hasCapture()) capture();
     const action = bindings.actionFor(code);
     if (action || code === "Space" || code.startsWith("Arrow")) event.preventDefault();
     if (!action || event.repeat || held.has(code)) return;
