@@ -6,7 +6,9 @@ import { collisionLayer } from "../core/physics.js";
 const down = new Vector3(0, -1, 0);
 const forward = new Vector3(0, 0, 1);
 
-export function createPlayerController(scene, spawn, gravity) {
+// `crossPortal(from, to)` renvoie la translation à appliquer quand le centre du
+// personnage franchit un portail entre deux pas.
+export function createPlayerController(scene, spawn, gravity, crossPortal = () => null) {
   const capsule = new PhysicsCharacterController(spawn, {
     capsuleHeight: PLAYER.height,
     capsuleRadius: PLAYER.radius,
@@ -22,8 +24,10 @@ export function createPlayerController(scene, spawn, gravity) {
   const velocity = Vector3.Zero();
   const state = {
     position: Vector3.Zero(), yaw: SPAWN_YAW, speed: 0,
-    grounded: false, verticalSpeed: 0, respawned: true,
+    grounded: false, verticalSpeed: 0, respawned: true, teleport: null,
   };
+  const start = Vector3.Zero();
+  const moved = Vector3.Zero();
   const previousPose = { position: Vector3.Zero(), yaw: SPAWN_YAW };
   let coyote = 0;
   let jumpBuffer = 0;
@@ -87,13 +91,19 @@ export function createPlayerController(scene, spawn, gravity) {
       risingFromJump = true;
       coyote = jumpBuffer = 0;
     }
-    const { x: startX, z: startZ } = capsule.getPosition();
+    start.copyFrom(capsule.getPosition());
     capsule.setVelocity(velocity);
     capsule.integrate(dt, surface, gravity);
 
+    moved.copyFrom(capsule.getPosition());
+    const dx = moved.x - start.x;
+    const dz = moved.z - start.z;
+    state.teleport = state.respawned ? null : crossPortal(start, moved)?.translation ?? null;
+    if (state.teleport) {
+      capsule.setPosition(moved.addInPlace(state.teleport));
+      previousPose.position.addInPlace(state.teleport);
+    }
     syncFeet();
-    const dx = state.position.x - startX;
-    const dz = state.position.z - startZ;
     state.speed = Math.hypot(dx, dz) / dt;
     state.verticalSpeed = capsule.getVelocity().y;
     state.grounded = grounded && !jumping;

@@ -6,7 +6,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { CAMERA, FIXED_STEP, MAX_ACCUMULATED_TIME, SPAWN_YAW } from "./config.js";
+import { CAMERA, PLAYER, FIXED_STEP, MAX_ACCUMULATED_TIME, SPAWN_YAW } from "./config.js";
 import { initPhysics } from "./core/physics.js";
 import { createBindings } from "./input/bindings.js";
 import { createInput } from "./input/input.js";
@@ -17,6 +17,7 @@ import { createThirdPersonCamera } from "./player/thirdPersonCamera.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
+import { createPortalViews, createTunnelGeometry, crossPortal, straddledPortal } from "./world/nonEuclideanTunnel.js";
 
 const canvas = document.querySelector("#scene");
 const status = document.querySelector("#status");
@@ -45,13 +46,19 @@ async function start() {
     shadows.normalBias = 0.025;
     shadows.setDarkness(0.2);
 
-    const casters = createTestTerrain(scene);
-    const player = createPlayerController(scene, spawnPoint, gravity);
+    const casters = [...createTestTerrain(scene), ...createTunnelGeometry(scene)];
+    const player = createPlayerController(scene, spawnPoint, gravity, crossPortal);
     scene.onDisposeObservable.addOnce(player.dispose);
     const visual = createSkeletonVisual(scene);
     scene.onDisposeObservable.addOnce(visual.dispose);
+    // Double du squelette affiché de l'autre côté d'un portail quand le corps le chevauche.
+    const twin = createSkeletonVisual(scene);
+    twin.root.setEnabled(false);
+    scene.onDisposeObservable.addOnce(twin.dispose);
     for (const mesh of [...casters, ...visual.root.getChildMeshes()]) shadows.addShadowCaster(mesh, false);
-    const camera = createThirdPersonCamera(scene);
+    const camera = createThirdPersonCamera(scene, crossPortal);
+    const portalViews = createPortalViews(scene, camera.camera);
+    scene.onDisposeObservable.addOnce(portalViews.dispose);
     const bindings = createBindings();
     const layout = createKeyboardLayout();
     scene.onDisposeObservable.addOnce(layout.dispose);
@@ -80,11 +87,22 @@ async function start() {
       Vector3.LerpToRef(previousPose.position, state.position, alpha, feet);
       visual.root.rotation.y = previousPose.yaw + NormalizeRadians(state.yaw - previousPose.yaw) * alpha;
       visual.update(dt, state);
+      twin.update(dt, state);
+      const twinOffset = straddledPortal(feet, PLAYER.radius + 0.1);
+      twin.root.setEnabled(twinOffset !== null);
+      if (twinOffset) {
+        feet.addToRef(twinOffset, twin.root.position);
+        twin.root.rotation.y = visual.root.rotation.y;
+      }
       const shoulderDistance = camera.follow(dt, feet, respawned);
       const fade = InverseLerp(CAMERA.fadeNear, CAMERA.fadeFar, shoulderDistance);
       visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade));
+      twin.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade));
       hud.update(state, camera, visual.root);
     }
+    // Accès de débogage en développement : `__game.camera.look(dx, dy)` tourne la caméra
+    // sans pointer lock (navigateurs pilotés, panneaux intégrés).
+    if (import.meta.env.DEV) window.__game = { scene, camera, player };
     present(0, 0, true);
     menu.open();
     scene.onBeforeRenderObservable.add(() => {
@@ -102,9 +120,12 @@ async function start() {
         const controls = input.read();
         let yaw = camera.look(controls.lookX, controls.lookY);
         for (let i = 0; i < steps; i++) {
-          if (player.update(FIXED_STEP, controls, yaw).respawned) {
+          const state = player.update(FIXED_STEP, controls, yaw);
+          if (state.respawned) {
             respawned = true;
             yaw = SPAWN_YAW;
+          } else if (state.teleport) {
+            camera.shift(state.teleport);
           }
           controls.jump = false;
           controls.respawn = false;
@@ -113,6 +134,7 @@ async function start() {
       const alpha = Clamp(accumulatedTime / FIXED_STEP);
       present(frameTime, alpha, respawned);
     });
+    scene.onBeforeRenderObservable.add(portalViews.update);
 
     const resize = new ResizeObserver(() => engine.resize());
     resize.observe(canvas);
