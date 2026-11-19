@@ -359,18 +359,23 @@ test("les conflits sont signalés, Échap annule la saisie, Suppr efface et F3 c
 
 test("la capture ignore le recentrage puis applique les petits mouvements de souris", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 760 });
+  await page.addInitScript(() => {
+    let locked = null;
+    Object.defineProperty(document, "pointerLockElement", { configurable: true, get: () => locked });
+    HTMLCanvasElement.prototype.requestPointerLock = function () {
+      locked = this;
+      document.dispatchEvent(new Event("pointerlockchange"));
+      document.dispatchEvent(new MouseEvent("mousemove", { movementX: -475, movementY: -132 }));
+      document.dispatchEvent(new MouseEvent("mousemove", { movementX: 18, movementY: -12 }));
+      return Promise.resolve();
+    };
+  });
   await page.goto("/");
   await expect(play(page)).toBeFocused();
   const hud = page.locator("#player-state");
   const initial = await cameraAngles(hud);
-  await page.evaluate(() => {
-    document.addEventListener("pointerlockchange", () => {
-      document.dispatchEvent(new MouseEvent("mousemove", { movementX: -475, movementY: -132 }));
-      document.dispatchEvent(new MouseEvent("mousemove", { movementX: 18, movementY: -12 }));
-    }, { once: true });
-  });
   await play(page).click();
-  await page.waitForFunction(() => document.pointerLockElement === document.querySelector("#scene"));
+  expect(await page.evaluate(() => document.pointerLockElement?.id)).toBe("scene");
   await page.waitForTimeout(150);
   await expect(hud).toHaveAttribute("data-grounded", "true", landing);
   expect(await cameraAngles(hud)).toEqual(initial);
