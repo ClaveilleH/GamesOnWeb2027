@@ -343,7 +343,7 @@ test("Chromium : après Reprendre, la caméra suit la souris pendant le délai p
 
 test("Firefox : Échap ferme le menu et recapture la souris seulement au relâchement", async ({ page }) => {
   await emulatePointerLock(page, "firefox");
-  await startOnGround(page, "/?browser=firefox");
+  await startOnGround(page);
   const dialog = page.getByRole("dialog");
   await page.keyboard.press("Escape");
   await expect(dialog).toBeVisible();
@@ -362,23 +362,16 @@ test("Firefox : Échap ferme le menu et recapture la souris seulement au relâch
   expect(await lockedId(page)).toBe("scene");
 });
 
-test("Firefox : la touche système met en pause et libère la souris", async ({ page }) => {
-  await emulatePointerLock(page, "firefox");
-  await startOnGround(page, "/?browser=firefox");
-  expect(await lockedId(page)).toBe("scene");
-  await page.keyboard.press("Meta");
-  await expect(page.getByRole("dialog")).toBeVisible();
-  expect(await lockedId(page)).toBeNull();
-});
-
-test("Chromium : la touche système laisse le navigateur gérer la souris", async ({ page }) => {
-  await emulatePointerLock(page, "chromium");
-  await startOnGround(page, "/?browser=chromium");
-  await page.keyboard.press("Meta");
-  await page.waitForTimeout(100);
-  await expect(page.getByRole("dialog")).toBeHidden();
-  expect(await lockedId(page)).toBe("scene");
-});
+for (const browser of ["chromium", "firefox"]) {
+  test(`${browser} : la touche système met en pause et libère la souris`, async ({ page }) => {
+    await emulatePointerLock(page, browser);
+    await startOnGround(page, `/?browser=${browser}`);
+    expect(await lockedId(page)).toBe("scene");
+    await page.keyboard.press("Meta");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    expect(await lockedId(page)).toBeNull();
+  });
+}
 
 test("Avancer accepte I immédiatement, persiste après rechargement et revient à W après réinitialisation", async ({ page }) => {
   const hud = await startOnGround(page);

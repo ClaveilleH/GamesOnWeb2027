@@ -1,30 +1,20 @@
-// Écarts de comportement connus entre navigateurs.
-// Chaque différence est une option nommée d’un profil : le reste du code lit l’option,
-// il ne teste jamais le nom du navigateur. Pour un nouvel écart, ajouter une option
-// aux deux profils et la documenter ici.
+// Écarts de comportement entre navigateurs qu’on ne peut pas traiter autrement.
+//
+// Règle : d’abord une solution valable partout, qui réagit à ce que fait le navigateur
+// (erreur renvoyée, touche reçue). Un profil seulement quand c’est impossible, par exemple
+// pour une valeur interne au navigateur. Chaque option existe dans tous les profils ;
+// le reste du code lit l’option, il ne teste jamais le nom du navigateur.
 const profiles = {
   chromium: {
     name: "chromium",
     // Après une sortie par Échap, Chromium refuse requestPointerLock (SecurityError)
-    // pendant 1250 ms, même sur un clic : on retente à la fin du délai.
+    // pendant 1250 ms, même sur un clic : la capture est retentée à la fin du délai.
     lockDelayAfterUserExitMs: 1250,
-    // Pendant ce délai, la caméra suit déjà la souris, curseur masqué, pour que la reprise
-    // paraisse immédiate.
-    lookDuringLockDelay: true,
-    // Chromium libère la souris dès l’appui sur Échap : on peut recapturer aussitôt.
-    relockAfterEscapeRelease: false,
-    // Chromium libère lui-même la souris quand la touche système (Windows/Cmd) est pressée.
-    pauseOnSystemKey: false,
   },
   firefox: {
     name: "firefox",
+    // Firefox n’impose pas de délai après une sortie par Échap.
     lockDelayAfterUserExitMs: 0,
-    lookDuringLockDelay: false,
-    // Firefox libère la souris au relâchement d’Échap : une capture faite pendant l’appui
-    // serait aussitôt annulée et rouvrirait le menu.
-    relockAfterEscapeRelease: true,
-    // Firefox garde la souris capturée quand la touche système ouvre le lanceur du bureau.
-    pauseOnSystemKey: true,
   },
 };
 

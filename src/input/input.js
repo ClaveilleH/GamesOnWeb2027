@@ -52,12 +52,12 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
   }
 
   // Délai avant de retenter une capture refusée, ou null si le refus est définitif.
-  // Seul le délai imposé après une sortie par Échap mérite une nouvelle tentative,
-  // et seulement tant que le geste qui a demandé la capture reste valide.
+  // Un SecurityError signale un délai imposé après une sortie par Échap : il mérite une
+  // nouvelle tentative, tant que le geste qui a demandé la capture reste valide.
   function lockRetryDelay(error) {
+    if (error?.name !== "SecurityError" || navigator.userActivation?.isActive === false) return null;
     const delay = platform.lockDelayAfterUserExitMs;
-    if (!delay || error?.name !== "SecurityError" || navigator.userActivation?.isActive === false) return null;
-    if (!Number.isFinite(userExitAt)) return LOCK_RETRY_FALLBACK_MS;
+    if (!delay || !Number.isFinite(userExitAt)) return LOCK_RETRY_FALLBACK_MS;
     return Math.max(LOCK_RETRY_MIN_MS, userExitAt + delay + LOCK_RETRY_MARGIN_MS - performance.now());
   }
 
@@ -96,7 +96,9 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
           delay = attempt < LOCK_RETRIES ? lockRetryDelay(error) : null;
           if (delay === null) return;
         }
-        if (platform.lookDuringLockDelay && !awaitingLock) {
+        // Pendant l’attente, la caméra suit déjà la souris, curseur masqué,
+        // pour que la reprise paraisse immédiate.
+        if (!awaitingLock) {
           setAwaitingLock(true);
           onCapture(true);
         }
@@ -113,8 +115,11 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
   }
 
   // Reprise depuis le menu : `key` est la touche qui l’a fermé, s’il y en a une.
+  // Firefox libère la souris au relâchement d’Échap : une capture faite pendant l’appui
+  // serait aussitôt annulée et rouvrirait le menu. Attendre le relâchement ne coûte
+  // rien ailleurs, car aucun navigateur n’accorde la capture sur Échap.
   function resume(key) {
-    if (key === "Escape" && platform.relockAfterEscapeRelease) {
+    if (key === "Escape") {
       canvas.focus({ preventScroll: true });
       relockOnRelease = key;
       return;
@@ -155,7 +160,9 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
       if (!event.repeat) pause();
       return;
     }
-    if (platform.pauseOnSystemKey && SYSTEM_KEYS.has(code) && hasCapture()) {
+    // Firefox garde la souris capturée quand la touche système ouvre le lanceur du bureau ;
+    // Chromium la libère déjà, la pause revient donc au même.
+    if (SYSTEM_KEYS.has(code) && hasCapture()) {
       pause();
       return;
     }
