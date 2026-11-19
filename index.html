@@ -4,24 +4,56 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#10242a">
-    <title>Games on Web 2027 · Test de physique</title>
+    <title>Games on Web 2027 · Personnage en troisième personne</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/src/style.css">
   </head>
   <body>
-    <header>
-      <h1>Games on Web <span>2027</span></h1>
-      <p>Babylon.js <span aria-hidden="true">/</span> Havok</p>
-    </header>
     <main>
-      <canvas id="scene" role="img" aria-label="Une balle orange rebondit sur une plateforme circulaire."></canvas>
+      <canvas id="scene" tabindex="0" aria-label="Terrain d’entraînement du squelette en troisième personne. Échap ouvre le menu des commandes."></canvas>
       <p id="status" role="status">Chargement de la scène…</p>
-      <noscript>Activez JavaScript pour lancer la simulation.</noscript>
+      <p id="capture-hint" hidden>
+        <span>Cliquez pour contrôler la caméra</span>
+        <span class="movement-hint">Déplacer <kbd id="movement-keys"></kbd></span>
+      </p>
+      <div id="player-state" aria-label="État du personnage" hidden>
+        <span class="contact"><i aria-hidden="true"></i><span id="ground-state">Chargement</span></span>
+        <span class="velocity"><strong id="speed">0,0</strong> m/s</span>
+      </div>
+      <noscript>Activez JavaScript pour lancer le jeu.</noscript>
     </main>
-    <footer>
-      <p class="counter">Rebonds <strong id="bounces">0</strong></p>
-      <button id="drop" type="button" disabled>Relancer la balle</button>
-    </footer>
+
+    <dialog id="pause-menu" role="dialog" aria-modal="true" aria-labelledby="game-title">
+      <div class="menu-bar">
+        <h1 id="game-title"><span class="brand-mark" aria-hidden="true"></span>Games on Web <span>2027</span></h1>
+        <button id="play" class="primary" type="button" autofocus>Jouer</button>
+      </div>
+      <section class="commands" aria-labelledby="commands-title">
+        <div class="commands-bar">
+          <h2 id="commands-title">Commandes</h2>
+          <label class="layout-choice">Disposition du clavier
+            <select id="keyboard-layout">
+              <option value="auto">Automatique</option>
+              <option value="azerty">AZERTY</option>
+              <option value="qwerty">QWERTY</option>
+            </select>
+          </label>
+        </div>
+        <table aria-labelledby="commands-title">
+          <thead><tr><th scope="col">Action</th><th scope="col">Principal</th><th scope="col">Secondaire</th></tr></thead>
+          <tbody id="bindings"></tbody>
+        </table>
+        <div class="binding-tools">
+          <p id="binding-message" aria-live="polite" aria-atomic="true">Sélectionnez une touche pour la modifier.</p>
+          <button id="reset-bindings" type="button">Réinitialiser les touches</button>
+        </div>
+      </section>
+      <ul class="fixed-keys" aria-label="Commandes fixes">
+        <li><kbd>Souris</kbd> Caméra</li>
+        <li><kbd>Échap</kbd> Menu</li>
+        <li><kbd>F3</kbd> Afficher le HUD</li>
+      </ul>
+    </dialog>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

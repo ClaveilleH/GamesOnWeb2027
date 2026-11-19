@@ -1,6 +1,6 @@
 # Games on Web 2027
 
-Une balle tombe sur une plateforme en 3D. Babylon.js affiche la scène et Havok simule les rebonds. Le bouton **Relancer la balle** permet de répéter le test. Le compteur affiche les impacts détectés par Havok.
+Un squelette animé en troisième personne explore un terrain d’entraînement en plein écran. Babylon.js construit le personnage en primitives et Havok gère ses déplacements. Cliquez sur **Jouer** pour commencer. Par défaut, utilisez **ZQSD / WASD** ou les **flèches** pour marcher, **Maj** pour courir, **Espace** pour sauter, **R** pour réapparaître et la souris pour orienter la caméra. **Échap** met le jeu en pause et ouvre le menu où vous pouvez réassigner les touches et choisir la disposition du clavier. **F3** affiche ou masque l’état et la vitesse du personnage.
 
 ## Développement
 
@@ -21,7 +21,7 @@ npm test
 
 ## Production
 
-GitHub Actions compile le site et teste les collisions sur les pull requests vers `main` et sur les pushs vers `main`. Après un push validé, le workflow publie le contenu de `dist/` dans une release GitHub. L’archive embarque Babylon.js et le module WebAssembly de Havok.
+GitHub Actions compile le site et teste le chargement de Havok, l’atterrissage, la marche et le saut du personnage sur les pull requests vers `main` et sur les pushs vers `main`. Après un push validé, le workflow publie le contenu de `dist/` dans une release GitHub. L’archive embarque Babylon.js et le module WebAssembly de Havok.
 
 Le VPS vérifie la dernière release toutes les trois minutes. Il en vérifie la somme SHA-256 et le numéro de commit, puis bascule Nginx sur cette version. En cas d’échec, la version en ligne continue d’être servie. Le commit déployé est consultable sur [gow.bertho.tech/version.txt](https://gow.bertho.tech/version.txt).
 
