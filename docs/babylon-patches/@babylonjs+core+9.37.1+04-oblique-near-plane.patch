@@ -1,0 +1,155 @@
+diff --git a/node_modules/@babylonjs/core/Cameras/camera.pure.d.ts b/node_modules/@babylonjs/core/Cameras/camera.pure.d.ts
+index cad91ac..1531520 100644
+--- a/node_modules/@babylonjs/core/Cameras/camera.pure.d.ts
++++ b/node_modules/@babylonjs/core/Cameras/camera.pure.d.ts
+@@ -115,6 +115,8 @@ export declare class Camera extends Node {
+      * Object containing oblique projection values (only used with ORTHOGRAPHIC_CAMERA)
+      */
+     oblique: Nullable<IObliqueParams>;
++    /** Plan proche en coordonnées monde pour une perspective, orienté vers le côté à conserver. */
++    obliqueNearPlane: Nullable<Plane>;
+     /**
+      * The screen area in scene units squared
+      */
+diff --git a/node_modules/@babylonjs/core/Cameras/camera.pure.js b/node_modules/@babylonjs/core/Cameras/camera.pure.js
+index b8fa5fb..d8e4a23 100644
+--- a/node_modules/@babylonjs/core/Cameras/camera.pure.js
++++ b/node_modules/@babylonjs/core/Cameras/camera.pure.js
+@@ -219,6 +219,8 @@ let Camera = (() => {
+                  * Object containing oblique projection values (only used with ORTHOGRAPHIC_CAMERA)
+                  */
+                 this.oblique = (__runInitializers(this, __upVector_extraInitializers), null);
++                /** Plan proche en coordonnées monde pour une perspective, orienté vers le côté à conserver. */
++                this.obliqueNearPlane = null;
+                 this._orthoLeft = null;
+                 this._orthoRight = null;
+                 this._orthoBottom = null;
+@@ -521,11 +523,17 @@ let Camera = (() => {
+                 }
+                 const engine = this.getEngine();
+                 if (this.mode === _a.PERSPECTIVE_CAMERA) {
++                    const plane = this.obliqueNearPlane;
+                     isSynchronized =
+                         this._cache.fov === this.fov &&
+                             this._cache.fovMode === this.fovMode &&
+                             this._cache.aspectRatio === engine.getAspectRatio(this) &&
+-                            this._cache.projectionPlaneTilt === this.projectionPlaneTilt;
++                            this._cache.projectionPlaneTilt === this.projectionPlaneTilt &&
++                            this._cache.obliqueViewFlag === (plane ? this._computedViewMatrix.updateFlag : undefined);
++                    if (isSynchronized && plane) {
++                        isSynchronized = this._cache.obliqueNearPlaneD === plane.d &&
++                            this._cache.obliqueNearPlaneNormal.equals(plane.normal) && this._isSynchronizedViewMatrix();
++                    }
+                 }
+                 else {
+                     isSynchronized =
+@@ -749,6 +757,8 @@ let Camera = (() => {
+                 const scene = this.getScene();
+                 const reverseDepth = engine.useReverseDepthBuffer;
+                 if (this.mode === _a.PERSPECTIVE_CAMERA) {
++                    const plane = this.obliqueNearPlane;
++                    const view = plane ? this.getViewMatrix() : null;
+                     this._cache.fov = this.fov;
+                     this._cache.fovMode = this.fovMode;
+                     this._cache.aspectRatio = engine.getAspectRatio(this);
+@@ -764,6 +774,13 @@ let Camera = (() => {
+                         getProjectionMatrix = Matrix.PerspectiveFovLHToRef;
+                     }
+                     getProjectionMatrix(this.fov, engine.getAspectRatio(this), reverseDepth ? maxZ : this.minZ, reverseDepth ? this.minZ : maxZ, this._projectionMatrix, this.fovMode === _a.FOVMODE_VERTICAL_FIXED, engine.isNDCHalfZRange, this.projectionPlaneTilt, reverseDepth);
++                    this._cache.obliqueViewFlag = view?.updateFlag;
++                    if (plane) {
++                        Matrix.ObliqueNearPlaneToRef(this._projectionMatrix, view, plane, this._projectionMatrix, engine.isNDCHalfZRange);
++                        this._cache.obliqueNearPlaneNormal ??= Vector3.Zero();
++                        this._cache.obliqueNearPlaneNormal.copyFrom(plane.normal);
++                        this._cache.obliqueNearPlaneD = plane.d;
++                    }
+                 }
+                 else {
+                     const halfWidth = engine.getRenderWidth() / 2.0;
+diff --git a/node_modules/@babylonjs/core/Maths/math.vector.pure.d.ts b/node_modules/@babylonjs/core/Maths/math.vector.pure.d.ts
+index 779c95d..15dc786 100644
+--- a/node_modules/@babylonjs/core/Maths/math.vector.pure.d.ts
++++ b/node_modules/@babylonjs/core/Maths/math.vector.pure.d.ts
+@@ -4263,6 +4263,16 @@ export declare class Matrix implements Tensor<Tuple<Tuple<number, 4>, 4>, Matrix
+      * @returns result input
+      */
+     static ObliqueOffCenterRHToRef<T extends Matrix>(left: number, right: number, bottom: number, top: number, znear: number, zfar: number, length: number, angle: number, distance: number, result: T, halfZRange?: boolean): T;
++    /**
++     * Remplace le plan proche d’une projection perspective par la méthode de Lengyel.
++     * @param projection Projection de base à profondeur croissante.
++     * @param view Matrice de vue monde vers caméra.
++     * @param plane Plan monde dont le demi-espace positif est conservé.
++     * @param result Matrice de destination, qui peut être la projection elle-même.
++     * @param halfZRange Active la plage de profondeur NDC [0, 1].
++     * @returns La destination, ou null si le plan ou les matrices ne permettent pas la coupe.
++     */
++    static ObliqueNearPlaneToRef<T extends Matrix>(projection: DeepImmutable<Matrix>, view: DeepImmutable<Matrix>, plane: DeepImmutable<Plane>, result: T, halfZRange?: boolean): Nullable<T>;
+     /**
+      * Creates a left-handed perspective projection matrix
+      * Example Playground - https://playground.babylonjs.com/#AV9X17#85
+diff --git a/node_modules/@babylonjs/core/Maths/math.vector.pure.js b/node_modules/@babylonjs/core/Maths/math.vector.pure.js
+index 0a9ce59..aad61e0 100644
+--- a/node_modules/@babylonjs/core/Maths/math.vector.pure.js
++++ b/node_modules/@babylonjs/core/Maths/math.vector.pure.js
+@@ -7236,6 +7236,53 @@ export class Matrix {
+         MathTmp.Matrix[0].multiplyToRef(result, result);
+         return result;
+     }
++    /**
++     * Remplace le plan proche d’une projection perspective par la méthode de Lengyel.
++     * @param projection Projection de base à profondeur croissante.
++     * @param view Matrice de vue monde vers caméra.
++     * @param plane Plan monde dont le demi-espace positif est conservé.
++     * @param result Matrice de destination, qui peut être la projection elle-même.
++     * @param halfZRange Active la plage de profondeur NDC [0, 1].
++     * @returns La destination, ou null si le plan ou les matrices ne permettent pas la coupe.
++     */
++    static ObliqueNearPlaneToRef(projection, view, plane, result, halfZRange = false) {
++        const inverse = MathTmp.ObliqueInverse;
++        if (!InvertMatrixToArray(view, inverse)) {
++            return null;
++        }
++        // Un plan se transforme par l’inverse transposée de la vue.
++        const { x, y, z } = plane.normal;
++        const d = plane.d;
++        const cx = inverse[0] * x + inverse[1] * y + inverse[2] * z + inverse[3] * d;
++        const cy = inverse[4] * x + inverse[5] * y + inverse[6] * z + inverse[7] * d;
++        const cz = inverse[8] * x + inverse[9] * y + inverse[10] * z + inverse[11] * d;
++        const cw = inverse[12] * x + inverse[13] * y + inverse[14] * z + inverse[15] * d;
++        if (!(cw < 0) || !InvertMatrixToArray(projection, inverse)) {
++            return null;
++        }
++
++        // Le coin lointain opposé au plan reste fixe en coordonnées homogènes.
++        const sx = cx < 0 ? -1 : 1;
++        const sy = cy < 0 ? -1 : 1;
++        const qx = sx * inverse[0] + sy * inverse[4] + inverse[8] + inverse[12];
++        const qy = sx * inverse[1] + sy * inverse[5] + inverse[9] + inverse[13];
++        const qz = sx * inverse[2] + sy * inverse[6] + inverse[10] + inverse[14];
++        const qw = sx * inverse[3] + sy * inverse[7] + inverse[11] + inverse[15];
++        const dot = cx * qx + cy * qy + cz * qz + cw * qw;
++        if (!Number.isFinite(dot) || dot <= 1e-8) {
++            return null;
++        }
++
++        const nearZ = halfZRange ? 0 : -1;
++        const scale = (1 - nearZ) / dot;
++        const m = projection.m;
++        Matrix.FromValuesToRef(
++            m[0], m[1], scale * cx + nearZ * m[3], m[3],
++            m[4], m[5], scale * cy + nearZ * m[7], m[7],
++            m[8], m[9], scale * cz + nearZ * m[11], m[11],
++            m[12], m[13], scale * cw + nearZ * m[15], m[15], result);
++        return result;
++    }
+     /**
+      * Creates a left-handed perspective projection matrix
+      * Example Playground - https://playground.babylonjs.com/#AV9X17#85
+@@ -7599,6 +7646,7 @@ class MathTmp {
+ MathTmp.Vector3 = /*#__PURE__*/ BuildTuple(11, Vector3.Zero);
+ // Temporary Matricies
+ MathTmp.Matrix = /*#__PURE__*/ BuildTuple(2, Matrix.Identity);
++MathTmp.ObliqueInverse = /*#__PURE__*/ new Float64Array(16);
+ // Temporary Quaternions
+ MathTmp.Quaternion = /*#__PURE__*/ BuildTuple(3, Quaternion.Zero);
+ /**
