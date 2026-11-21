@@ -53,9 +53,10 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); o
 #player-state {
   top: max(.8rem, env(safe-area-inset-top));
   right: max(.8rem, env(safe-area-inset-right));
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  gap: .8rem;
+  gap: .3rem .8rem;
   padding: .5rem .72rem;
   font-size: .8rem;
   font-variant-numeric: tabular-nums;
@@ -65,6 +66,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); o
 [data-grounded="true"] .contact i { background: #a6d6b0; }
 .velocity { color: var(--muted); border-left: 1px solid var(--line); padding-left: .75rem; }
 .velocity strong { color: #eff8f4; }
+.portal-stats { grid-column: 1 / -1; color: var(--muted); }
 
 dialog {
   width: min(37rem, calc(100vw - 2rem));

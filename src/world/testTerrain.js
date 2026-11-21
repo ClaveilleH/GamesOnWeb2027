@@ -1,7 +1,8 @@
 import { Color3 } from "@babylonjs/core/Maths/math.color";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Vector3, Vector4 } from "@babylonjs/core/Maths/math.vector";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
+import { Texture } from "@babylonjs/core/Materials/Textures/texture";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { CreateGround } from "@babylonjs/core/Meshes/Builders/groundBuilder";
 import { CreateLineSystem } from "@babylonjs/core/Meshes/Builders/linesBuilder";
@@ -12,9 +13,11 @@ import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
 import { PhysicsAggregate } from "@babylonjs/core/Physics/v2/physicsAggregate";
 import { PhysicsShapeType } from "@babylonjs/core/Physics/v2/IPhysicsEnginePlugin";
 import { collisionLayer } from "../core/physics.js";
+import { batchStaticMeshes } from "./staticBatch.js";
 
 export const spawnPoint = new Vector3(0, 3.65, -10);
-const fieldSize = 40;
+const fieldSize = 100;
+const trainingSize = 40;
 const ramps = [
   { x: -4.3, angle: 18, height: 1.6 },
   { x: -7.8, angle: 32, height: 2.1 },
@@ -26,21 +29,82 @@ const jumps = [
   { x: 7.2, z: 1.3, height: 1.35 },
 ];
 
-function material(scene, name, color) {
+export function terrainMaterial(scene, name, color) {
   const mat = new StandardMaterial(name, scene);
   mat.diffuseColor = Color3.FromHexString(color);
   mat.specularColor = Color3.Black();
   return mat;
 }
 
+export function solidTerrain(mesh, mat, shapeType = PhysicsShapeType.BOX) {
+  mesh.material = mat;
+  mesh.receiveShadows = true;
+  const aggregate = new PhysicsAggregate(mesh, shapeType, { mass: 0, friction: 0.8 }, mesh.getScene());
+  aggregate.shape.filterMembershipMask = collisionLayer.terrain;
+  return mesh;
+}
+
+function paintGrid(scene) {
+  const texture = new DynamicTexture("maille de cinq mètres", 512, scene, true);
+  const ctx = texture.getContext();
+  const unit = texture.getSize().width / 5;
+  ctx.scale(unit, unit);
+  ctx.fillStyle = "#436866";
+  ctx.fillRect(0, 0, 5, 5);
+  ctx.lineWidth = 0.025;
+  for (let i = 0; i <= 5; i++) {
+    ctx.strokeStyle = i % 5 === 0 ? "#60817c" : "#507470";
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, 5);
+    ctx.moveTo(0, i);
+    ctx.lineTo(5, i);
+    ctx.stroke();
+  }
+  texture.update();
+  texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE;
+
+  // La face supérieure de la dalle porte directement le quadrillage, les chants restent unis.
+  const faceUV = Array(6).fill(new Vector4(0.5, 0.5, 0.5, 0.5));
+  faceUV[4] = new Vector4(0, 0, fieldSize / 5, fieldSize / 5);
+  const deck = CreateBox("dalle", { width: fieldSize, height: 0.64, depth: fieldSize, faceUV }, scene);
+  deck.position.y = -0.32;
+  const mat = terrainMaterial(scene, "enrobé quadrillé", "#ffffff");
+  mat.diffuseTexture = texture;
+  solidTerrain(deck, mat);
+}
+
+export function paintZoneSign(scene, title, x, z, width, height) {
+  const sign = CreateGround(title, { width, height }, scene);
+  sign.position.set(x, 0.008, z);
+  const texture = new DynamicTexture(title, { width: 1024, height: 256 }, scene, true);
+  const ctx = texture.getContext();
+  ctx.fillStyle = "#385756";
+  ctx.fillRect(0, 0, 1024, 256);
+  ctx.strokeStyle = "#efac72";
+  ctx.lineWidth = 6;
+  ctx.strokeRect(14, 14, 996, 228);
+  ctx.fillStyle = "#f2c494";
+  ctx.font = "bold 84px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(title, 512, 132, 930);
+  texture.update();
+  sign.material = terrainMaterial(scene, title, "#ffffff");
+  sign.material.diffuseTexture = texture;
+  sign.material.zOffset = -3;
+  sign.receiveShadows = true;
+  return sign;
+}
+
 function paintFloor(scene) {
-  const floor = CreateGround("quadrillage", { width: fieldSize, height: fieldSize }, scene);
+  const floor = CreateGround("piste centrale", { width: trainingSize, height: trainingSize }, scene);
   floor.position.y = 0.004;
   floor.receiveShadows = true;
   const texture = new DynamicTexture("piste peinte", 2048, scene, true);
   const ctx = texture.getContext();
   const size = texture.getSize().width;
-  const scale = size / fieldSize;
+  const scale = size / trainingSize;
   // Le dessin est coté en mètres. Le haut de la texture correspond au nord (+Z).
   ctx.setTransform(scale, 0, 0, scale, size / 2, size / 2);
   ctx.fillStyle = "#436866";
@@ -96,12 +160,13 @@ function paintFloor(scene) {
     label(`${height.toFixed(2).replace(".", ",")} m`, x, z - 1.65, 0.42, "#ede3bf");
   }
   texture.update();
-  floor.material = material(scene, "enrobé", "#ffffff");
+  floor.material = terrainMaterial(scene, "enrobé", "#ffffff");
   floor.material.diffuseTexture = texture;
+  floor.material.zOffset = -2;
 }
 
 function addHorizon(scene) {
-  for (const [radius, base, color] of [[82, 7, "#91aaa0"], [59, 2.2, "#72918a"]]) {
+  for (const [radius, base, color] of [[125, 7, "#91aaa0"], [95, 2.2, "#72918a"]]) {
     const crest = [];
     const baseLine = [];
     for (let i = 0; i < 96; i++) {
@@ -113,7 +178,7 @@ function addHorizon(scene) {
       baseLine.push(new Vector3(x, -18, z));
     }
     const ridge = CreateRibbon("relief lointain", { pathArray: [crest, baseLine], closePath: true }, scene);
-    ridge.material = material(scene, "brume", color);
+    ridge.material = terrainMaterial(scene, "brume", color);
     ridge.material.backFaceCulling = false;
     ridge.material.disableLighting = true;
     ridge.material.emissiveColor = Color3.FromHexString(color);
@@ -138,7 +203,7 @@ function wallSign(scene, title, detail, x, y, z, width) {
   ctx.fillStyle = "#bdcec0";
   ctx.fillText(detail, 46, 106);
   texture.update();
-  sign.material = material(scene, title, "#ffffff");
+  sign.material = terrainMaterial(scene, title, "#ffffff");
   sign.material.diffuseTexture = texture;
 }
 
@@ -163,6 +228,8 @@ function extrudeProfile(scene, name, width, profile) {
   data.positions = positions;
   data.indices = indices;
   data.normals = [];
+  // Les UV neutres permettent de fusionner les profils avec les boîtes en béton.
+  data.uvs = new Float32Array(2 * positions.length / 3);
   VertexData.ComputeNormals(positions, indices, data.normals);
   const mesh = new Mesh(name, scene);
   data.applyToMesh(mesh);
@@ -170,25 +237,16 @@ function extrudeProfile(scene, name, width, profile) {
 }
 
 export function createTestTerrain(scene) {
-  const deck = material(scene, "socle", "#304d4c");
-  const mint = material(scene, "béton céladon", "#75988b");
-  const clay = material(scene, "béton ocre", "#ba8664");
-  const wall = material(scene, "béton sombre", "#4c716c");
+  const mint = terrainMaterial(scene, "béton céladon", "#75988b");
+  const clay = terrainMaterial(scene, "béton ocre", "#ba8664");
+  const wall = terrainMaterial(scene, "béton sombre", "#4c716c");
   const edges = [];
   const casters = [];
-
-  function solid(mesh, mat, shapeType = PhysicsShapeType.BOX) {
-    mesh.material = mat;
-    mesh.receiveShadows = true;
-    const aggregate = new PhysicsAggregate(mesh, shapeType, { mass: 0, friction: 0.8 }, scene);
-    aggregate.shape.filterMembershipMask = collisionLayer.terrain;
-    return mesh;
-  }
 
   function box(name, x, y, z, width, height, depth, mat) {
     const mesh = CreateBox(name, { width, height, depth }, scene);
     mesh.position.set(x, y, z);
-    return solid(mesh, mat);
+    return solidTerrain(mesh, mat);
   }
 
   function topEdge(x, y, z, width) {
@@ -196,7 +254,7 @@ export function createTestTerrain(scene) {
       new Vector3(x + width / 2 - 0.08, y + 0.012, z)]);
   }
 
-  box("dalle", 0, -0.32, 0, fieldSize, 0.64, fieldSize, deck);
+  paintGrid(scene);
   paintFloor(scene);
   addHorizon(scene);
   for (const { x, angle, height } of ramps) {
@@ -206,7 +264,7 @@ export function createTestTerrain(scene) {
     const ramp = extrudeProfile(scene, `rampe ${angle}°`, width, [[0, 0], [depth, height], [depth, 0]]);
     ramp.position.set(x, 0, toe);
     const mat = angle > 45 ? clay : mint;
-    casters.push(solid(ramp, mat, PhysicsShapeType.CONVEX_HULL));
+    casters.push(solidTerrain(ramp, mat, PhysicsShapeType.CONVEX_HULL));
     casters.push(box("palier", x, height / 2, toe + depth + 1, width, height, 2, mat));
     for (const side of [-1, 1]) {
       const edgeX = x + side * (width / 2 - 0.1);
@@ -226,7 +284,7 @@ export function createTestTerrain(scene) {
       [0, 0], [0, height - 0.11], [0.16, height], [0.55, height], [0.55, 0],
     ]);
     step.position.set(3.3, 0, front);
-    casters.push(solid(step, mint, PhysicsShapeType.CONVEX_HULL));
+    casters.push(solidTerrain(step, mint, PhysicsShapeType.CONVEX_HULL));
     topEdge(3.3, height, front + 0.18, 2.6);
   }
   casters.push(box("palier des marches", 3.3, 0.72, 8.1, 2.6, 1.44, 2, mint));
@@ -240,8 +298,8 @@ export function createTestTerrain(scene) {
   markedWall("SAUTS", "0,45  /  0,90  /  1,35 m", 9, 5, 5.8);
   markedWall("ESCALIER", "8 marches de 18 cm", 3.3, 11, 4.5);
   casters.push(box("retour de mur", -12.6, 1.2, 3.45, 0.4, 2.4, 3.4, wall));
-  const markings = CreateLineSystem("arêtes peintes", { lines: edges }, scene);
+  const markings = CreateLineSystem("arêtes peintes", { lines: edges, useVertexAlpha: false }, scene);
   markings.color = Color3.FromHexString("#d6d8ac");
   markings.isPickable = false;
-  return casters;
+  return batchStaticMeshes("entraînement", casters);
 }

@@ -6,6 +6,8 @@ export const SPAWN_YAW = 0;
 export const PLAYER = Object.freeze({
   height: 1.92,
   radius: 0.32,
+  mass: 75,
+  strength: 1200,
   contactDistance: 0.025,
   contactTolerance: 0.03,
   walkSpeed: 3.6,

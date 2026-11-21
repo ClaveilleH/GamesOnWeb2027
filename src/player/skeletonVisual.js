@@ -8,6 +8,7 @@ import { CreateCapsule } from "@babylonjs/core/Meshes/Builders/capsuleBuilder";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import { CreateTube } from "@babylonjs/core/Meshes/Builders/tubeBuilder";
 import { PLAYER } from "../config.js";
+import { PortalLayers } from "../portals/layers.js";
 
 export function createSkeletonVisual(scene) {
   const ivory = new StandardMaterial("os ivoire", scene);
@@ -55,6 +56,7 @@ export function createSkeletonVisual(scene) {
     mesh.parent = parent;
     mesh.material = mat;
     mesh.isPickable = false;
+    mesh.layerMask = PortalLayers.late;
   }
 
   const root = pivot("squelette", null);
@@ -149,7 +151,7 @@ export function createSkeletonVisual(scene) {
   let stride = 0;
   let breath = 0;
 
-  function update(dt, { speed, grounded, verticalSpeed }) {
+  function update(dt, speed, grounded, verticalSpeed) {
     const gait = grounded
       ? (speed < 0.12 ? "idle" : speed > PLAYER.walkSpeed + 0.4 ? "run" : "walk")
       : (verticalSpeed > 0.15 ? "jump" : "fall");
@@ -200,10 +202,12 @@ export function createSkeletonVisual(scene) {
   }
 
   return {
-    root, update,
+    root, update, materials: [ivory, dark],
     setFade(alpha) {
+      if (ivory.alpha === alpha) return false;
       ivory.alpha = alpha;
       dark.alpha = alpha;
+      return true;
     },
     dispose() {
       root.dispose();

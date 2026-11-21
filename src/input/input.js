@@ -22,6 +22,8 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
   let respawn = false;
   let lookX = 0;
   let lookY = 0;
+  let virtual = null;
+  const controls = { forward: 0, strafe: 0, sprint: false, jump: false, respawn: false, lookX: 0, lookY: 0 };
 
   function hasCapture() {
     return captured && document.pointerLockElement === canvas;
@@ -38,6 +40,7 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
 
   function reset() {
     held.clear();
+    virtual = null;
     jump = respawn = false;
     lookX = lookY = 0;
   }
@@ -183,20 +186,29 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
     if (document.hidden) pause();
   }, options);
 
-  const pressed = (action) => bindings.keys(action).some((code) => held.has(code));
+  const isHeld = (code) => held.has(code);
+  const pressed = (action) => bindings.keys(action).some(isHeld);
+  function axis(positive, negative, virtualValue = 0) {
+    return Math.max(-1, Math.min(1, Number(pressed(positive)) - Number(pressed(negative)) + virtualValue));
+  }
   return {
     resume,
+    setControls(controls) {
+      if (controls?.jump && !virtual?.jump) jump = true;
+      virtual = controls;
+    },
     read() {
       const looking = canLook();
-      const input = {
-        forward: Number(pressed("forward")) - Number(pressed("back")),
-        strafe: Number(pressed("right")) - Number(pressed("left")),
-        sprint: pressed("sprint"),
-        jump, respawn, lookX: looking ? lookX : 0, lookY: looking ? lookY : 0,
-      };
+      controls.forward = axis("forward", "back", virtual?.forward);
+      controls.strafe = axis("right", "left", virtual?.strafe);
+      controls.sprint = pressed("sprint") || Boolean(virtual?.sprint);
+      controls.jump = jump;
+      controls.respawn = respawn;
+      controls.lookX = looking ? lookX : 0;
+      controls.lookY = looking ? lookY : 0;
       jump = respawn = false;
       lookX = lookY = 0;
-      return input;
+      return controls;
     },
     dispose() {
       listeners.abort();
