@@ -1,5 +1,5 @@
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { ProximityCastResult } from "@babylonjs/core/Physics/proximityCastResult";
+import { ShapeCastResult } from "@babylonjs/core/Physics/shapeCastResult";
 import { CharacterSupportedState, PhysicsCharacterController } from "@babylonjs/core/Physics/v2/characterController";
 import { PhysicsMotionType } from "@babylonjs/core/Physics/v2/IPhysicsEnginePlugin";
 import { FIXED_STEP, PLAYER, SPAWN_YAW } from "../config.js";
@@ -7,11 +7,6 @@ import { collisionLayer } from "../core/physics.js";
 
 const down = new Vector3(0, -1, 0);
 const forward = new Vector3(0, 0, 1);
-
-function refreshContacts(capsule) {
-  // Babylon 9.37 conserve les contacts après setPosition et n'expose pas leur reconstruction en API publique.
-  capsule._refreshManifoldAtPosition(capsule.getPosition());
-}
 
 export function createPlayerController(scene, spawn, gravity, shouldRespawn = (position) => position.y < PLAYER.respawnBelow) {
   const capsule = new PhysicsCharacterController(spawn, {
@@ -35,13 +30,12 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
   const surface = capsule.checkSupport(FIXED_STEP, down);
   const physics = scene.getPhysicsEngine();
   const plugin = physics.getPhysicsPlugin();
-  const exitQuery = {
-    shape: capsule.shape, position: capsule.getPosition(), rotation: Quaternion.Identity(),
-    maxDistance: 0, shouldHitTriggers: false, ignoreBody: physics.getBodies().find((body) => body.shape === capsule.shape),
+  const supportQuery = {
+    shape: capsule.shape, startPosition: new Vector3(), endPosition: new Vector3(), rotation: Quaternion.Identity(),
+    shouldHitTriggers: false, ignoreBody: physics.getBodies().find((body) => body.shape === capsule.shape),
   };
-  const capsuleHit = new ProximityCastResult();
-  const exitHit = new ProximityCastResult();
-  const recoverySpeed = capsule.penetrationRecoverySpeed;
+  const capsuleHit = new ShapeCastResult();
+  const supportHit = new ShapeCastResult();
   const state = {
     position: Vector3.Zero(), yaw: SPAWN_YAW, speed: 0, scale: 1,
     grounded: false, verticalSpeed: 0, respawned: true,
@@ -50,9 +44,8 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
   let coyote = 0;
   let jumpBuffer = 0;
   let risingFromJump = false;
-  let invalidateSupport = false;
   let pushingBody = false;
-  let checkExitOverlap = false;
+  let placedSupport = false;
   capsule.onTriggerCollisionObservable.add(({ impulse }) => {
     if (impulse.x * desired.x + impulse.z * desired.z > 0) pushingBody = true;
   });
@@ -82,16 +75,35 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     capsule.keepContactTolerance = PLAYER.contactTolerance * scale;
     capsule.maxStepHeight = PLAYER.maxStepHeight * scale;
     capsule.characterMass = PLAYER.mass * scale ** 3;
-    capsule.characterStrength = PLAYER.strength * scale ** 3;
+    // Une poussée F = m·a change comme la masse (s³) et l’accélération (s).
+    capsule.characterStrength = PLAYER.strength * scale ** 4;
     capsule.maxCharacterSpeedForSolver = solverSpeed * scale;
     gravity.scaleToRef(scale, scaledGravity);
     state.scale = scale;
     syncFeet();
   }
 
+  function readArrivalSupport() {
+    // setPosition conserve les contacts de départ. Un balayage vertical mesure l’appui
+    // à l’arrivée jusqu’à ce que la prochaine intégration reconstruise les contacts.
+    supportQuery.shape = capsule.shape;
+    supportQuery.startPosition.copyFrom(warpedCenter).y += capsule.keepDistance;
+    supportQuery.endPosition.copyFrom(warpedCenter).y -= capsule.keepDistance + capsule.keepContactTolerance;
+    plugin.shapeCast(supportQuery, capsuleHit, supportHit);
+    surface.averageSurfaceVelocity.setAll(0);
+    surface.averageAngularSurfaceVelocity.setAll(0);
+    surface.averageSurfaceNormal.copyFrom(supportHit.hitNormal);
+    surface.supportedState = supportHit.hasHit && supportHit.hitNormal.y >= capsule.maxSlopeCosine
+      ? CharacterSupportedState.SUPPORTED : CharacterSupportedState.UNSUPPORTED;
+    surface.isSurfaceDynamic = supportHit.hasHit && supportHit.body.getMotionType() === PhysicsMotionType.DYNAMIC;
+    if (surface.isSurfaceDynamic) {
+      supportHit.body.getLinearVelocityToRef(surface.averageSurfaceVelocity);
+      supportHit.body.getAngularVelocityToRef(surface.averageAngularSurfaceVelocity);
+    }
+  }
+
   function applyWarp(warp) {
     pushingBody = false;
-    checkExitOverlap = true;
     warp.point(capsule.getPosition(), warpedCenter);
     warp.direction(capsule.getVelocity(), velocity);
     setScale(state.scale * warp.scale);
@@ -103,21 +115,20 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     warp.point(previousPose.position, previousPose.position);
     previousPose.yaw = warp.yaw(previousPose.yaw);
     syncFeet();
-    refreshContacts(capsule);
-    capsule.checkSupportToRef(FIXED_STEP, down, surface);
+    readArrivalSupport();
+    placedSupport = true;
     state.grounded = surface.supportedState === CharacterSupportedState.SUPPORTED && !risingFromJump;
-    invalidateSupport = false;
   }
 
   function place(center, yaw) {
     pushingBody = false;
-    checkExitOverlap = false;
     capsule.setPosition(center);
     capsule.setVelocity(Vector3.ZeroReadOnly);
     coyote = jumpBuffer = 0;
     risingFromJump = false;
     state.yaw = yaw;
-    invalidateSupport = true;
+    surface.supportedState = CharacterSupportedState.UNSUPPORTED;
+    placedSupport = true;
   }
 
   function teleport(feet, yaw) {
@@ -136,10 +147,8 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
       setScale(1);
       place(spawn, SPAWN_YAW);
     }
-    capsule.checkSupportToRef(dt, down, surface);
-    // Une téléportation conserve les contacts du pas précédent jusqu'à l'intégration.
-    if (invalidateSupport) surface.supportedState = CharacterSupportedState.UNSUPPORTED;
-    invalidateSupport = false;
+    if (!placedSupport) capsule.checkSupportToRef(dt, down, surface);
+    placedSupport = false;
     const grounded = surface.supportedState === CharacterSupportedState.SUPPORTED && !risingFromJump;
     coyote = grounded ? PLAYER.coyoteTime : Math.max(0, coyote - dt);
     jumpBuffer = input.jump ? PLAYER.jumpBuffer : Math.max(0, jumpBuffer - dt);
@@ -178,15 +187,7 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     const { x: startX, z: startZ } = capsule.getPosition();
     capsule.setVelocity(velocity);
     pushingBody = false;
-    if (checkExitOverlap) {
-      exitQuery.shape = capsule.shape;
-      plugin.shapeProximity(exitQuery, capsuleHit, exitHit);
-      checkExitOverlap = exitHit.hasHit && exitHit.body.getMotionType() === PhysicsMotionType.DYNAMIC;
-      // À la sortie, Havok peut écarter la caisse déjà engagée sans repousser la capsule à travers le plan.
-      if (checkExitOverlap) capsule.penetrationRecoverySpeed = 0;
-    }
     capsule.integrate(dt, surface, scaledGravity);
-    capsule.penetrationRecoverySpeed = recoverySpeed;
 
     syncFeet();
     const dx = state.position.x - startX;

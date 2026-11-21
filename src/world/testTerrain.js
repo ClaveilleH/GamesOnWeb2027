@@ -36,11 +36,11 @@ export function terrainMaterial(scene, name, color) {
   return mat;
 }
 
-export function solidTerrain(mesh, mat, shapeType = PhysicsShapeType.BOX) {
+export function solidTerrain(mesh, mat, shapeType = PhysicsShapeType.BOX, layer = collisionLayer.terrain) {
   mesh.material = mat;
   mesh.receiveShadows = true;
   const aggregate = new PhysicsAggregate(mesh, shapeType, { mass: 0, friction: 0.8 }, mesh.getScene());
-  aggregate.shape.filterMembershipMask = collisionLayer.terrain;
+  aggregate.shape.filterMembershipMask = layer;
   return mesh;
 }
 
@@ -92,7 +92,10 @@ export function paintZoneSign(scene, title, x, z, width, height) {
   texture.update();
   sign.material = terrainMaterial(scene, title, "#ffffff");
   sign.material.diffuseTexture = texture;
-  sign.material.zOffset = -3;
+  // Décalage constant, jamais proportionnel à la pente : vue à travers un portail, la projection oblique
+  // donne au sol une pente de profondeur énorme, et zOffset le ferait passer devant ce qui y est posé.
+  // Il reste au-dessus des sols peints des démos (zOffsetUnits = -8).
+  sign.material.zOffsetUnits = -12;
   sign.receiveShadows = true;
   return sign;
 }
@@ -162,7 +165,8 @@ function paintFloor(scene) {
   texture.update();
   floor.material = terrainMaterial(scene, "enrobé", "#ffffff");
   floor.material.diffuseTexture = texture;
-  floor.material.zOffset = -2;
+  // Décalage constant, comme les sols des démos (voir paintZoneSign).
+  floor.material.zOffsetUnits = -8;
 }
 
 function addHorizon(scene) {

@@ -5,7 +5,7 @@ import "@babylonjs/core/Physics/physicsEngineComponent";
 import { HavokPlugin } from "@babylonjs/core/Physics/v2/Plugins/havokPlugin";
 import { GRAVITY } from "../config.js";
 
-export const collisionLayer = Object.freeze({ terrain: 1, player: 2, dynamic: 4 });
+export const collisionLayer = Object.freeze({ terrain: 1, player: 2, dynamic: 4, proxy: 8, portalBack: 16, portalFrame: 32 });
 
 export async function initPhysics(scene) {
   const havok = await HavokPhysics({ locateFile: () => wasmUrl });

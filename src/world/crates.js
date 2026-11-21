@@ -27,5 +27,9 @@ export function createCrate(scene, portals, { name, position, size = 1, scale = 
     const generators = light.getShadowGenerators();
     if (generators) for (const generator of generators.values()) generator.addShadowCaster(visual, false);
   }
-  return createBodyTraveler(portals, { body, visual, size, scale });
+  return createBodyTraveler(portals, {
+    body, visual, size, scale,
+    straddleIgnoreMask: collisionLayer.portalBack,
+    proxy: { membership: collisionLayer.proxy, collideMask: collisionLayer.player | collisionLayer.dynamic | collisionLayer.terrain },
+  });
 }

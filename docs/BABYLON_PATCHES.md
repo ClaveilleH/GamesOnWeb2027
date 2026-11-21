@@ -38,7 +38,7 @@ Chaque fichier s’applique seul ou avec les autres, sans décalage (`patch -p1 
 
 **Conséquence.** Après une téléportation, le personnage peut se croire en l’air pendant un pas, avec un à-coup d’animation, ou sur un sol qui n’existe plus.
 
-**Contournement.** `src/player/playerController.js` appelle `_refreshManifoldAtPosition` dans une fonction isolée et commentée (`refreshContacts`). C’est la seule API interne de Babylon utilisée par le jeu. Dans les sources TypeScript de Babylon, la méthode est `protected`, pas `private`. Une sous-classe de `PhysicsCharacterController` pourrait donc l’appeler légitimement. C’est une solution de repli propre si le correctif n’est pas accepté en amont.
+**Contournement.** `src/player/playerController.js` (`readArrivalSupport`) mesure l’appui à la sortie d’un portail par un balayage vertical de la capsule via l’API publique `plugin.shapeCast` et saute `checkSupportToRef` pour ce pas (`placedSupport`, également utilisé lors d’un placement direct). L’intégration suivante (`capsule.integrate`) reconstruit d’elle-même les contacts à la position courante (`_updateManifold`). Aucune API interne de Babylon n’est appelée (§ 7.3 de `docs/PORTALS.md`).
 
 **Correctif proposé.** Une méthode publique `refreshContacts()` et un paramètre `setPosition(position, refreshContacts = false)`.
 

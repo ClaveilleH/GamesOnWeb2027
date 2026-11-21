@@ -15,15 +15,21 @@ export function portalBasis(yaw) {
   };
 }
 
+// La base d’un portail (portalBasis) contient déjà cos et sin du lacet : ces fonctions, appelées
+// pour chaque voyageur et chaque portail à chaque image, évitent ainsi de les recalculer.
 export function toLocal(portal, p, out = new Vector3()) {
-  const cos = Math.cos(portal.yaw);
-  const sin = Math.sin(portal.yaw);
   const x = p.x - portal.origin.x;
   const z = p.z - portal.origin.z;
+  const { right, normal } = portal;
+  if (right && normal) return out.set(right.x * x + right.z * z, p.y - portal.origin.y, normal.x * x + normal.z * z);
+  const cos = Math.cos(portal.yaw);
+  const sin = Math.sin(portal.yaw);
   return out.set(cos * x - sin * z, p.y - portal.origin.y, sin * x + cos * z);
 }
 
 export function signedDistance(portal, p) {
+  const normal = portal.normal;
+  if (normal) return normal.x * (p.x - portal.origin.x) + normal.z * (p.z - portal.origin.z);
   return Math.sin(portal.yaw) * (p.x - portal.origin.x) + Math.cos(portal.yaw) * (p.z - portal.origin.z);
 }
 
@@ -61,6 +67,10 @@ function normalizeYaw(angle) {
   if (yaw <= -Math.PI) return yaw + fullTurn;
   if (yaw > Math.PI) return yaw - fullTurn;
   return yaw;
+}
+
+export function hasWarpRotation(warp, tolerance = 1e-6) {
+  return Math.abs(normalizeYaw(warp.rotationY)) > tolerance;
 }
 
 export function createWarpBuffer() {
@@ -188,6 +198,70 @@ export function discardPlane(portal, discardSide, out) {
   return portalPlane(portal, discardSide, out);
 }
 
+const warpedPlanePoint = new Vector3();
+const otherLocal = new Vector3();
+const otherSourcePlane = new Plane(0, 0, 0, 0);
+
+export function warpPlane(warp, plane, out = new Plane(0, 0, 0, 0)) {
+  const { normal } = plane;
+  const length = normal.length();
+  if (length <= 1e-12) return null;
+  const invLength = 1 / length;
+  const nx = normal.x * invLength;
+  const ny = normal.y * invLength;
+  const nz = normal.z * invLength;
+  const d = plane.d * invLength;
+  warpedPlanePoint.set(-d * nx, -d * ny, -d * nz);
+  warp.point(warpedPlanePoint, warpedPlanePoint);
+  out.normal.set(nx, ny, nz);
+  warp.direction(out.normal, out.normal).scaleInPlace(1 / warp.scale);
+  out.d = -Vector3.Dot(out.normal, warpedPlanePoint);
+  return out;
+}
+
+export function secondaryGhostClipPlane(portal, side, other, otherSide, out = new Plane(0, 0, 0, 0)) {
+  const nx = -side * Math.sin(portal.yaw);
+  const nz = -side * Math.cos(portal.yaw);
+  const ox = -otherSide * Math.sin(other.yaw);
+  const oz = -otherSide * Math.cos(other.yaw);
+  // Portails en angle ou de rejets opposés : image par le warp du plan de rejet de l’autre portail.
+  if (nx * ox + nz * oz <= 1 - 1e-4) {
+    discardPlane(other, -otherSide, otherSourcePlane);
+    return warpPlane(portal.warp, otherSourcePlane, out);
+  }
+  // Portails parallèles rejetant du même côté (dont côte à côte dans un même plan) :
+  // l’image du plan de l’autre portail s’opposerait au plan de destination et masquerait le fantôme.
+  // Quand les ouvertures ne se recouvrent pas dans le plan, on transporte le plan de frontière de l’autre portail.
+  warpedPlanePoint.set(portal.origin.x, portal.origin.y + portal.height / 2, portal.origin.z);
+  toLocal(other, warpedPlanePoint, otherLocal);
+  const offsetY = otherLocal.y - other.height / 2;
+  const gapX = Math.abs(otherLocal.x) - (portal.width + other.width) / 2;
+  const gapY = Math.abs(offsetY) - (portal.height + other.height) / 2;
+  if (gapX >= -1e-4 || gapY >= -1e-4) {
+    if (gapX >= gapY && Math.abs(otherLocal.x) > 1e-6) {
+      const dir = Math.sign(otherLocal.x);
+      const rx = Math.cos(other.yaw);
+      const rz = -Math.sin(other.yaw);
+      const edgeX = other.origin.x + dir * (other.width / 2) * rx;
+      const edgeZ = other.origin.z + dir * (other.width / 2) * rz;
+      otherSourcePlane.normal.set(-dir * rx, 0, -dir * rz);
+      otherSourcePlane.d = -(otherSourcePlane.normal.x * edgeX + otherSourcePlane.normal.z * edgeZ);
+      return warpPlane(portal.warp, otherSourcePlane, out);
+    }
+    if (Math.abs(offsetY) > 1e-6) {
+      const dir = Math.sign(offsetY);
+      const edgeY = dir > 0 ? other.origin.y + other.height : other.origin.y;
+      otherSourcePlane.normal.set(0, -dir, 0);
+      otherSourcePlane.d = dir * edgeY;
+      return warpPlane(portal.warp, otherSourcePlane, out);
+    }
+  }
+  const offset = nx * (other.origin.x - portal.origin.x) + nz * (other.origin.z - portal.origin.z);
+  if (Math.abs(offset) < 1e-4) return null;
+  discardPlane(other, -otherSide, otherSourcePlane);
+  return warpPlane(portal.warp, otherSourcePlane, out);
+}
+
 const viewNormal = new Vector3();
 const viewPoint = new Vector3();
 const inverseProjection = new Matrix();
@@ -297,6 +371,79 @@ export function aperturePyramidPlanes(portal, eye, margin = 0, out = Array.from(
     const plane = out[i].copyFromPoints(eye, corners[i], corners[(i + 1) % 4]);
     // Le coin opposé désigne l’intérieur, quelle que soit la face vue par l’œil.
     if (plane.dotCoordinate(corners[(i + 2) % 4]) < 0) {
+      plane.normal.negateInPlace();
+      plane.d = -plane.d;
+    }
+  }
+  return out;
+}
+
+const prismEdge = new Vector3();
+
+export function shadowPortalCrossing(portal, center, radius, lightDir, out, sideOverride = 0) {
+  if (lightDir.y >= -1e-6) return null;
+  // Rejet rapide : l’ombre ne s’étend pas horizontalement au-delà de t_max·|L_h| du centre.
+  const dx = center.x - portal.origin.x;
+  const dz = center.z - portal.origin.z;
+  const reachTime = (center.y - portal.origin.y + radius) / -lightDir.y;
+  if (reachTime < 0) return null;
+  const reach = reachTime * Math.hypot(lightDir.x, lightDir.z) + radius + portal.width / 2;
+  if (dx * dx + dz * dz > reach * reach) return null;
+  const cos = portal.right ? portal.right.x : Math.cos(portal.yaw);
+  const sin = portal.normal ? portal.normal.x : Math.sin(portal.yaw);
+  const lRight = cos * lightDir.x - sin * lightDir.z;
+  const lNormal = sin * lightDir.x + cos * lightDir.z;
+  if (Math.abs(lNormal) < 1e-6) return null;
+  toLocal(portal, center, localPoint);
+  const lx0 = localPoint.x;
+  const ly0 = localPoint.y;
+  const lz0 = localPoint.z;
+  const side = sideOverride || (lz0 > 0 ? 1 : lz0 < 0 ? -1 : (lNormal < 0 ? 1 : -1));
+  if (side < 0 && portal.sides !== "both") return null;
+  const speed = -side * lNormal;
+  if (speed <= 1e-6) return null;
+  if (portal.target) {
+    const destSpeed = side * (Math.sin(portal.target.yaw) * lightDir.x + Math.cos(portal.target.yaw) * lightDir.z);
+    if (destSpeed <= 1e-6) return null;
+  }
+  const tMax = (ly0 + radius) / -lightDir.y;
+  if (tMax < 0) return null;
+  const d = Math.max(0, side * lz0);
+  let sMin = Math.max(0, (ly0 - portal.height - radius) / -lightDir.y, (d - radius) / speed);
+  let sMax = Math.min(tMax, (d + radius) / speed);
+  if (sMin > sMax) return null;
+  const halfWidth = portal.width / 2 + radius;
+  if (Math.abs(lRight) < 1e-9) {
+    if (Math.abs(lx0) > halfWidth) return null;
+  } else {
+    const a = (-halfWidth - lx0) / lRight;
+    const b = (halfWidth - lx0) / lRight;
+    sMin = Math.max(sMin, Math.min(a, b));
+    sMax = Math.min(sMax, Math.max(a, b));
+    if (sMin > sMax) return null;
+  }
+  out ??= {};
+  out.distance = d / speed;
+  out.side = side;
+  return out;
+}
+
+export function shadowPrismPlanes(portal, direction, margin = 0, out = Array.from({ length: 4 }, () => new Plane(0, 0, 0, 0))) {
+  if (Math.abs(Math.sin(portal.yaw) * direction.x + Math.cos(portal.yaw) * direction.z) <= 1e-9) return null;
+  apertureCorners(portal, margin, corners);
+  for (let i = 0; i < corners.length; i++) {
+    const start = corners[i];
+    const next = corners[(i + 1) % 4];
+    const opposite = corners[(i + 2) % 4];
+    const plane = out[i];
+    next.subtractToRef(start, prismEdge);
+    Vector3.CrossToRef(prismEdge, direction, plane.normal);
+    const length = plane.normal.length();
+    if (length <= 1e-12) return null;
+    plane.normal.scaleInPlace(1 / length);
+    plane.d = -Vector3.Dot(plane.normal, start);
+    // Babylon rejette le demi-espace positif : le coin opposé doit rester du côté négatif.
+    if (plane.dotCoordinate(opposite) > 0) {
       plane.normal.negateInPlace();
       plane.d = -plane.d;
     }

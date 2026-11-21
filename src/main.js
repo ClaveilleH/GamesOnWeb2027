@@ -6,9 +6,10 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
+import { PhysicsRaycastResult } from "@babylonjs/core/Physics/physicsRaycastResult";
 import { CAMERA, FIXED_STEP, MAX_ACCUMULATED_TIME, PLAYER, SPAWN_YAW } from "./config.js";
-import { initPhysics } from "./core/physics.js";
-import { installDevHook } from "./dev/devHook.js";
+import { collisionLayer, initPhysics } from "./core/physics.js";
+import { installDevHook, observeDevEffects } from "./dev/devHook.js";
 import { createBindings } from "./input/bindings.js";
 import { createInput } from "./input/input.js";
 import { createKeyboardLayout } from "./input/keyboardLayout.js";
@@ -27,6 +28,7 @@ const status = document.querySelector("#status");
 
 async function start() {
   const engine = new Engine(canvas, true, { alpha: true, stencil: true });
+  const getEffects = observeDevEffects(engine);
   const scene = new Scene(engine);
   try {
     scene.clearColor = new Color4(0, 0, 0, 0);
@@ -61,9 +63,24 @@ async function start() {
     const visual = createSkeletonVisual(scene);
     scene.onDisposeObservable.addOnce(visual.dispose);
     const camera = createThirdPersonCamera(scene);
-    const portals = createPortalSystem(scene, { camera: camera.camera });
+    const lightRayQuery = { collideWith: collisionLayer.terrain | collisionLayer.portalBack | collisionLayer.portalFrame };
+    const lightRayHit = new PhysicsRaycastResult();
+    const lightRayEnd = new Vector3();
+    function isLightBlocked(origin, towardLight, maxDistance) {
+      towardLight.scaleToRef(maxDistance, lightRayEnd).addInPlace(origin);
+      physics.raycastToRef(origin, lightRayEnd, lightRayHit, lightRayQuery);
+      return lightRayHit.hasHit;
+    }
+    const portals = createPortalSystem(scene, { camera: camera.camera, isLightBlocked });
     scene.onDisposeObservable.addOnce(portals.dispose);
     const demos = createPortalDemos(scene, portals);
+    // Le ciel est peint par le quad de fond du renderer, après le décor, là où la profondeur vaut encore 1.
+    portals.createSky({
+      zenithColor: "#e1dfbd",
+      midColor: "#adc2b2",
+      horizonColor: "#789b95",
+      sunDirection: new Vector3(0.28, 0.24, 0.93),
+    });
     function shouldRespawn(position) {
       if (position.y >= PLAYER.respawnBelow) return false;
       if (position.y < -30) return true;
@@ -80,7 +97,10 @@ async function start() {
     for (const mesh of [...casters, ...demos.casters, ...bones]) shadows.addShadowCaster(mesh, false);
     const playerTraveler = {
       name: "joueur", center: player.center, applyWarp: player.applyWarp,
-      visual: { root: visual.root, materials: visual.materials, radius: () => 1.1 * player.state.scale },
+      visual: {
+        root: visual.root, materials: visual.materials, radius: () => 1.1 * player.state.scale,
+        center: (out) => out.set(visual.root.position.x, visual.root.position.y + player.capsuleHeight / 2, visual.root.position.z),
+      },
     };
     portals.addTraveler(playerTraveler);
     portals.onTraverseObservable.add(({ traveler, warp }) => {
@@ -126,7 +146,13 @@ async function start() {
     }
     camera.reset(SPAWN_YAW);
     present(0, 0);
-    installDevHook({ scene, player, playerTraveler, camera, portals, input, crates, presentPose: () => present(0, 1) });
+    installDevHook({
+      scene, player, playerTraveler, camera, portals, input, crates, getEffects, presentPose: () => present(0, 1),
+      syncFrameTime(now, restart) {
+        previousFrameTime = now;
+        if (restart) accumulatedTime = 0;
+      },
+    });
     scene.onAfterRenderObservable.add(() => hud.updatePortals(engine.getFps()));
     scene.onBeforeRenderObservable.add(() => {
       if (menu.isOpen) return;
@@ -145,10 +171,13 @@ async function start() {
           if (player.update(FIXED_STEP, controls, camera.yaw).respawned) {
             camera.reset(SPAWN_YAW);
             portals.resetTraveler(playerTraveler);
+            portals.resetHaze();
           }
           for (const crate of crates) crate.capturePose();
           plugin.executeStep(FIXED_STEP, physics.getBodies());
+          for (const crate of crates) crate.afterStep();
           portals.updateTravelers();
+          for (const crate of crates) crate.syncProxy();
           controls.jump = false;
           controls.respawn = false;
         }

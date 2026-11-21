@@ -76,6 +76,67 @@ test("le benchmark mesure le rendu devant l’arche puis la boucle reprend", asy
   await expect.poll(() => page.evaluate(() => window.gowDev.state().portals.passes)).toBe(1);
 });
 
+test("l’horloge manuelle avance la caisse d’un pas puis interpole son visuel", async ({ page }) => {
+  const sample = await page.evaluate(() => {
+    const dev = window.gowDev;
+    const crate = dev.crate("caisse de l’arche");
+    crate.place({ x: 0, y: 8, z: 0, yaw: 0.4 });
+    crate.push({ x: 6, y: 0, z: 0 });
+    const original = performance.now;
+    const clock = dev.manualClock();
+    try {
+      const positions = [crate.state().x];
+      for (let i = 0; i < 6; i++) {
+        clock.step();
+        positions.push(crate.state().x);
+      }
+      const previous = crate.visual().x;
+      clock.step(1000 / 120);
+      return { positions, previous, body: crate.state(), visual: crate.visual(), fps: dev.state().fps };
+    } finally {
+      clock.release();
+      if (performance.now !== original) throw new Error("L’horloge réelle doit reprendre.");
+    }
+  });
+  for (let i = 1; i < sample.positions.length; i++) {
+    expect(sample.positions[i] - sample.positions[i - 1]).toBeCloseTo(6 / 60, 3);
+  }
+  expect(sample.previous).toBeCloseTo(sample.positions.at(-2), 5);
+  expect(sample.body.x).toBe(sample.positions.at(-1));
+  expect(sample.visual.x).toBeCloseTo((sample.previous + sample.body.x) / 2, 5);
+  expect(sample.visual.yaw).toBeCloseTo(0.4, 5);
+  expect(sample.visual.ghost).toBe(false);
+  expect(sample.fps).toBeCloseTo(7 / (6 / 60 + 1 / 120), 5);
+  await expect.poll(() => page.evaluate(() => window.gowDev.crate("caisse de l’arche").state().x))
+    .toBeGreaterThan(sample.body.x);
+});
+
+test("une téléportation directe reprend la distance cible du voile dès le prochain rendu", async ({ page }) => {
+  const ends = await page.evaluate(() => {
+    const dev = window.gowDev;
+    const clock = dev.manualClock();
+    const pose = { x: -35.2, y: 0, z: 6.6, yaw: Math.PI / 2 };
+    function renderEnd() {
+      clock.step(0);
+      return dev.state().portals.haze.find(({ portal }) => portal === "E").end;
+    }
+    try {
+      dev.setMaxDepth(4);
+      dev.teleportPlayer(pose);
+      const initial = renderEnd();
+      dev.setMaxDepth(2);
+      const retained = renderEnd();
+      dev.teleportPlayer(pose);
+      return { initial, retained, reset: renderEnd() };
+    } finally {
+      clock.release();
+    }
+  });
+  expect(ends.retained).toBe(ends.initial);
+  // Deux répétitions de 6 m séparent les replis. À dt nul, seul le reset explique le saut.
+  expect(ends.initial - ends.reset).toBeCloseTo(12, 4);
+});
+
 test("le repli et la profondeur maximale sont réglables", async ({ page }) => {
   // En regardant le long de la droite B-A, on retrouve A à chaque translation.
   const yaw = Math.atan2(30, 63);
@@ -401,4 +462,266 @@ test("la pièce cyclique se ferme sur le repli à profondeur deux", async ({ pag
     return window.gowDev.samplePixel(x, y);
   }, { x: entry.origin.x + 2 * (entry.origin.x - exit.origin.x), y: 2.1, z: pose.z });
   expectColor(pixel, [159, 184, 173], 2);
+});
+
+test("le ciel couvre le canevas au départ avec le dégradé attendu et laisse le relief devant", async ({ page }) => {
+  const sample = await page.evaluate(async () => {
+    const dev = window.gowDev;
+    const canvas = document.querySelector("#scene");
+    const { width, height } = canvas.getBoundingClientRect();
+    const topLeft = await dev.samplePixel(width * 0.08, 16);
+    const topMid = await dev.samplePixel(width * 0.5, 16);
+    const topSun = await dev.samplePixel(width * 0.7, 16);
+    // Point sur le relief lointain proche (rayon 95 m) à droite de la zone d’entraînement.
+    const ridgePos = dev.project({ x: 35, y: 1.5, z: 88 });
+    const ridge = await dev.samplePixel(ridgePos.x, ridgePos.y);
+    const scene = dev.portalSystem.camera.getScene();
+    const engine = scene.getEngine();
+    const alphaCheck = await new Promise((resolve) => {
+      scene.onAfterRenderObservable.addOnce(async () => {
+        const w = engine.getRenderWidth();
+        const h = engine.getRenderHeight();
+        const rgba = await engine.readPixels(0, 0, w, h);
+        let transparent = 0;
+        for (let i = 3; i < rgba.length; i += 4) {
+          if (rgba[i] < 255) transparent++;
+        }
+        resolve({ transparent, total: w * h });
+      });
+    });
+    return { topLeft, topMid, topSun, ridge, alphaCheck };
+  });
+
+  expect(sample.alphaCheck.transparent).toBe(0);
+  expectColor(sample.topSun, [225, 223, 189], 20);
+  expectColor(sample.topMid, [205, 212, 185], 25);
+  expectColor(sample.topLeft, [160, 184, 171], 25);
+  // La lueur solaire à droite est nettement plus chaude et claire que le bord gauche.
+  expect(sample.topSun[0] - sample.topLeft[0]).toBeGreaterThan(30);
+  // Le relief lointain (#72918a / #91aaa0) reste dessiné devant le ciel.
+  expect(sample.ridge[3]).toBe(255);
+  expect(sample.topSun[0] - sample.ridge[0]).toBeGreaterThan(50);
+});
+
+test("caméra passée derrière un portail : le ciel et le relief restent visibles malgré un repli lointain", async ({ page }) => {
+  // Joueur sur le panneau de la zone 2, dos au tunnel : la caméra franchit A2 et se retrouve derrière B2.
+  // Au bout de la chaîne des arches A ↔ B, loin dans le champ, la récursion se termine sur un repli.
+  await place(page, { x: 26.5, y: 0, z: 2.3, yaw: -Math.PI / 2 });
+  const view = await page.evaluate(async () => {
+    const dev = window.gowDev;
+    const { camera, portals } = dev.state();
+    const { width } = document.querySelector("#scene").getBoundingClientRect();
+    // Haut du ciel à gauche, au centre et à droite, puis l’horizon à droite (relief lointain).
+    const points = [[40, 16], [width / 2, 16], [width - 40, 16], [width - 40, 150]];
+    const samples = [];
+    for (const [x, y] of points) samples.push(await dev.samplePixel(x, y));
+    return { camera, portals, samples };
+  });
+  expect(view.camera.warped).toBe(true);
+  expect(view.portals.fallbacks).toBeGreaterThan(0);
+  // Avant le correctif, tout le sous-arbre était voilé : ciel et relief prenaient exactement fallbackColor
+  // (#9fb8ad). Seuls les derniers niveaux de récursion sont voilés (hazeLevels) : la vue de premier niveau,
+  // qui couvre tout l’écran, garde son dégradé (proche de l’horizon dans cette direction) et son relief.
+  const diffs = view.samples.map((c) => Math.max(Math.abs(c[0] - 159), Math.abs(c[1] - 184), Math.abs(c[2] - 173)));
+  for (const diff of diffs) expect(diff).toBeGreaterThan(2);
+  expect(Math.max(...diffs)).toBeGreaterThan(10);
+});
+
+test("caméra passée derrière un portail : la piste ne recouvre pas le pied des plots de saut", async ({ page }) => {
+  // Même vue : la caméra est derrière B2 et voit la zone d’entraînement à travers le portail.
+  await place(page, { x: 26.5, y: 0, z: 2.3, yaw: -Math.PI / 2 });
+  const view = await page.evaluate(async () => {
+    const dev = window.gowDev;
+    const a2 = dev.portal("A2");
+    const b2 = dev.portal("B2");
+    // Bas de la face est du plot de saut de 1,35 m (centre x = 7,2, z = 1,3), ramené dans l’espace de la caméra.
+    const foot = { x: 8.28 + b2.origin.x - a2.origin.x, y: 0.2 + b2.origin.y - a2.origin.y, z: 1.3 };
+    const p = dev.project(foot);
+    return { warped: dev.state().camera.warped, pixel: await dev.samplePixel(p.x, p.y) };
+  });
+  expect(view.warped).toBe(true);
+  // Le plot est ocre (#ba8664) ; la piste, bleu-vert. Avec un zOffset proportionnel à la pente, la projection
+  // oblique avançait la piste de plusieurs mètres et elle recouvrait le pied du plot.
+  expect(view.pixel[0]).toBeGreaterThan(view.pixel[1] + 15);
+});
+
+test("le ciel vu à travers une ouverture voilée prend la couleur de repli", async ({ page }) => {
+  const yaw = Math.atan2(30, 63);
+  const pose = { x: -4 * Math.sin(yaw), y: 0, z: 31 - 4 * Math.cos(yaw), yaw };
+  const effectsBefore = await page.evaluate(() => window.gowDev.state().effects);
+
+  await page.evaluate(() => window.gowDev.setMaxDepth(1));
+  await place(page, pose);
+  await expect.poll(() => page.evaluate(() => window.gowDev.state().portals))
+    .toMatchObject({ maxDepth: 1, depth: 1, passes: 2, fallbacks: 1 });
+
+  const veiled = await page.evaluate(async () => {
+    const dev = window.gowDev;
+    const a = dev.portal("A");
+    const inside = dev.project({ x: a.origin.x, y: a.origin.y + 2.8, z: a.origin.z });
+    return {
+      portalSky: await dev.samplePixel(inside.x, inside.y),
+      rootSky: await dev.samplePixel(inside.x, 16),
+      haze: dev.state().portals.haze,
+    };
+  });
+  // Dans la passe voilée de l’arche A, le ciel prend exactement fallbackColor (#9fb8ad).
+  expectColor(veiled.portalSky, [159, 184, 173], 3);
+  expect(veiled.rootSky[3]).toBe(255);
+  // Le ciel de la passe racine reste sur le dégradé lumineux, loin de fallbackColor.
+  const rootDiff = Math.max(
+    Math.abs(veiled.rootSky[0] - 159),
+    Math.abs(veiled.rootSky[1] - 184),
+    Math.abs(veiled.rootSky[2] - 173),
+  );
+  expect(rootDiff).toBeGreaterThan(30);
+
+  // Sans repli (vue droite devant l’arche A à profondeur 4), le ciel vu dans le portail garde son dégradé.
+  await page.evaluate(() => window.gowDev.setMaxDepth(4));
+  await place(page, { x: 0, y: 0, z: 27, yaw: 0 });
+  const unveiled = await page.evaluate(async () => {
+    const dev = window.gowDev;
+    const a = dev.portal("A");
+    const inside = dev.project({ x: a.origin.x, y: a.origin.y + 2.8, z: a.origin.z });
+    return {
+      portals: dev.state().portals,
+      effects: dev.state().effects,
+      portalSky: await dev.samplePixel(inside.x, inside.y),
+      rootSky: await dev.samplePixel(inside.x, 16),
+    };
+  });
+  expect(unveiled.portals.fallbacks).toBe(0);
+  expect(unveiled.portalSky[3]).toBe(255);
+  const unveiledDiff = Math.max(
+    Math.abs(unveiled.portalSky[0] - 159),
+    Math.abs(unveiled.portalSky[1] - 184),
+    Math.abs(unveiled.portalSky[2] - 173),
+  );
+  expect(unveiledDiff).toBeGreaterThan(25);
+  expect(unveiled.effects).toBe(effectsBefore);
+});
+
+test("link() avertit une fois sur un lien tourné au soleil et reste muet si translatif, autorisé ou sans soleil à ombres", async ({ page }) => {
+  const warnings = [];
+  page.on("console", (message) => {
+    if (message.type() === "warning") warnings.push(message.text());
+  });
+
+  // Les liens translatifs des démos ne doivent émettre aucun avertissement au chargement.
+  const startupWarnings = (await page.consoleMessages())
+    .filter((m) => m.type() === "warning" && m.text().startsWith("Portails :"));
+  expect(startupWarnings).toEqual([]);
+
+  const result = await page.evaluate(() => {
+    const dev = window.gowDev;
+    const portals = dev.portalSystem;
+    const scene = portals.camera.getScene();
+    const initialCount = portals.portals.length;
+    const created = [];
+    function make(name, x, yaw, scale = 1) {
+      const portal = portals.createPortal({
+        name, origin: { x, y: 0, z: -46 }, yaw, width: 1.6 * scale, height: 2.4 * scale, sides: "both",
+      });
+      created.push(portal);
+      return portal;
+    }
+
+    const originalWarn = console.warn;
+    const captured = [];
+    console.warn = (...args) => {
+      captured.push(args.join(" "));
+      originalWarn.apply(console, args);
+    };
+
+    const clock = dev.manualClock();
+    try {
+      // 1) Liens translatifs (exact et dans la tolérance 1e-6, avec échelle) : aucun avertissement.
+      const t1 = make("test-T1", 10, 0.3);
+      const t2 = make("test-T2", 14, 0.3 - Math.PI);
+      const t3 = make("test-T3", 18, 0.3 + Math.PI + 5e-7, 0.5);
+      portals.link(t1, t2);
+      const translativeLinked = t1.target === t2 && t2.target === t1;
+      portals.link(t1, t3);
+      const translativeScaled = t1.target === t3 && t1.warp.scale === 0.5;
+      const afterTranslative = captured.length;
+
+      // 2) Lien tourné : créé, mais un seul avertissement même relié deux fois, inversé ou délié puis relié.
+      const r1 = make("test-R1", 22, 0);
+      const r2 = make("test-R2", 26, Math.PI / 2);
+      portals.link(r1, r2);
+      const rotatedLinked = r1.target === r2 && r2.target === r1 && Math.abs(r1.warp.rotationY + Math.PI / 2) < 1e-9;
+      const afterFirstRotated = captured.length;
+      portals.link(r1, r2);
+      portals.link(r2, r1);
+      portals.unlink(r1);
+      const unlinkedState = r1.target === null && r2.target === null && r1.warp === null && r2.warp === null;
+      portals.link(r1, r2);
+      const afterRepeatedRotated = captured.length;
+
+      // 3) Lien tourné assumé avec allowRotation : aucun avertissement.
+      const a1 = make("test-A1", 30, 0);
+      const a2 = make("test-A2", 34, 0);
+      portals.link(a1, a2, { allowRotation: true });
+      const allowedLinked = a1.target === a2 && Math.abs(a1.warp.rotationY - Math.PI) < 1e-9;
+      const afterAllowed = captured.length;
+
+      // 4) Lien tourné sans lumière directionnelle à ombres (y compris avec une directionnelle sans générateur) : aucun avertissement.
+      const s1 = make("test-S1", 38, 0);
+      const s2 = make("test-S2", 42, Math.PI / 3);
+      const sun = scene.getLightByName("soleil");
+      const shadowless = sun.clone("soleil sans ombre");
+      scene.removeLight(sun);
+      let noSunLinked = false;
+      try {
+        portals.link(s1, s2);
+        noSunLinked = s1.target === s2 && s2.target === s1 && shadowless.getShadowGenerators() === null;
+      } finally {
+        shadowless?.dispose();
+        scene.addLight(sun);
+      }
+      const afterNoSun = captured.length;
+
+      // Nettoyage explicite : unlink puis removePortal sur tous les portails de test.
+      for (const portal of created) portals.unlink(portal);
+      for (const portal of created) portals.removePortal(portal);
+      return {
+        initialCount,
+        finalCount: portals.portals.length,
+        translativeLinked,
+        translativeScaled,
+        rotatedLinked,
+        unlinkedState,
+        allowedLinked,
+        noSunLinked,
+        counts: { afterTranslative, afterFirstRotated, afterRepeatedRotated, afterAllowed, afterNoSun },
+        captured,
+      };
+    } finally {
+      console.warn = originalWarn;
+      for (const portal of created) portals.removePortal(portal);
+      clock.release();
+    }
+  });
+
+  expect(result.translativeLinked).toBe(true);
+  expect(result.translativeScaled).toBe(true);
+  expect(result.rotatedLinked).toBe(true);
+  expect(result.unlinkedState).toBe(true);
+  expect(result.allowedLinked).toBe(true);
+  expect(result.noSunLinked).toBe(true);
+  expect(result.finalCount).toBe(result.initialCount);
+  expect(result.counts).toEqual({
+    afterTranslative: 0,
+    afterFirstRotated: 1,
+    afterRepeatedRotated: 1,
+    afterAllowed: 1,
+    afterNoSun: 1,
+  });
+  expect(result.captured).toHaveLength(1);
+  expect(result.captured[0]).toContain("test-R1");
+  expect(result.captured[0]).toContain("test-R2");
+  expect(result.captured[0]).toContain("yaw_B = yaw_A − π");
+  expect(result.captured[0]).toContain("allowRotation: true");
+  expect(result.captured[0]).not.toMatch(/BJS|Babylon/i);
+  expect(warnings).toEqual(result.captured);
 });
