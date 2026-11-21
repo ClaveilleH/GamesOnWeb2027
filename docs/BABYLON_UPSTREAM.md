@@ -7,7 +7,7 @@ Ce document sert de point de départ à une session (humaine ou IA) qui reprend 
 ## 1. Contexte en bref
 
 - Jeu web en JavaScript avec Babylon.js `@babylonjs/core` **9.37.1** (version `latest` sur npm, publiée le 18/11/2026), Havok 1.3.14, Vite et Playwright.
-- Le système de portails (`src/portals/`, architecture dans `docs/PORTALS.md`) a révélé six limites de Babylon. Le jeu les contourne toutes avec l’API existante. **Aucun correctif n’est appliqué ni nécessaire au fonctionnement du jeu.**
+- Le système de portails (`src/portals/`, architecture dans `docs/PORTALS.md`) a révélé six limites de Babylon. Le jeu les contourne toutes avec l’API publique existante (aucun membre interne préfixé par `_` n’est appelé dans `src/`). **Aucun correctif n’est appliqué ni nécessaire au fonctionnement du jeu.**
 - Les fichiers `docs/babylon-patches/*.patch` sont des diffs `patch-package` sur le **JavaScript compilé** de `node_modules` (9.37.1), avec des commentaires en français. Ils montrent la logique et ont été vérifiés : ils s’appliquent seuls et ensemble avec `patch -p1 --fuzz=0`, et le JavaScript obtenu passe `node --check`. Ils **ne sont pas** directement soumissibles. Babylon se développe en TypeScript dans `packages/dev/core/src/`, avec des commentaires de documentation en anglais. Il faut donc porter chaque correctif dans les sources `.ts`.
 
 ## 2. État en amont vérifié le 21/11/2026
@@ -31,7 +31,7 @@ Critères : utilité générale pour les utilisateurs de Babylon, gain pour le j
 
 | Priorité | Proposition | Type | Taille | Risque | Gain pour le jeu | Pourquoi ce rang |
 | --- | --- | --- | --- | --- | --- | --- |
-| **1** | **#2** `PhysicsCharacterController.refreshContacts()` public + `setPosition(position, refreshContacts = false)` | Bug / amélioration, ajout pur | ~15 lignes | Très faible : paramètre optionnel en fin, méthode nouvelle | Supprime la **seule API interne** utilisée par le jeu | Bug réel (« Teleport character » laisse des contacts faux). Babylon a déjà la logique (méthode `protected` utilisée en interne). |
+| **1** | **#2** `PhysicsCharacterController.refreshContacts()` public + `setPosition(position, refreshContacts = false)` | Bug / amélioration, ajout pur | ~15 lignes | Très faible : paramètre optionnel en fin, méthode nouvelle | Évite le balayage de capsule supplémentaire à la sortie du portail | Bug réel (« Teleport character » laisse des contacts faux). Babylon a déjà la logique (méthode `protected` utilisée en interne). |
 | **2** | **#3a** `BoundingBox.IsInFrustum` / `IsCompletelyInFrustum` : boucler sur `frustumPlanes.length` | Bug | 2 lignes | Faible, mais **auditer les appelants** (un appelant qui passerait plus de 6 plans en n’en voulant que 6 changerait de résultat) | `mesh.isInFrustum` gère 10 plans, ce qui supprime le second test de la pyramide | Correctif minuscule, très facile à tester en Vitest pur (sans moteur). |
 | **3** | **#5** `TargetCamera.setTarget` sans effet de bord sur `position` | Bug | ~10 lignes | Faible : la rotation calculée est identique, seule la position n’est plus décalée de 1 mm. À présenter comme correctif, avec un test de non-régression. | Supprime le contournement de la visée latérale de la caméra | Test existant à étendre : `test/unit/Cameras/targetCameraSetTarget.test.ts`. |
 | **4** | **#4a** `Matrix.ObliqueNearPlaneToRef(projection, view, plane, result, halfZRange)` | Nouvelle fonctionnalité, statique, ajout pur | ~45 lignes | Faible (ajout), mais nom et signature à valider par les mainteneurs | Pourrait remplacer `applyObliqueNearPlane` de `src/portals/math.js` | Utile au-delà des portails : miroirs, eau, découpe sans `discard`. Pur calcul, donc tests Vitest simples (cas du plan proche identique à `P`, `z_ndc` = −1 ou 0 sur le plan). |
@@ -50,7 +50,7 @@ En pratique : **#2, #3a et #5** sont trois petites pull requests indépendantes,
 - **Proposition.** `public refreshContacts(): void` (appelle `this._refreshManifoldAtPosition(this._position)`) et `setPosition(position: Vector3, refreshContacts = false)`.
 - **Correctif de référence.** `docs/babylon-patches/@babylonjs+core+9.37.1+02-character-refresh-contacts.patch`.
 - **Test à écrire.** Dans `test/unit/Physics/`, sur le modèle de `havokPlugin.test.ts` et `ragdoll.test.ts` : sol statique, personnage téléporté au-dessus d’un autre sol, `checkSupport` doit renvoyer `SUPPORTED` avec `refreshContacts = true`. Vérifier comment ces tests chargent Havok.
-- **Contournement du jeu à retirer après intégration.** `src/player/playerController.js` l. 11-14, fonction `refreshContacts`. Remplacer par `capsule.setPosition(center, true)` ou `capsule.refreshContacts()`.
+- **Contournement du jeu à retirer après intégration.** `src/player/playerController.js` : le balayage public `readArrivalSupport` (l. 86-103, plus `supportQuery`, `capsuleHit`, `supportHit` l. 31-38) et le saut d’un pas de `checkSupportToRef` par `placedSupport` (l. 48, 119, 131, 150-151). À la sortie d’un portail (`applyWarp`, l. 110), remplacer `capsule.setPosition(warpedCenter)` et `readArrivalSupport()` par `capsule.setPosition(warpedCenter, true)` (ou `capsule.refreshContacts()`) puis `capsule.checkSupportToRef(FIXED_STEP, down, surface)` pour rafraîchir `state.grounded` immédiatement. (Aucune API interne `_…` de Babylon n’est plus utilisée dans le jeu.)
 - **Mots-clés de recherche.** `PhysicsCharacterController setPosition`, `character controller teleport`, `_refreshManifoldAtPosition`.
 
 ### #3a — Tous les plans dans `BoundingBox.IsInFrustum`
@@ -60,7 +60,7 @@ En pratique : **#2, #3a et #5** sont trois petites pull requests indépendantes,
 - **À auditer avant d’ouvrir la PR.** Tous les appelants de `IsInFrustum`, `IsCompletelyInFrustum`, `BoundingBox.isInFrustum`, `BoundingInfo.isInFrustum` et `AbstractMesh.isInFrustum` dans `packages/dev`. Vérifier qu’aucun ne passe plus de 6 plans en comptant sur la troncature (multivue, CSM, octree). Un tableau d’exactement 6 plans ne change pas de comportement.
 - **Correctif de référence.** La partie `boundingBox.js` du fichier `…+03-object-renderer-culling.patch`.
 - **Test à écrire.** Vitest pur dans `test/unit/Culling/` : une boîte à l’intérieur des 6 plans d’un frustum mais hors d’un 7e plan doit être rejetée.
-- **Contournement du jeu à retirer.** `src/portals/renderer.js` l. 225-226 : second test `outsidePlanes(…, node.pyramid)`. On fusionnerait alors `planes` et `pyramid` en un seul tableau.
+- **Contournement du jeu à retirer.** `src/portals/renderer.js` l. 265-267 : second test `outsidePlanes(…, node.pyramid)`. On fusionnerait alors `planes` et `pyramid` en un seul tableau.
 
 ### #5 — `setTarget` sans effet de bord
 
@@ -68,7 +68,7 @@ En pratique : **#2, #3a et #5** sont trois petites pull requests indépendantes,
 - **Proposition.** Décaler une copie temporaire de l’œil, utilisée seulement pour `LookAtLH/RHToRef`.
 - **Correctif de référence.** `…+05-settarget-no-side-effect.patch`.
 - **Test à écrire.** Étendre `test/unit/Cameras/targetCameraSetTarget.test.ts` : avec `position.z === target.z`, `position` reste inchangée et la rotation est la même qu’avant le correctif.
-- **Contournement du jeu à retirer.** `src/player/thirdPersonCamera.js` l. 108-113 (branche `else if (camera.position.z !== eyeView.position.z)`) : rétablissement de `position.z` et calcul manuel de la rotation. Les lignes 105-107 traitent un autre cas, à garder : l’œil confondu avec la cible, où `setTarget` ne fait rien.
+- **Contournement du jeu à retirer.** `src/player/thirdPersonCamera.js` l. 108-114 (branche `else if (camera.position.z !== eyeView.position.z)`) : rétablissement de `position.z` et calcul manuel de la rotation. Les lignes 105-107 traitent un autre cas, à garder : l’œil confondu avec la cible, où `setTarget` ne fait rien.
 
 ### #4a / #4b — Plan proche oblique en perspective
 
@@ -77,7 +77,7 @@ En pratique : **#2, #3a et #5** sont trois petites pull requests indépendantes,
 - **Formules.** `docs/PORTALS.md` § 6.5 (NDC [−1, 1]). Pour [0, 1] : troisième colonne = `C / (C·q)`, sans soustraire la quatrième (`docs/BABYLON_PATCHES.md` § 4).
 - **Correctif de référence.** `…+04-oblique-near-plane.patch`, qui couvre 4a et 4b et gère les deux plages NDC.
 - **Tests de référence.** Côté jeu, `tests/portalMath.spec.js` (cas « le plan proche d’origine reproduit les seize coefficients », « une vue tournée et translatée coupe sur le plan incliné… », « un plan derrière l’œil… »), à transposer en Vitest dans `test/unit/Math/`.
-- **Contournement du jeu.** `src/portals/math.js` l. 196 (`applyObliqueNearPlane`) et `src/portals/renderer.js` l. 125 (`freezeProjectionMatrix`). On peut garder la version du jeu, testée, même après intégration.
+- **Contournement du jeu.** `src/portals/math.js` l. 264 (`applyObliqueNearPlane`) et `src/portals/renderer.js` l. 130 (`freezeProjectionMatrix`). On peut garder la version du jeu, testée, même après intégration.
 
 ### #3b — Culling dans `ObjectRenderer`
 

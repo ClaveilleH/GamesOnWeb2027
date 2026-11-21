@@ -5,7 +5,9 @@ import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder";
 import { CreateDisc } from "@babylonjs/core/Meshes/Builders/discBuilder";
 import { CreateGround } from "@babylonjs/core/Meshes/Builders/groundBuilder";
+import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder";
 import { PhysicsShapeType } from "@babylonjs/core/Physics/v2/IPhysicsEnginePlugin";
+import { collisionLayer } from "../core/physics.js";
 import { createCrate } from "./crates.js";
 import { batchStaticMeshes } from "./staticBatch.js";
 import { paintZoneSign, solidTerrain, terrainMaterial } from "./testTerrain.js";
@@ -13,6 +15,8 @@ import { paintZoneSign, solidTerrain, terrainMaterial } from "./testTerrain.js";
 const east = Math.PI / 2;
 const west = -Math.PI / 2;
 const basement = -20;
+// La face avant du cadre masque la marge du stencil, la face arrière rejoint l’alcôve.
+const frameOverhang = 0.01;
 
 function paintedMaterial(scene, name, width, depth, color, paint) {
   const texture = new DynamicTexture(name, { width: 1024, height: Math.round(1024 * depth / width) }, scene, true);
@@ -44,25 +48,39 @@ export function createPortalDemos(scene, portals) {
     zones.push({ name, meshes: zoneMeshes });
   }
 
-  function block(name, x, y, z, width, height, depth, mat, yaw = 0) {
+  function block(name, x, y, z, width, height, depth, mat, yaw = 0, layer = collisionLayer.terrain) {
     const mesh = CreateBox(name, { width, height, depth }, scene);
     mesh.position.set(x, y, z);
     mesh.rotation.y = yaw;
-    zoneMeshes.push(solidTerrain(mesh, mat));
+    zoneMeshes.push(solidTerrain(mesh, mat, PhysicsShapeType.BOX, layer));
   }
 
-  function archFrame(name, x, y, z, scale) {
+  function archFrame(name, x, y, z, scale, portal = false) {
     const width = 2.4 * scale;
     const height = 3 * scale;
     const post = 0.46 * scale;
-    for (const side of [-1, 1]) {
-      block(name + " · pilier", x + side * (width + post) / 2, y + height / 2, z, post, height, 0.64 * scale, stone);
+    function beam(label, cx, cy, w, h, depth, material) {
+      block(name + " · " + label, cx, cy, z, w, h, depth, material, 0, portal ? collisionLayer.portalFrame : collisionLayer.terrain);
+      if (!portal) return;
+      // La coupe oblique ouvre la boîte. Ces deux sections intérieures referment la pierre
+      // vue de chaque côté, y compris pour les échantillons MSAA à incidence rasante.
+      for (const side of [-1, 1]) {
+        const cap = CreatePlane(name + " · section", { width: w, height: h }, scene);
+        cap.position.set(cx, cy, z + side * frameOverhang / 2);
+        cap.rotation.y = side > 0 ? Math.PI : 0;
+        cap.material = material;
+        cap.receiveShadows = true;
+        zoneMeshes.push(cap);
+      }
     }
-    block(name + " · linteau", x, y + height + post / 2, z, width + 2 * post + 0.18 * scale, post, 0.76 * scale, copper);
+    for (const side of [-1, 1]) {
+      beam("pilier", x + side * (width + post) / 2, y + height / 2, post, height, 0.64 * scale, stone);
+    }
+    beam("linteau", x, y + height + post / 2, width + 2 * post + 0.18 * scale, post, 0.76 * scale, copper);
   }
 
   function arch(name, x, z, yaw) {
-    archFrame(name, x, 0, z, 1);
+    archFrame(name, x, 0, z, 1, true);
     return portals.createPortal({ name, origin: new Vector3(x, 0, z), yaw, width: 2.4, height: 3, sides: "both" });
   }
 
@@ -82,7 +100,7 @@ export function createPortalDemos(scene, portals) {
   sand.position.set(b.origin.x, 0.004, b.origin.z);
   sand.material = terrainMaterial(scene, "sable", "#d8b98a");
   sand.material.diffuseColor.scaleInPlace(0.77);
-  sand.material.zOffset = -2;
+  sand.material.zOffsetUnits = -8;
   sand.receiveShadows = true;
 
   function obelisk(x, z, height, mat) {
@@ -99,22 +117,26 @@ export function createPortalDemos(scene, portals) {
   block("bloc de céramique", -32, 0.64, -36.8, 1.3, 1.28, 1.1, blue);
 
   function floorPaint(name, x, y, z, width, depth, material) {
-    const floor = CreateGround(name, { width, height: depth }, scene);
+    // Des triangles courts gardent les UV et la profondeur précis quand le sol passe sous l’œil.
+    const floor = CreateGround(name, { width, height: depth,
+      subdivisionsX: Math.ceil(width * 2), subdivisionsY: Math.ceil(depth * 2) }, scene);
     floor.position.set(x, y + 0.004, z);
     floor.material = material;
-    floor.material.zOffset = -2;
+    floor.material.zOffsetUnits = -8;
     floor.receiveShadows = true;
     floor.isPickable = false;
   }
 
-  function tiledFloor(name, width, depth, unit, color, line) {
+  function tiledFloor(name, width, depth, unit, color, line, firstJoint = 0) {
     return paintedMaterial(scene, name, width, depth, color, (ctx) => {
+      const inset = 0.2 * unit;
+      const joint = 0.05 * unit;
       ctx.fillStyle = line;
-      for (let x = 0; x < width; x += unit) ctx.fillRect(x, 0, 0.025 * unit, depth);
-      for (let z = 0; z < depth; z += unit) ctx.fillRect(0, z, width, 0.025 * unit);
+      for (let x = firstJoint; x < width; x += unit) ctx.fillRect(x, 0, joint, depth);
+      for (let z = 0; z < depth; z += unit) ctx.fillRect(0, z, width, joint);
       ctx.strokeStyle = line;
       ctx.lineWidth = 0.07 * unit;
-      ctx.strokeRect(0.2 * unit, 0.2 * unit, width - 0.4 * unit, depth - 0.4 * unit);
+      ctx.strokeRect(inset, inset, width - 2 * inset, depth - 2 * inset);
     });
   }
 
@@ -125,24 +147,26 @@ export function createPortalDemos(scene, portals) {
     return mesh;
   }
 
-  function doorway(name, x, y, z, yaw, width, height, wallWidth, wallHeight, thickness, mat) {
+  function doorway(name, x, y, z, yaw, width, height, wallWidth, wallHeight, thickness, mat, layer = collisionLayer.terrain) {
     const jamb = (wallWidth - width) / 2;
-    const cx = x - Math.sin(yaw) * thickness / 2;
-    const cz = z - Math.cos(yaw) * thickness / 2;
+    const depth = thickness + frameOverhang;
+    const behind = (thickness - frameOverhang) / 2;
+    const cx = x - Math.sin(yaw) * behind;
+    const cz = z - Math.cos(yaw) * behind;
     for (const side of [-1, 1]) {
       const offset = side * (width + jamb) / 2;
       block(name + " · montant", cx + Math.cos(yaw) * offset, y + height / 2, cz - Math.sin(yaw) * offset,
-        jamb, height, thickness, mat, yaw);
+        jamb, height, depth, mat, yaw, layer);
     }
-    block(name + " · linteau", cx, y + (height + wallHeight) / 2, cz, wallWidth, wallHeight - height, thickness, mat, yaw);
+    block(name + " · linteau", cx, y + (height + wallHeight) / 2, cz, wallWidth, wallHeight - height, depth, mat, yaw, layer);
     return { name, origin: new Vector3(x, y, z), yaw, width, height, sides: "front" };
   }
 
   function closeAlcove(door, clearance, thickness, mat) {
     const { name, origin, yaw, width, height } = door;
-    function part(label, lateral, y, behind, w, h, d) {
+    function part(label, lateral, y, behind, w, h, d, layer = collisionLayer.portalBack) {
       block(name + " · " + label, origin.x + lateral * Math.cos(yaw) - behind * Math.sin(yaw), origin.y + y,
-        origin.z - lateral * Math.sin(yaw) - behind * Math.cos(yaw), w, h, d, mat, yaw);
+        origin.z - lateral * Math.sin(yaw) - behind * Math.cos(yaw), w, h, d, mat, yaw, layer);
     }
     // Le tableau de la porte occupe la première épaisseur de l’alcôve.
     const run = clearance - thickness;
@@ -152,7 +176,7 @@ export function createPortalDemos(scene, portals) {
     part("fond", 0, height / 2, clearance + thickness / 2, width + 2 * thickness, height, thickness);
     part("couverture", 0, height + thickness / 2, thickness + clearance / 2, width + 2 * thickness, thickness, clearance);
     if (origin.y < 0) {
-      part("seuil", 0, -thickness / 2, (clearance + thickness) / 2, width + 2 * thickness, thickness, clearance + thickness);
+      part("seuil", 0, -thickness / 2, (clearance + thickness) / 2, width + 2 * thickness, thickness, clearance + thickness, collisionLayer.terrain);
     }
   }
 
@@ -171,7 +195,9 @@ export function createPortalDemos(scene, portals) {
       ctx.fillStyle = "#d9debc";
       ctx.font = "bold 0.34px sans-serif";
       ctx.textAlign = "center";
-      for (let m = 0; m <= length; m++) {
+      // Dans le couloir, les ouvertures marquent déjà les deux extrémités de la règle.
+      const firstTick = markEntrances ? 1 : 0;
+      for (let m = firstTick; m <= length - firstTick; m++) {
         const major = m % 5 === 0 || m === length;
         const tick = major ? 0.56 : 0.25;
         ctx.fillRect(m - 0.035, 0, 0.07, tick);
@@ -200,7 +226,7 @@ export function createPortalDemos(scene, portals) {
     const height = 3;
     const recess = 0.75;
     function gate(name, x, y, yaw) {
-      return portals.createPortal(doorway(name, x, y, 2, yaw, 2.4, 2.8, width - 2 * t, height - t, t, gold));
+      return portals.createPortal(doorway(name, x, y, 2, yaw, 2.4, 2.8, width - 2 * t, height - t, t, gold, collisionLayer.portalFrame));
     }
     beginZone("galerie extérieure");
     coveredTunnel("galerie extérieure", 29.5, 36.5, 0, 2, width, height, t, copper, stone);
@@ -238,7 +264,7 @@ export function createPortalDemos(scene, portals) {
     doorway("entrée du pavillon", -33, 0, 3, 0, 2, 2.6, 6 + 2 * t, h, t, yellow);
     function sideDoor(name, x, yaw, mat) {
       doorway("pavillon · mur " + name, x, 0, 6, yaw, 2.28, 2.74, 6, h, t, mat);
-      const portal = portals.createPortal(doorway(name, x, 0, 6, yaw, 2, 2.6, 2.28, 2.74, t, stone));
+      const portal = portals.createPortal(doorway(name, x, 0, 6, yaw, 2, 2.6, 2.28, 2.74, t, stone, collisionLayer.portalFrame));
       closeAlcove(portal, 0.6, t, mat);
       return portal;
     }
@@ -258,7 +284,7 @@ export function createPortalDemos(scene, portals) {
   function buildCabin() {
     beginZone("cabine");
     const t = 0.16;
-    const p = portals.createPortal(doorway("P", 30, 0, -28.7, 0, 1.6, 2.4, 2.6, 3 - t, t, copper));
+    const p = portals.createPortal(doorway("P", 30, 0, -28.7, 0, 1.6, 2.4, 2.6, 3 - t, t, copper, collisionLayer.portalFrame));
     block("cabine · fond", 30, (3 - t) / 2, -31.3 + t / 2, 2.6, 3 - t, t, copper);
     for (const side of [-1, 1]) {
       block("cabine · paroi", 30 + side * (2.6 - t) / 2, (3 - t) / 2, -30, t, 3 - t, 2.6 - 2 * t, gold);
@@ -267,7 +293,7 @@ export function createPortalDemos(scene, portals) {
     sign("GÉOMÉTRIE IMPOSSIBLE", 30, 0, -25.8, 6.4, 1.55, Math.PI);
 
     beginZone("grande salle");
-    const q = portals.createPortal(doorway("Q", 30, basement, -33, Math.PI, 1.6, 2.4, 14 + 2 * t, 6, t, copper));
+    const q = portals.createPortal(doorway("Q", 30, basement, -33, Math.PI, 1.6, 2.4, 14 + 2 * t, 6, t, copper, collisionLayer.portalFrame));
     closeAlcove(q, 0.75, t, copper);
     portals.link(p, q);
     block("salle · dallage", 30, basement - t / 2, -40, 14, t, 14, slate);
@@ -281,8 +307,12 @@ export function createPortalDemos(scene, portals) {
         block("salle · chapiteau", x, basement + 5.75, z, 1.16, 0.5, 1.16, gold);
       }
     }
-    floorPaint("mosaïque de la salle", 30, basement, -40, 14, 14, tiledFloor("mosaïque", 14, 14, 1, "#93a89a", "#d5d6b9"));
+    const mosaic = tiledFloor("mosaïque", 14, 14, 1, "#93a89a", "#d5d6b9");
     const threshold = tiledFloor("pierre des seuils", 1.6, 1.2, 0.4, "#80948a", "#b5beaa");
+    // En rotation devant P, les joints des seuils et de la mosaïque défilent sous le pixel (§ 13.2).
+    mosaic.diffuseTexture.anisotropicFilteringLevel = 1;
+    threshold.diffuseTexture.anisotropicFilteringLevel = 1;
+    floorPaint("mosaïque de la salle", 30, basement, -40, 14, 14, mosaic);
     for (const door of [p, q]) {
       floorPaint(door.name + " · seuil pavé", door.origin.x, door.origin.y + 0.002, door.origin.z, door.width, 1.2, threshold);
     }
@@ -293,7 +323,10 @@ export function createPortalDemos(scene, portals) {
   function buildGarden() {
     beginZone("tunnels et jardin");
     const z = 31.5;
-    const paving = tiledFloor("pavés des tunnels", 6, 3, 1, "#83897a", "#d3ba8d");
+    // P1 et P2 coupent le milieu d’une dalle à leurs échelles respectives.
+    const paving = tiledFloor("pavés des tunnels", 6, 3, 1, "#83897a", "#d3ba8d", 0.5);
+    // À l’approche de P1, le filtrage isotrope supprime les pixels isolés des joints lointains.
+    paving.diffuseTexture.anisotropicFilteringLevel = 1;
     function scaleTunnel(name, x, yaw, scale) {
       const t = 0.16 * scale;
       const width = 3 * scale;
@@ -304,10 +337,10 @@ export function createPortalDemos(scene, portals) {
       const tunnel = name + " · tunnel";
       coveredTunnel(tunnel, Math.min(mouth, back), Math.max(mouth, back), 0, z, width, height, t, blue, stone);
       floorPaint(tunnel + " pavé", (mouth + back) / 2, 0, z, 6 * scale, width, paving);
-      const gate = portals.createPortal(doorway(name, x, 0, z, yaw, 2.4 * scale, 2.8 * scale, width - 2 * t, height - t, t, gold));
+      const gate = portals.createPortal(doorway(name, x, 0, z, yaw, 2.4 * scale, 2.8 * scale, width - 2 * t, height - t, t, gold, collisionLayer.portalFrame));
       // Le renfoncement dans le mur de fond laisse 0,6 m libres même derrière la petite ouverture.
       const niche = doorway(tunnel + " · niche", x - facing * 0.6 * scale, 0, z, yaw,
-        gate.width, gate.height, width - 2 * t, height - t, t, slate);
+        gate.width, gate.height, width - 2 * t, height - t, t, slate, collisionLayer.portalBack);
       closeAlcove(niche, 0.6 * scale, t, slate);
       return gate;
     }

@@ -15,7 +15,7 @@ export function createThirdPersonCamera(scene) {
   camera.minZ = baseMinZ;
   camera.maxZ = 500;
   const physics = scene.getPhysicsEngine();
-  const query = { collideWith: collisionLayer.terrain };
+  const query = { collideWith: collisionLayer.terrain | collisionLayer.portalBack | collisionLayer.portalFrame };
   const hit = new PhysicsRaycastResult();
   const target = Vector3.Zero();
   const shoulder = Vector3.Zero();

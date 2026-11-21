@@ -1,4 +1,5 @@
 import { ShaderMaterial } from "@babylonjs/core/Materials/shaderMaterial";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { CreateLines } from "@babylonjs/core/Meshes/Builders/linesBuilder";
 import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder";
 import { PortalLayers } from "./layers.js";
@@ -21,8 +22,9 @@ export function createPortal(scene, { name, origin, yaw, width, height, sides = 
   if (!(width > 0 && height > 0) || !["front", "both"].includes(sides)) {
     throw new Error("Ouverture ou faces de portail invalides.");
   }
+  const position = new Vector3(origin.x, origin.y, origin.z);
   const portal = {
-    name, origin: origin.clone(), yaw, width, height, sides, ...portalBasis(yaw),
+    name, origin: position, yaw, width, height, sides, ...portalBasis(yaw),
     target: null, warp: null,
     signedDistance(point) { return signedDistance(portal, point); },
     contains(localPoint) { return insideAperture(portal, localPoint); },
