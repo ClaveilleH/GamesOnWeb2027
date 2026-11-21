@@ -509,7 +509,7 @@ Sans bridage, le pire cas (pavillon) prend environ 2 ms par image. Le coût GPU 
 
 ## 15. Améliorations de Babylon
 
-Les limites de Babylon rencontrées, et les patchs proposés (non appliqués, le jeu n’en dépend pas), sont décrits dans `docs/BABYLON_PATCHES.md` :
+Les limites de Babylon rencontrées, et les patchs proposés (non appliqués, le jeu n’en dépend pas), sont décrits dans `docs/BABYLON_PATCHES.md`. L’ordre de priorité pour les proposer en amont est dans `docs/BABYLON_UPSTREAM.md` :
 
 - effacement forcé de la profondeur et du stencil entre `activeCameras` ;
 - pas de culling optionnel dans `ObjectRenderer` ;

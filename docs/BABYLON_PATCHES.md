@@ -1,6 +1,6 @@
 # Limites de Babylon.js rencontrées et correctifs proposés
 
-Ce rapport accompagne `docs/PORTALS.md`. Il recense les limites de Babylon.js 9.37.1 (`@babylonjs/core`) rencontrées en écrivant le système de portails. Pour chacune, il décrit le contournement retenu dans le jeu et le correctif proposé pour Babylon. **Le jeu ne dépend d’aucun de ces correctifs** : tous les contournements utilisent l’API existante. Les correctifs sont fournis sous forme de fichiers `patch-package` dans `docs/babylon-patches/`. Ils ne sont pas appliqués : il n’y a ni dossier `patches/` à la racine, ni script `postinstall`, et `node_modules` n’est jamais modifié.
+Ce rapport accompagne `docs/PORTALS.md`. Pour choisir quels correctifs proposer en amont et dans quel ordre (état vérifié sur `master`, priorités, règles de contribution de Babylon, marche à suivre), voir `docs/BABYLON_UPSTREAM.md`. Il recense les limites de Babylon.js 9.37.1 (`@babylonjs/core`) rencontrées en écrivant le système de portails. Pour chacune, il décrit le contournement retenu dans le jeu et le correctif proposé pour Babylon. **Le jeu ne dépend d’aucun de ces correctifs** : tous les contournements utilisent l’API existante. Les correctifs sont fournis sous forme de fichiers `patch-package` dans `docs/babylon-patches/`. Ils ne sont pas appliqués : il n’y a ni dossier `patches/` à la racine, ni script `postinstall`, et `node_modules` n’est jamais modifié.
 
 Pour essayer un correctif localement :
 
@@ -38,7 +38,7 @@ Chaque fichier s’applique seul ou avec les autres, sans décalage (`patch -p1 
 
 **Conséquence.** Après une téléportation, le personnage peut se croire en l’air pendant un pas, avec un à-coup d’animation, ou sur un sol qui n’existe plus.
 
-**Contournement.** `src/player/playerController.js` appelle `_refreshManifoldAtPosition` dans une fonction isolée et commentée (`refreshContacts`). C’est la seule API interne de Babylon utilisée par le jeu.
+**Contournement.** `src/player/playerController.js` appelle `_refreshManifoldAtPosition` dans une fonction isolée et commentée (`refreshContacts`). C’est la seule API interne de Babylon utilisée par le jeu. Dans les sources TypeScript de Babylon, la méthode est `protected`, pas `private`. Une sous-classe de `PhysicsCharacterController` pourrait donc l’appeler légitimement. C’est une solution de repli propre si le correctif n’est pas accepté en amont.
 
 **Correctif proposé.** Une méthode publique `refreshContacts()` et un paramètre `setPosition(position, refreshContacts = false)`.
 
