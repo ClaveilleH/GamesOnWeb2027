@@ -16,7 +16,7 @@ function timingStats(samples) {
   };
 }
 
-export function installDevHook({ scene, player, playerTraveler, camera, portals, input, crates, presentPose }) {
+export function installDevHook({ scene, player, playerTraveler, visual, camera, portals, input, crates, presentPose }) {
   if (!import.meta.env.DEV && !new URLSearchParams(location.search).has("dev")) return;
   const engine = scene.getEngine();
   const canvas = engine.getRenderingCanvas();
@@ -51,6 +51,10 @@ export function installDevHook({ scene, player, playerTraveler, camera, portals,
       presentPose();
     },
     setControls: input.setControls,
+    // Animations du modèle chargé (null avec le squelette procédural) et leurs poids actuels.
+    character() {
+      return { animations: visual.animations ?? null, weights: visual.weights?.() ?? null };
+    },
     crate(name) {
       const crate = crates.find((item) => item.traveler.name === name);
       if (!crate) return null;

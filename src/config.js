@@ -39,3 +39,18 @@ export const CAMERA = Object.freeze({
   minPlayerOpacity: 0.03,
   fov: 0.82,
 });
+
+// Modèle 3D du personnage. `model` à null garde le squelette procédural. Le paramètre
+// d'URL `?model=/models/fichier.glb` remplace ce réglage pour essayer un modèle.
+export const CHARACTER = Object.freeze({
+  model: null,
+  // Rotation (radians) à ajouter si le modèle ne regarde pas vers +Z.
+  yawOffset: 0,
+  // Noms exacts des animations du fichier. null : détection par mots-clés (idle, walk, run, jump, fall…).
+  animations: Object.freeze({ idle: null, walk: null, run: null, jump: null, fall: null }),
+  // Vitesses (m/s) auxquelles les animations de marche et de course sont jouées à vitesse normale.
+  walkAnimationSpeed: 1.6,
+  runAnimationSpeed: 4.5,
+  // Vitesse de fondu entre deux animations (1/s).
+  blendRate: 10,
+});

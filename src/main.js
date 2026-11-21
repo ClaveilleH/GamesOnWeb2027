@@ -6,13 +6,14 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { CAMERA, FIXED_STEP, MAX_ACCUMULATED_TIME, PLAYER, SPAWN_YAW } from "./config.js";
+import { CAMERA, CHARACTER, FIXED_STEP, MAX_ACCUMULATED_TIME, PLAYER, SPAWN_YAW } from "./config.js";
 import { initPhysics } from "./core/physics.js";
 import { installDevHook } from "./dev/devHook.js";
 import { createBindings } from "./input/bindings.js";
 import { createInput } from "./input/input.js";
 import { createKeyboardLayout } from "./input/keyboardLayout.js";
 import { createPlayerController } from "./player/playerController.js";
+import { createCharacterModel } from "./player/characterModel.js";
 import { createSkeletonVisual } from "./player/skeletonVisual.js";
 import { createThirdPersonCamera } from "./player/thirdPersonCamera.js";
 import { createPortalSystem } from "./portals/index.js";
@@ -24,6 +25,20 @@ import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
 const canvas = document.querySelector("#scene");
 const status = document.querySelector("#status");
+
+// Modèle configuré (ou `?model=` dans l'URL), sinon squelette procédural. Un modèle
+// introuvable ou illisible n'empêche pas de jouer : on revient au squelette.
+async function createPlayerVisual(scene) {
+  const url = new URLSearchParams(location.search).get("model") || CHARACTER.model;
+  if (url) {
+    try {
+      return await createCharacterModel(scene, url);
+    } catch (error) {
+      console.warn(`Modèle ${url} non chargé, retour au squelette procédural.`, error);
+    }
+  }
+  return createSkeletonVisual(scene);
+}
 
 async function start() {
   const engine = new Engine(canvas, true, { alpha: true, stencil: true });
@@ -58,7 +73,7 @@ async function start() {
     shadows.setDarkness(0.2);
 
     const casters = createTestTerrain(scene);
-    const visual = createSkeletonVisual(scene);
+    const visual = await createPlayerVisual(scene);
     scene.onDisposeObservable.addOnce(visual.dispose);
     const camera = createThirdPersonCamera(scene);
     const portals = createPortalSystem(scene, { camera: camera.camera });
@@ -126,7 +141,7 @@ async function start() {
     }
     camera.reset(SPAWN_YAW);
     present(0, 0);
-    installDevHook({ scene, player, playerTraveler, camera, portals, input, crates, presentPose: () => present(0, 1) });
+    installDevHook({ scene, player, playerTraveler, visual, camera, portals, input, crates, presentPose: () => present(0, 1) });
     scene.onAfterRenderObservable.add(() => hud.updatePortals(engine.getFps()));
     scene.onBeforeRenderObservable.add(() => {
       if (menu.isOpen) return;
