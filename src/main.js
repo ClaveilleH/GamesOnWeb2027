@@ -1,14 +1,10 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
-import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
+import { Color4 } from "@babylonjs/core/Maths/math.color";
 import { Clamp, InverseLerp, NormalizeRadians, SmoothStep } from "@babylonjs/core/Maths/math.scalar.functions";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
-import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
-import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { PhysicsRaycastResult } from "@babylonjs/core/Physics/physicsRaycastResult";
 import { CAMERA, CHARACTER, FIXED_STEP, MAX_ACCUMULATED_TIME, PLAYER, SPAWN_YAW } from "./config.js";
-import { collisionLayer, initPhysics } from "./core/physics.js";
+import { createSightTest, initPhysics } from "./core/physics.js";
 import { installDevHook, observeDevEffects } from "./dev/devHook.js";
 import { createBindings } from "./input/bindings.js";
 import { createInput } from "./input/input.js";
@@ -21,6 +17,7 @@ import { createPortalSystem } from "./portals/index.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
+import { createLighting, skyPalette } from "./world/lighting.js";
 import { createPortalDemos } from "./world/portalDemos.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
@@ -51,54 +48,26 @@ async function start() {
     scene.physicsEnabled = false;
     const physics = scene.getPhysicsEngine();
     const plugin = physics.getPhysicsPlugin();
-    const sky = new HemisphericLight("ciel", Vector3.Up(), scene);
-    sky.intensity = 0.72;
-    sky.groundColor = Color3.FromHexString("#76918b");
-    const sun = new DirectionalLight("soleil", new Vector3(-0.58, -1, 0.48), scene);
-    // Le volume fixe englobe la dalle et les intérieurs cachés à −20 m, même hors champ.
-    sun.direction.scaleToRef(-90, sun.position);
-    sun.shadowFrustumSize = 150;
-    sun.intensity = 0.78;
-    sun.diffuse = Color3.FromHexString("#ffecd3");
-    sun.shadowMinZ = 1;
-    sun.shadowMaxZ = 200;
-    // 4096 texels sur 150 m : environ 3,7 cm par texel, comme l'ancienne carte sur la seule zone d'entraînement.
-    const shadows = new ShadowGenerator(4096, sun);
-    shadows.usePercentageCloserFiltering = true;
-    shadows.filteringQuality = ShadowGenerator.QUALITY_LOW;
-    // Le personnage continue de projeter son ombre pendant le fondu de proximité.
-    shadows.transparencyShadow = true;
-    // Seules les faces arrière, dans l'ombre de toute façon, s'écrivent dans la carte : pas d'acné sur les faces éclairées.
-    shadows.forceBackFacesOnly = true;
-    shadows.bias = 0.00015;
-    shadows.normalBias = 0.006;
-    shadows.setDarkness(0.2);
+    const { shadows } = createLighting(scene);
 
     const casters = createTestTerrain(scene);
     const visual = await createPlayerVisual(scene);
     scene.onDisposeObservable.addOnce(visual.dispose);
     const camera = createThirdPersonCamera(scene);
-    const lightRayQuery = { collideWith: collisionLayer.terrain | collisionLayer.portalBack | collisionLayer.portalFrame };
-    const lightRayHit = new PhysicsRaycastResult();
+    const sightTest = createSightTest(physics);
     const lightRayEnd = new Vector3();
     function isLightBlocked(origin, towardLight, maxDistance) {
       towardLight.scaleToRef(maxDistance, lightRayEnd).addInPlace(origin);
-      physics.raycastToRef(origin, lightRayEnd, lightRayHit, lightRayQuery);
-      return lightRayHit.hasHit;
+      return sightTest(origin, lightRayEnd) !== null;
     }
     const portals = createPortalSystem(scene, { camera: camera.camera, isLightBlocked });
     scene.onDisposeObservable.addOnce(portals.dispose);
     const demos = createPortalDemos(scene, portals);
     // Le ciel est peint par le quad de fond du renderer, après le décor, là où la profondeur vaut encore 1.
-    portals.createSky({
-      zenithColor: "#e1dfbd",
-      midColor: "#adc2b2",
-      horizonColor: "#789b95",
-      sunDirection: new Vector3(0.28, 0.24, 0.93),
-    });
+    portals.createSky(skyPalette);
     function shouldRespawn(position) {
       if (position.y >= PLAYER.respawnBelow) return false;
-      if (position.y < -30) return true;
+      if (position.y < PLAYER.interiorRespawnBelow) return true;
       for (const volume of demos.interiors) {
         if (volume.intersectsPoint(position)) return false;
       }

@@ -1,20 +1,15 @@
 import { TargetCamera } from "@babylonjs/core/Cameras/targetCamera";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { PhysicsRaycastResult } from "@babylonjs/core/Physics/physicsRaycastResult";
 import { CAMERA, SPAWN_YAW } from "../config.js";
-import { collisionLayer } from "../core/physics.js";
+import { createSightTest } from "../core/physics.js";
 import { createViewResult, isViewWarped, MIN_NEAR } from "../portals/cameraPath.js";
-
-const baseMinZ = 0.04;
 
 export function createThirdPersonCamera(scene) {
   const camera = new TargetCamera("caméra épaule", Vector3.Zero(), scene);
   camera.fov = CAMERA.fov;
-  camera.minZ = baseMinZ;
-  camera.maxZ = 500;
-  const physics = scene.getPhysicsEngine();
-  const query = { collideWith: collisionLayer.terrain | collisionLayer.portalBack | collisionLayer.portalFrame };
-  const hit = new PhysicsRaycastResult();
+  camera.minZ = CAMERA.minZ;
+  camera.maxZ = CAMERA.maxZ;
+  const collide = createSightTest(scene.getPhysicsEngine());
   const target = Vector3.Zero();
   const shoulder = Vector3.Zero();
   const simulatedShoulder = Vector3.Zero();
@@ -31,11 +26,6 @@ export function createThirdPersonCamera(scene) {
   let cameraScale = 1;
   let warped = false;
   let snap = false;
-
-  function collide(from, to) {
-    physics.raycastToRef(from, to, hit, query);
-    return hit.hasHit ? hit.hitDistance : null;
-  }
 
   function locateShoulder(portals, simulatedFeet, scale) {
     simulatedShoulder.set(simulatedFeet.x, simulatedFeet.y + CAMERA.shoulderHeight * scale, simulatedFeet.z);
@@ -94,7 +84,7 @@ export function createThirdPersonCamera(scene) {
       cameraScale = shoulderScale * eyeView.warp.scale;
       warped = isViewWarped(eyeView, anchor);
       const nearestInCameraUnits = eyeView.nearestPortalDistance / cameraScale;
-      camera.minZ = Math.max(MIN_NEAR, Math.min(baseMinZ, 0.5 * nearestInCameraUnits)) * cameraScale;
+      camera.minZ = Math.max(MIN_NEAR, Math.min(CAMERA.minZ, 0.5 * nearestInCameraUnits)) * cameraScale;
       camera.position.copyFrom(eyeView.position);
       camera.setTarget(eyeView.target);
       if (camera.position.equals(eyeView.target)) {

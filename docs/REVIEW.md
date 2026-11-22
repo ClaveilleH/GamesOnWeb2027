@@ -83,10 +83,10 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 | R3 | Dev/prod | moyenne | `src/main.js:12`, `src/dev/devHook.js:21,31` | Hook de dev embarqué en production, activation testée deux fois | à faire |
 | R4 | Tests | moyenne | `tests/portal*.spec.js` | Gabarit `beforeEach`/`afterEach`/`withClock` copié dans 5 fichiers, filtre console incohérent | fait (lot 2) |
 | R5 | Simplification | moyenne | `src/portals/travelers.js:135-209, 290-413` | Fantôme et projecteur d’ombre dupliquent la fabrique de clone | à faire |
-| R6 | Cohérence | moyenne | `src/player/skeletonVisual.js:155-157`, `src/player/characterModel.js:34-38` | Choix de la démarche dupliqué avec les mêmes seuils | à faire |
-| R7 | Simplification | moyenne | `src/main.js:44-222` | `start()` de 180 lignes, éclairage et ciel mêlés à la boucle | à faire |
-| R8 | Cohérence | basse | `src/main.js:81-88`, `src/player/thirdPersonCamera.js:18,37-40` | Masque et rayon de « ligne de vue » écrits deux fois | à faire |
-| R9 | Config | basse | `src/player/thirdPersonCamera.js:8,16`, `src/main.js:101` | Réglages en dur hors de `config.js` | à faire |
+| R6 | Cohérence | moyenne | `src/player/skeletonVisual.js:155-157`, `src/player/characterModel.js:34-38` | Choix de la démarche dupliqué avec les mêmes seuils | fait (lot 5) |
+| R7 | Simplification | moyenne | `src/main.js:44-222` | `start()` de 180 lignes, éclairage et ciel mêlés à la boucle | fait (lot 5) |
+| R8 | Cohérence | basse | `src/main.js:81-88`, `src/player/thirdPersonCamera.js:18,37-40` | Masque et rayon de « ligne de vue » écrits deux fois | fait (lot 5) |
+| R9 | Config | basse | `src/player/thirdPersonCamera.js:8,16`, `src/main.js:101` | Réglages en dur hors de `config.js` | fait (lot 5) |
 | R10 | Code mort | basse | voir détail | Exports, paramètres et valeurs par défaut jamais utilisés | fait (lot 1) |
 | R11 | Cohérence | basse | `src/portals/system.js:52,110-115,178-189` | Variables déclarées après usage, démontage dupliqué, `hazeLevels` non validé à chaud | à faire |
 | R12 | Bug | basse | `src/player/characterModel.js:50-62` | Échec du calage : conteneur et nœuds laissés dans la scène | fait (lot 4) |
@@ -363,6 +363,7 @@ Les lots vont du plus sûr au plus risqué. Après chaque lot : `npm run build` 
 | 2 | `test: partage le gabarit des tests de portails et borne la mémoire de la sonde` | OK | 98 réussis, 4 échecs (inclus dans la référence) | Le test du passage de la caméra dans A2 passe : 239 images, 58 pixels isolés, maximum 3 par image, soit exactement la calibration de `PORTALS.md` § 13.2. Pic mémoire de Chrome : 2,7 Go au lieu de 6,3 Go et d’un plantage. Suite en 20,5 min au lieu de 38. `portalPhysics.spec.js` applique désormais le filtre console commun, sans nouvel échec. |
 | 3 | `build: reconstruit le site avant les tests et ajoute ESLint` | OK | 98 réussis, 4 échecs (inclus dans la référence) | `dist/` supprimé avant le lancement : `npm test` l’a reconstruit. `npm run lint` passe. |
 | 4 | `fix(personnage): retire le modèle refusé au calage avant de reprendre le squelette` | OK | 104 tests : 100 réussis, 4 échecs (inclus dans la référence) | Deux tests ajoutés (repli du modèle 3D) |
+| 5 | `refactor: regroupe démarche, éclairage, ligne de vue et réglages de caméra` | OK | 100 réussis, 4 échecs (inclus dans la référence) | `start()` passe de 179 à 151 lignes. Lumières créées dans le même ordre et sous les mêmes noms (`ciel`, `soleil`) ; les tests d’ombres et de ciel, lus au pixel, sont inchangés. |
 
 ## 6. Bilan
 

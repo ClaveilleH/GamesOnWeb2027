@@ -22,6 +22,8 @@ export const PLAYER = Object.freeze({
   maxStepHeight: 0.23,
   turnRate: 14,
   respawnBelow: -7,
+  // Dans un intérieur caché (sol à y = −20), seule cette limite s'applique.
+  interiorRespawnBelow: -30,
 });
 
 export const CAMERA = Object.freeze({
@@ -38,6 +40,9 @@ export const CAMERA = Object.freeze({
   fadeFar: 1.2,
   minPlayerOpacity: 0.03,
   fov: 0.82,
+  // Plan proche hors portail (réduit près d'une ouverture, docs/PORTALS.md § 9.3) et plan lointain.
+  minZ: 0.04,
+  maxZ: 500,
 });
 
 // Modèle 3D du personnage. `model` à null garde le squelette procédural. Le paramètre

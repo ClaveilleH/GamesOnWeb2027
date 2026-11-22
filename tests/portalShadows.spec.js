@@ -3,7 +3,7 @@ import { expectCleanPage, startDevGame, withClock } from "./support/devGame.js";
 
 const dt = 1000 / 144;
 const archCrate = "caisse de l’arche";
-// Direction du soleil (main.js) : ses rayons descendent vers −X et +Z.
+// Direction du soleil (src/world/lighting.js) : ses rayons descendent vers −X et +Z.
 const sun = { x: -0.58, y: -1, z: 0.48 };
 
 test.beforeEach(({ page }) => startDevGame(page));

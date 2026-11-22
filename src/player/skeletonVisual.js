@@ -9,6 +9,7 @@ import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import { CreateTube } from "@babylonjs/core/Meshes/Builders/tubeBuilder";
 import { PLAYER } from "../config.js";
 import { PortalLayers } from "../portals/layers.js";
+import { gaitOf } from "./gait.js";
 
 export function createSkeletonVisual(scene) {
   const ivory = new StandardMaterial("os ivoire", scene);
@@ -152,9 +153,7 @@ export function createSkeletonVisual(scene) {
   let breath = 0;
 
   function update(dt, speed, grounded, verticalSpeed) {
-    const gait = grounded
-      ? (speed < 0.12 ? "idle" : speed > PLAYER.walkSpeed + 0.4 ? "run" : "walk")
-      : (verticalSpeed > 0.15 ? "jump" : "fall");
+    const gait = gaitOf(speed, grounded, verticalSpeed);
     const running = gait === "run";
     const walking = gait === "walk" || running;
     const strength = walking ? Math.min(speed / PLAYER.walkSpeed, 1) : 0;

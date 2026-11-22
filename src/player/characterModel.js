@@ -3,6 +3,7 @@ import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { CHARACTER, PLAYER } from "../config.js";
 import { PortalLayers } from "../portals/layers.js";
+import { gaitOf } from "./gait.js";
 
 // Démarches reconnues et mots-clés cherchés dans les noms d'animations du modèle
 // quand `CHARACTER.animations` ne donne pas le nom exact.
@@ -29,12 +30,6 @@ function pickAnimations(groups) {
   found.fall ??= found.jump ?? found.idle;
   found.jump ??= found.fall;
   return found;
-}
-
-function gaitOf(speed, grounded, verticalSpeed) {
-  if (!grounded) return verticalSpeed > 0.15 ? "jump" : "fall";
-  if (speed < 0.12) return "idle";
-  return speed > PLAYER.walkSpeed + 0.4 ? "run" : "walk";
 }
 
 // Charge un personnage glTF/GLB et expose la même interface que `createSkeletonVisual` :
