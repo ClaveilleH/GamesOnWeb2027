@@ -110,3 +110,36 @@ test("l’échelle garde les pieds au sol et la téléportation mène au tunnel 
   const { x, z } = await player(page);
   expect(Math.hypot(x + 43, z - 31.5)).toBeLessThan(0.2);
 });
+
+test("la caméra 1re personne se place à hauteur d’œil, suit l’échelle et revient à l’épaule", async ({ page }) => {
+  await startDevGame(page);
+  await openDebugMenu(page);
+  const view = (name) => panel(page).getByRole("button", { name });
+  await expect(view("3e personne")).toHaveAttribute("aria-pressed", "true");
+  const state = () => page.evaluate(() => window.gowDev.state());
+  const eyeAbove = async (height) => {
+    await expect.poll(async () => {
+      const { camera, player } = await state();
+      return camera.firstPerson && Math.hypot(camera.x - player.x, camera.z - player.z) < 0.02
+        && Math.abs(camera.y - player.y - height) < 0.02;
+    }).toBe(true);
+  };
+
+  await view("1re personne").click();
+  await expect(view("1re personne")).toHaveAttribute("aria-pressed", "true");
+  await eyeAbove(1.72);
+  // Le tangage s’ouvre au-delà des limites de l’épaule.
+  await page.evaluate(() => window.gowDev.look(0, 2000));
+  expect((await state()).camera.pitch).toBeGreaterThan(1.4);
+
+  await panel(page).getByRole("button", { name: "×0,5" }).click();
+  await page.waitForFunction(() => window.gowDev.state().player.grounded && window.gowDev.state().player.scale === 0.5);
+  await eyeAbove(0.86);
+
+  await view("3e personne").click();
+  await expect(view("3e personne")).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(async () => {
+    const { camera, player } = await state();
+    return !camera.firstPerson && camera.pitch <= 1.16 && Math.hypot(camera.x - player.x, camera.z - player.z) > 0.5;
+  }).toBe(true);
+});

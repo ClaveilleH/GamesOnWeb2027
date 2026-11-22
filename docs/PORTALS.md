@@ -423,6 +423,8 @@ La cible de la caméra est l’épaule **lissée**, en retard sur l’épaule si
 
 La logique actuelle (rétraction immédiate, relâchement progressif) s’applique à `allowed`, en unités de l’espace du joueur. Un second appel sans collision (`collide` absent) place la caméra à la distance lissée.
 
+**Première personne** (menu debug, section « Caméra ») : la même `TargetCamera` se pose à l’œil (`CAMERA.eyeHeight·σ` au-dessus des pieds interpolés). L’œil interpolé peut lui aussi se trouver de l’autre côté de la sortie juste après une traversée : `follow` trace donc le chemin de l’**œil simulé** (à l’aplomb du centre, donc dans l’espace du joueur puisque les portails sont verticaux) vers l’œil interpolé, avec la garde ε du § 9.3, puis oriente la caméra par `warp.yaw(yaw)`. Ce chemin ne porte que le retard d’interpolation : partir du centre le rendrait oblique, et la rétraction de la garde, quand centre et œil sont tous deux à moins de ε du plan (marche lente), ramènerait l’œil jusqu’à 30 cm plus bas pendant quelques images. Le corps passe au calque 0 (absent de toutes les vues, y compris à travers les portails, mais présent dans la carte d’ombre) et ses fantômes suivent ce calque (`syncAppearance`).
+
 ### 9.3 Garde ε et plan proche adaptatif
 
 - Si la position finale est à moins de `ε = 2·MIN_NEAR·σ` du plan d’une ouverture (projection dans l’ouverture élargie de ε), on raccourcit la distance de ce qu’il faut pour que la caméra soit à ε **avant** le plan, du côté d’où vient le chemin. La caméra n’est jamais posée sur le plan.

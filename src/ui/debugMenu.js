@@ -1,6 +1,7 @@
 import { movementModes } from "../player/playerController.js";
 
 const modeLabels = { walk: "Marche", fly: "Vol", noclip: "Noclip" };
+const cameraViews = [{ view: "third", label: "3e personne" }, { view: "first", label: "1re personne" }];
 const scales = [0.25, 0.5, 1, 2];
 const east = Math.PI / 2;
 
@@ -65,6 +66,16 @@ export function createDebugMenu(canvas, game) {
     }, options);
     return button;
   });
+  const viewButtons = cameraViews.map(({ view, label }) => {
+    const button = element("button", { type: "button", textContent: label });
+    button.dataset.view = view;
+    button.addEventListener("click", () => {
+      game.setCameraView(view);
+      refresh();
+    }, options);
+    return button;
+  });
+
   const flySpeed = slider("Vitesse de vol", {
     min: 1, max: 40, step: 1, value: player.state.flySpeed, format: (v) => v + " m/s",
   }, (value) => { player.state.flySpeed = value; });
@@ -116,6 +127,7 @@ export function createDebugMenu(canvas, game) {
           element("div", { className: "debug-choices" }, characterButtons),
           element("p", { className: "debug-note" }, ["Recharge la page pour appliquer."]))]
       : []),
+    section("Caméra", element("div", { className: "debug-choices" }, viewButtons)),
     section("Déplacement",
       element("div", { className: "debug-choices" }, modeButtons),
       flySpeed.row,
@@ -144,6 +156,7 @@ export function createDebugMenu(canvas, game) {
     lastScale = player.state.scale;
     lastMode = player.state.mode;
     for (const button of modeButtons) button.setAttribute("aria-pressed", String(button.dataset.mode === player.state.mode));
+    for (const button of viewButtons) button.setAttribute("aria-pressed", String(button.dataset.view === game.cameraView));
     for (const button of scaleButtons) button.setAttribute("aria-pressed", String(Number(button.dataset.scale) === player.state.scale));
     flySpeed.set(player.state.flySpeed);
     timeScale.set(game.timeScale);

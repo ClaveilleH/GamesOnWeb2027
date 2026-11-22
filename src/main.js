@@ -138,6 +138,17 @@ async function start() {
     portals.onTraverseObservable.add(({ traveler, warp }) => {
       if (traveler === playerTraveler) camera.applyWarp(warp);
     });
+    const bodyLayers = new Map(bones.map((mesh) => [mesh, mesh.layerMask]));
+    // À la première personne, le corps quitte toutes les vues (calque 0) mais garde son ombre.
+    function setCameraView(view) {
+      const firstPerson = view === "first";
+      if (camera.firstPerson === firstPerson) return;
+      camera.setFirstPerson(firstPerson);
+      for (const mesh of bones) mesh.layerMask = firstPerson ? 0 : bodyLayers.get(mesh);
+      // Opaque : un maillage transparent ne projette pas d’ombre.
+      if (firstPerson) visual.setFade(1);
+      portals.syncGhostAppearance(playerTraveler);
+    }
     const bindings = createBindings();
     const layout = createKeyboardLayout();
     scene.onDisposeObservable.addOnce(layout.dispose);
@@ -155,6 +166,8 @@ async function start() {
         writePreference(CHARACTER_PREFERENCE, key);
         location.reload();
       },
+      get cameraView() { return camera.firstPerson ? "first" : "third"; },
+      setCameraView,
       get hudVisible() { return hud.debugVisible; },
       toggleHud: hud.toggleDebug,
       teleport(feet, yaw) {
@@ -197,8 +210,10 @@ async function start() {
       for (const crate of crates) crate.present(alpha);
       portals.updateGhosts();
       const shoulderDistance = camera.follow(dt, feet, state.scale, portals, state.position);
-      const fade = InverseLerp(CAMERA.fadeNear, CAMERA.fadeFar, shoulderDistance);
-      if (visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade))) portals.syncGhostAppearance(playerTraveler);
+      if (!camera.firstPerson) {
+        const fade = InverseLerp(CAMERA.fadeNear, CAMERA.fadeFar, shoulderDistance);
+        if (visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade))) portals.syncGhostAppearance(playerTraveler);
+      }
       hud.update(state, camera, visual.root);
       debugMenu.update();
     }

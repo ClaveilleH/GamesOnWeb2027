@@ -40,6 +40,11 @@ export const CAMERA = Object.freeze({
   fadeFar: 1.2,
   minPlayerOpacity: 0.03,
   fov: 0.82,
+  // Première personne (menu debug) : hauteur de l'œil au-dessus des pieds, à l'échelle 1, et tangage permis.
+  eyeHeight: 1.72,
+  firstPersonPitch: 0,
+  firstPersonMinPitch: -1.48,
+  firstPersonMaxPitch: 1.48,
   // Plan proche hors portail (réduit près d'une ouverture, docs/PORTALS.md § 9.3) et plan lointain.
   minZ: 0.04,
   maxZ: 500,

@@ -61,7 +61,7 @@ export function installDevHook({
         player: { ...coordinates(player.state.position), yaw: player.state.yaw, scale: player.state.scale,
           grounded: player.state.grounded, capsuleHeight: player.capsuleHeight },
         camera: { ...coordinates(mainCamera.position), yaw: camera.yaw, pitch: camera.pitch,
-          minZ: mainCamera.minZ, warped: camera.warped },
+          minZ: mainCamera.minZ, warped: camera.warped, firstPerson: camera.firstPerson },
         portals: { depth: stats.depthReached, maxDepth: settings.maxDepth, passes: stats.passes, fallbacks: stats.fallbacks,
           haze: stats.haze.map((range) => ({ ...range })) },
         fps: engine.getFps(), ghosts: portals.activeGhosts, shadowCasters: portals.activeShadowCasters,

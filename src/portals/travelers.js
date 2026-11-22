@@ -175,6 +175,8 @@ function createVisualCopy({ root, materials }, sources, suffix, { layerMask, rec
         const { source, copy } = meshes[i];
         copy.visibility = source.visibility;
         copy.isVisible = source.isVisible;
+        // Un original retiré des vues (calque 0, ex. corps à la première personne) garde son ombre : sa copie aussi.
+        copy.layerMask = source.layerMask === 0 ? 0 : layerMask;
       }
     },
     dispose() {

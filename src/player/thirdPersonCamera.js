@@ -4,6 +4,8 @@ import { CAMERA, SPAWN_YAW } from "../config.js";
 import { createSightTest } from "../core/physics.js";
 import { createViewResult, isViewWarped, MIN_NEAR } from "../portals/cameraPath.js";
 
+// Caméra du joueur : à l’épaule (par défaut) ou à la première personne (menu debug).
+// Les deux modes pilotent la même TargetCamera, celle que le rendu des portails suit.
 export function createThirdPersonCamera(scene) {
   const camera = new TargetCamera("caméra épaule", Vector3.Zero(), scene);
   camera.fov = CAMERA.fov;
@@ -20,12 +22,49 @@ export function createThirdPersonCamera(scene) {
   const shoulderOptions = { epsilon: 0 };
   const viewOptions = { epsilon: 0, clearance: 0, collide };
   const placementOptions = { epsilon: 0 };
+  const simulatedEye = Vector3.Zero();
+  const eyeLag = Vector3.Zero();
+  const eyeOptions = { epsilon: 0 };
   let yaw = SPAWN_YAW;
   let pitch = CAMERA.initialPitch;
   let distance = CAMERA.distance;
   let cameraScale = 1;
   let warped = false;
   let snap = false;
+  let firstPerson = false;
+
+  const pitchLimits = () => (firstPerson
+    ? [CAMERA.firstPersonMinPitch, CAMERA.firstPersonMaxPitch]
+    : [CAMERA.minPitch, CAMERA.maxPitch]);
+
+  function clampPitch(value) {
+    const [min, max] = pitchLimits();
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function setNear(nearestPortalDistance) {
+    const nearestInCameraUnits = nearestPortalDistance / cameraScale;
+    camera.minZ = Math.max(MIN_NEAR, Math.min(CAMERA.minZ, 0.5 * nearestInCameraUnits)) * cameraScale;
+  }
+
+  // L’œil suit les pieds interpolés, qui peuvent être de l’autre côté d’un portail juste après
+  // une traversée. Le chemin part de l’œil simulé : à l’aplomb du centre et les portails étant
+  // verticaux, il est toujours dans l’espace du joueur. Il ne suit que le retard d’interpolation :
+  // si la garde ε le raccourcit, l’œil recule de quelques millimètres au plus, sans changer de hauteur.
+  function followEye(feet, scale, portals, simulatedFeet) {
+    const eyeHeight = CAMERA.eyeHeight * scale;
+    simulatedEye.set(simulatedFeet.x, simulatedFeet.y + eyeHeight, simulatedFeet.z);
+    eyeLag.set(feet.x, feet.y + eyeHeight, feet.z).subtractInPlace(simulatedEye);
+    eyeOptions.epsilon = 2 * MIN_NEAR * scale;
+    portals.traceView(simulatedEye, eyeLag, eyeLag.length(), eyeOptions, eyeView);
+    cameraScale = scale * eyeView.warp.scale;
+    warped = eyeView.crossed > 0;
+    setNear(eyeView.nearestPortalDistance);
+    camera.position.copyFrom(eyeView.position);
+    camera.rotation.set(pitch, eyeView.warp.yaw(yaw), 0);
+    snap = false;
+    return 0;
+  }
 
   function locateShoulder(portals, simulatedFeet, scale) {
     simulatedShoulder.set(simulatedFeet.x, simulatedFeet.y + CAMERA.shoulderHeight * scale, simulatedFeet.z);
@@ -47,12 +86,20 @@ export function createThirdPersonCamera(scene) {
 
   function reset(newYaw) {
     yaw = newYaw;
-    pitch = CAMERA.initialPitch;
+    pitch = firstPerson ? CAMERA.firstPersonPitch : CAMERA.initialPitch;
     snap = true;
   }
 
   return {
     camera, reset,
+    get firstPerson() { return firstPerson; },
+    // Garde le regard ; l’épaule lissée repart de la position du joueur au retour à l’épaule.
+    setFirstPerson(enabled) {
+      if (firstPerson === enabled) return;
+      firstPerson = enabled;
+      pitch = clampPitch(pitch);
+      snap = true;
+    },
     applyWarp(warp) {
       yaw = warp.yaw(yaw);
       warp.point(target, target);
@@ -63,10 +110,12 @@ export function createThirdPersonCamera(scene) {
     get scale() { return cameraScale; },
     look(dx, dy) {
       yaw = (yaw + dx * CAMERA.sensitivity) % (2 * Math.PI);
-      pitch = Math.max(CAMERA.minPitch, Math.min(CAMERA.maxPitch, pitch + dy * CAMERA.sensitivity));
+      pitch = clampPitch(pitch + dy * CAMERA.sensitivity);
       return yaw;
     },
+    // Renvoie la distance de l’œil à l’épaule (0 à la première personne), qui règle le fondu du joueur.
     follow(dt, feet, scale, portals, simulatedFeet = feet) {
+      if (firstPerson) return followEye(feet, scale, portals, simulatedFeet);
       shoulder.set(feet.x, feet.y + CAMERA.shoulderHeight * scale, feet.z);
       Vector3.LerpToRef(target, shoulder, snap ? 1 : -Math.expm1(-CAMERA.followRate * dt), target);
       const horizontal = Math.cos(pitch);
@@ -83,8 +132,7 @@ export function createThirdPersonCamera(scene) {
       portals.traceView(origin, direction, distance * shoulderScale, placementOptions, eyeView);
       cameraScale = shoulderScale * eyeView.warp.scale;
       warped = isViewWarped(eyeView, anchor);
-      const nearestInCameraUnits = eyeView.nearestPortalDistance / cameraScale;
-      camera.minZ = Math.max(MIN_NEAR, Math.min(CAMERA.minZ, 0.5 * nearestInCameraUnits)) * cameraScale;
+      setNear(eyeView.nearestPortalDistance);
       camera.position.copyFrom(eyeView.position);
       camera.setTarget(eyeView.target);
       if (camera.position.equals(eyeView.target)) {
