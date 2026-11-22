@@ -18,6 +18,9 @@ import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
+import {
+  SHRINK, createPortalViews, createShrinkingCorridor, crossesPortal, mainCameraLayerMask, scaleAround,
+} from "./world/shrinkingPortal.js";
 
 const canvas = document.querySelector("#scene");
 const status = document.querySelector("#status");
@@ -47,12 +50,20 @@ async function start() {
     shadows.setDarkness(0.2);
 
     const casters = createTestTerrain(scene);
-    const player = createPlayerController(scene, spawnPoint, gravity);
+    createShrinkingCorridor(scene);
+    const player = createPlayerController(scene, spawnPoint, gravity, {
+      crosses: crossesPortal,
+      transform: (point, out) => scaleAround(point, -1, out),
+      scale: 1 / SHRINK.ratio,
+    });
     scene.onDisposeObservable.addOnce(player.dispose);
     const visual = createSkeletonVisual(scene);
     scene.onDisposeObservable.addOnce(visual.dispose);
     for (const mesh of [...casters, ...visual.root.getChildMeshes()]) shadows.addShadowCaster(mesh, false);
     const camera = createThirdPersonCamera(scene);
+    camera.camera.layerMask = mainCameraLayerMask;
+    const portalViews = createPortalViews(scene, camera.camera);
+    scene.onDisposeObservable.addOnce(portalViews.dispose);
     const bindings = createBindings();
     const layout = createKeyboardLayout();
     scene.onDisposeObservable.addOnce(layout.dispose);
@@ -76,13 +87,42 @@ async function start() {
     });
     scene.onDisposeObservable.addOnce(input.dispose);
 
+    // La caméra ne franchit pas le portail en même temps que le joueur : tant qu'elle est en
+    // retard de `cameraLag` passages, elle vise l'image agrandie du joueur, T^cameraLag(pieds),
+    // vue à travers le portail, puis se réduit à son tour en traversant le plan du portail.
+    let cameraLag = 0;
+    let crossingsSeen = 0;
+    const cameraFeet = Vector3.Zero();
+    const portalMargin = 0.06;
+    function limitCameraRay(from, to) {
+      const plane = SHRINK.portal - portalMargin;
+      if (cameraLag > 0) {
+        // La caméra glisse jusqu'au portail et le traverse, puis se réduit à son tour.
+        if (to.z >= plane) return { start: 1, stop: 1 };
+        const crossing = (from.z - SHRINK.portal - 0.1) / (from.z - to.z);
+        return { start: Math.max(0, crossing), stop: Math.max(0, crossing), soft: true };
+      }
+      const inCorridor = Math.abs(from.x - SHRINK.x) < SHRINK.width / 2 && from.z > SHRINK.back && from.z < plane;
+      if (inCorridor && to.z > plane) return { start: 0, stop: (plane - from.z) / (to.z - from.z) };
+      return { start: 0, stop: 1 };
+    }
+
     function present(dt, alpha, respawned) {
       const { previousPose, state } = player;
       const feet = visual.root.position;
       Vector3.LerpToRef(previousPose.position, state.position, alpha, feet);
       visual.root.rotation.y = previousPose.yaw + NormalizeRadians(state.yaw - previousPose.yaw) * alpha;
       visual.update(dt, state);
-      const shoulderDistance = camera.follow(dt, feet, respawned);
+      if (respawned) cameraLag = 0;
+      else cameraLag += state.crossings - crossingsSeen;
+      crossingsSeen = state.crossings;
+      scaleAround(feet, cameraLag, cameraFeet);
+      const shoulderDistance = camera.follow(dt, cameraFeet, respawned, limitCameraRay);
+      while (cameraLag > 0 && camera.camera.position.z > SHRINK.portal) {
+        camera.transform((point, out) => scaleAround(point, -1, out), 1 / SHRINK.ratio);
+        cameraLag--;
+      }
+      portalViews.update();
       const fade = InverseLerp(CAMERA.fadeNear, CAMERA.fadeFar, shoulderDistance);
       visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade));
       hud.update(state, camera, visual.root);
@@ -126,6 +166,10 @@ async function start() {
     window.addEventListener("pagehide", onPageHide);
     scene.onDisposeObservable.addOnce(() => window.removeEventListener("pagehide", onPageHide));
     if (import.meta.hot) import.meta.hot.dispose(() => engine.dispose());
+    // Accès de mise au point en développement (tests manuels dans la console).
+    if (import.meta.env.DEV) {
+      window.__game = { scene, player, camera, portalViews, get cameraLag() { return cameraLag; } };
+    }
     engine.runRenderLoop(() => scene.render());
     status.hidden = true;
   } catch (error) {

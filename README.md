@@ -37,3 +37,7 @@ Le script active le site HTTPS et le minuteur systemd. Pour lancer une synchroni
 sudo systemctl start gow-site.service
 journalctl -u gow-site.service -n 20 --no-pager
 ```
+
+## Portail rétrécissant (expérience)
+
+Un couloir dont le portail mène à une version agrandie de lui-même, franchissable à l'infini : voir [docs/PORTAIL_RETRECISSANT.md](docs/PORTAIL_RETRECISSANT.md).

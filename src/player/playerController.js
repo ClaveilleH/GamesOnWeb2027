@@ -6,7 +6,10 @@ import { collisionLayer } from "../core/physics.js";
 const down = new Vector3(0, -1, 0);
 const forward = new Vector3(0, 0, 1);
 
-export function createPlayerController(scene, spawn, gravity) {
+// `portal`, facultatif : { crosses(fromFeet, toFeet), transform(point, out) } téléporte le
+// joueur quand ses pieds franchissent le portail. `transform` doit être une homothétie centrée
+// au niveau du sol ; la vitesse est mise à la même échelle (`portal.scale`).
+export function createPlayerController(scene, spawn, gravity, portal = null) {
   const capsule = new PhysicsCharacterController(spawn, {
     capsuleHeight: PLAYER.height,
     capsuleRadius: PLAYER.radius,
@@ -23,7 +26,11 @@ export function createPlayerController(scene, spawn, gravity) {
   const state = {
     position: Vector3.Zero(), yaw: SPAWN_YAW, speed: 0,
     grounded: false, verticalSpeed: 0, respawned: true,
+    // Nombre de passages du portail depuis le début ; la caméra s'en sert pour rattraper le joueur.
+    crossings: 0,
   };
+  const startFeet = Vector3.Zero();
+  const feetToCenter = Vector3.Zero();
   const previousPose = { position: Vector3.Zero(), yaw: SPAWN_YAW };
   let coyote = 0;
   let jumpBuffer = 0;
@@ -88,12 +95,22 @@ export function createPlayerController(scene, spawn, gravity) {
       coyote = jumpBuffer = 0;
     }
     const { x: startX, z: startZ } = capsule.getPosition();
+    startFeet.copyFrom(state.position);
     capsule.setVelocity(velocity);
     capsule.integrate(dt, surface, gravity);
 
     syncFeet();
     const dx = state.position.x - startX;
     const dz = state.position.z - startZ;
+    let crossed = false;
+    if (portal && !state.respawned && portal.crosses(startFeet, state.position)) {
+      crossed = true;
+      capsule.getPosition().subtractToRef(state.position, feetToCenter);
+      portal.transform(state.position, state.position);
+      capsule.setPosition(state.position.add(feetToCenter));
+      capsule.setVelocity(capsule.getVelocity().scale(portal.scale));
+      state.crossings++;
+    }
     state.speed = Math.hypot(dx, dz) / dt;
     state.verticalSpeed = capsule.getVelocity().y;
     state.grounded = grounded && !jumping;
@@ -102,7 +119,7 @@ export function createPlayerController(scene, spawn, gravity) {
       const delta = Math.atan2(dx, dz) - state.yaw;
       state.yaw += Math.atan2(Math.sin(delta), Math.cos(delta)) * -Math.expm1(-PLAYER.turnRate * dt);
     }
-    if (state.respawned) syncPreviousPose();
+    if (state.respawned || crossed) syncPreviousPose();
     return state;
   }
 

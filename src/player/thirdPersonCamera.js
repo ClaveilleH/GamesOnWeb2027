@@ -15,6 +15,8 @@ export function createThirdPersonCamera(scene) {
   const shoulder = Vector3.Zero();
   const direction = Vector3.Zero();
   const end = Vector3.Zero();
+  const rayStart = Vector3.Zero();
+  const rayEnd = Vector3.Zero();
   let yaw = SPAWN_YAW;
   let pitch = CAMERA.initialPitch;
   let distance = CAMERA.distance;
@@ -27,7 +29,11 @@ export function createThirdPersonCamera(scene) {
       pitch = Math.max(CAMERA.minPitch, Math.min(CAMERA.maxPitch, pitch + dy * CAMERA.sensitivity));
       return yaw;
     },
-    follow(dt, feet, respawned = false) {
+    camera,
+    // `limitRay(from, to)`, facultatif, renvoie la portion [start, stop] (en fractions) du rayon
+    // épaule → caméra à tester contre le décor ; la caméra ne va pas au-delà de `stop`. Avec
+    // `soft`, elle s'en rapproche en douceur au lieu d'y être ramenée d'un coup.
+    follow(dt, feet, respawned = false, limitRay = null) {
       if (respawned) {
         yaw = SPAWN_YAW;
         pitch = CAMERA.initialPitch;
@@ -37,13 +43,27 @@ export function createThirdPersonCamera(scene) {
       const horizontal = Math.cos(pitch);
       direction.set(-Math.sin(yaw) * horizontal, Math.sin(pitch), -Math.cos(yaw) * horizontal);
       direction.scaleToRef(CAMERA.distance, end).addInPlace(target);
-      physics.raycastToRef(target, end, hit, query);
-      const allowed = hit.hasHit ? Math.max(camera.minZ, hit.hitDistance - CAMERA.wallClearance) : CAMERA.distance;
-      if (respawned || allowed < distance) distance = allowed;
+      const { start, stop, soft = false } = limitRay?.(target, end) ?? { start: 0, stop: 1 };
+      let allowed = stop * CAMERA.distance;
+      if (start < stop) {
+        Vector3.LerpToRef(target, end, start, rayStart);
+        Vector3.LerpToRef(target, end, stop, rayEnd);
+        physics.raycastToRef(rayStart, rayEnd, hit, query);
+        if (hit.hasHit) allowed = start * CAMERA.distance + hit.hitDistance - CAMERA.wallClearance;
+      }
+      allowed = Math.max(camera.minZ, allowed);
+      if (respawned || (allowed < distance && !soft)) distance = allowed;
       else distance += (allowed - distance) * -Math.expm1(-CAMERA.releaseRate * dt);
       direction.scaleToRef(distance, camera.position).addInPlace(target);
       camera.setTarget(target);
       return Vector3.Distance(camera.position, shoulder);
+    },
+    // Déplace la caméra par une homothétie de rapport `scale` (passage d'un portail).
+    transform(map, scale) {
+      map(target, target);
+      map(camera.position, camera.position);
+      distance *= scale;
+      camera.setTarget(target);
     },
     dispose: () => camera.dispose(),
   };
