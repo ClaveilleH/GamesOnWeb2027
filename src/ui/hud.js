@@ -55,6 +55,7 @@ export function createHud(bindings, layout, portals) {
       if (telemetry.dataset.fps !== rounded) telemetry.dataset.fps = fpsLabel.textContent = rounded;
     },
     showCaptureHint(visible) { hint.hidden = !visible; },
+    get debugVisible() { return !telemetry.hidden; },
     toggleDebug() {
       telemetry.hidden = !telemetry.hidden;
       portals.setDebugVisible(!telemetry.hidden);

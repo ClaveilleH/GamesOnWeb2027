@@ -13,6 +13,7 @@ import { createCharacterModel } from "./player/characterModel.js";
 import { createSkeletonVisual } from "./player/skeletonVisual.js";
 import { createThirdPersonCamera } from "./player/thirdPersonCamera.js";
 import { createPortalSystem } from "./portals/index.js";
+import { createDebugMenu } from "./ui/debugMenu.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
@@ -100,6 +101,19 @@ async function start() {
     scene.onDisposeObservable.addOnce(hud.dispose);
     let previousFrameTime = 0;
     let accumulatedTime = 0;
+    const debugGame = {
+      player, portals, timeScale: 1,
+      get hudVisible() { return hud.debugVisible; },
+      toggleHud: hud.toggleDebug,
+      teleport(feet, yaw) {
+        player.teleport(feet, yaw);
+        portals.resetTraveler(playerTraveler);
+        portals.resetHaze();
+        camera.reset(yaw);
+      },
+    };
+    const debugMenu = createDebugMenu(canvas, debugGame);
+    scene.onDisposeObservable.addOnce(debugMenu.dispose);
     const platform = createPlatform();
     const menu = createMenu(bindings, layout, (key) => {
       previousFrameTime = performance.now();
@@ -113,7 +127,11 @@ async function start() {
       isPaused: () => menu.isOpen,
       openMenu: menu.open,
       onCapture: (captured) => hud.showCaptureHint(!menu.isOpen && !captured),
-      toggleDebug: hud.toggleDebug,
+      toggleDebug() {
+        hud.toggleDebug();
+        debugMenu.refresh();
+      },
+      toggleDebugMenu: debugMenu.toggle,
     });
     scene.onDisposeObservable.addOnce(input.dispose);
 
@@ -130,6 +148,7 @@ async function start() {
       const fade = InverseLerp(CAMERA.fadeNear, CAMERA.fadeFar, shoulderDistance);
       if (visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade))) portals.syncGhostAppearance(playerTraveler);
       hud.update(state, camera, visual.root);
+      debugMenu.update();
     }
     camera.reset(SPAWN_YAW);
     present(0, 0);
@@ -146,7 +165,8 @@ async function start() {
       const now = performance.now();
       const frameTime = (now - previousFrameTime) / 1000;
       previousFrameTime = now;
-      accumulatedTime = Math.min(accumulatedTime + frameTime, MAX_ACCUMULATED_TIME);
+      // Le menu debug ralentit ou accélère la simulation ; l’affichage garde le temps réel.
+      accumulatedTime = Math.min(accumulatedTime + frameTime * debugGame.timeScale, MAX_ACCUMULATED_TIME);
       const steps = Math.floor(accumulatedTime / FIXED_STEP);
       accumulatedTime -= steps * FIXED_STEP;
 

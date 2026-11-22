@@ -7,6 +7,10 @@ import { collisionLayer } from "../core/physics.js";
 
 const down = new Vector3(0, -1, 0);
 const forward = new Vector3(0, 0, 1);
+// Modes de déplacement du menu debug : marche normale, vol avec collisions, vol à travers les murs.
+export const movementModes = Object.freeze(["walk", "fly", "noclip"]);
+const FLY_SPRINT = 2.5;
+const FLY_RESPONSE = 10;
 
 export function createPlayerController(scene, spawn, gravity, shouldRespawn = (position) => position.y < PLAYER.respawnBelow) {
   const capsule = new PhysicsCharacterController(spawn, {
@@ -39,7 +43,10 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
   const state = {
     position: Vector3.Zero(), yaw: SPAWN_YAW, speed: 0, scale: 1,
     grounded: false, verticalSpeed: 0, respawned: true,
+    mode: "walk", flySpeed: 8,
   };
+  const noGravity = Vector3.Zero();
+  const flyStart = Vector3.Zero();
   const previousPose = { position: Vector3.Zero(), yaw: SPAWN_YAW };
   let coyote = 0;
   let jumpBuffer = 0;
@@ -140,12 +147,69 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     syncPreviousPose();
   }
 
+  // Garde les pieds en place : setScale garde le centre, la capsule agrandie s’enfoncerait dans le sol.
+  function resize(scale) {
+    if (!(scale > 0) || state.scale === scale) return;
+    const feet = state.position.clone();
+    setScale(scale);
+    feet.y += 0.01 * scale;
+    teleport(feet, state.yaw);
+  }
+
+  function setMode(mode) {
+    if (!movementModes.includes(mode) || state.mode === mode) return;
+    state.mode = mode;
+    capsule.setVelocity(Vector3.ZeroReadOnly);
+    coyote = jumpBuffer = 0;
+    risingFromJump = false;
+    surface.supportedState = CharacterSupportedState.UNSUPPORTED;
+    placedSupport = true;
+  }
+
+  function fly(dt, input, cameraYaw) {
+    const sin = Math.sin(cameraYaw);
+    const cos = Math.cos(cameraYaw);
+    const vertical = Number(input.up) - Number(input.down);
+    desired.set(input.forward * sin + input.strafe * cos, vertical, input.forward * cos - input.strafe * sin);
+    const length = desired.length();
+    if (length > 0) desired.scaleInPlace(state.flySpeed * state.scale * (input.sprint ? FLY_SPRINT : 1) / length);
+    // Vitesse lissée : le vol démarre et s’arrête sans à-coup, sans inertie gênante.
+    Vector3.LerpToRef(capsule.getVelocity(), desired, -Math.expm1(-FLY_RESPONSE * dt), velocity);
+    flyStart.copyFrom(capsule.getPosition());
+    if (state.mode === "noclip") {
+      // Aucun solveur : la capsule passe les murs, la traversée des portails suit le centre.
+      capsule.setPosition(velocity.scaleToRef(dt, warpedCenter).addInPlace(flyStart));
+      capsule.setVelocity(velocity);
+    } else {
+      surface.supportedState = CharacterSupportedState.UNSUPPORTED;
+      capsule.setVelocity(velocity);
+      capsule.integrate(dt, surface, noGravity);
+    }
+    syncFeet();
+    const { x, z } = capsule.getPosition();
+    const dx = x - flyStart.x;
+    const dz = z - flyStart.z;
+    state.speed = Math.hypot(dx, dz) / dt;
+    state.verticalSpeed = capsule.getVelocity().y;
+    state.grounded = false;
+    if (state.speed > 0.08 * state.scale) {
+      const delta = Math.atan2(dx, dz) - state.yaw;
+      state.yaw += Math.atan2(Math.sin(delta), Math.cos(delta)) * -Math.expm1(-PLAYER.turnRate * dt);
+    }
+    placedSupport = true;
+  }
+
   function update(dt, input, cameraYaw) {
     syncPreviousPose();
-    state.respawned = input.respawn || shouldRespawn(capsule.getPosition());
+    const falling = state.mode === "walk" && shouldRespawn(capsule.getPosition());
+    state.respawned = input.respawn || falling;
     if (state.respawned) {
       setScale(1);
       place(spawn, SPAWN_YAW);
+    }
+    if (state.mode !== "walk" && !state.respawned) {
+      fly(dt, input, cameraYaw);
+      return state;
     }
     if (!placedSupport) capsule.checkSupportToRef(dt, down, surface);
     placedSupport = false;
@@ -207,7 +271,7 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
   syncFeet();
   syncPreviousPose();
   return {
-    state, previousPose, center, applyWarp, syncPreviousPose, teleport, update,
+    state, previousPose, center, applyWarp, syncPreviousPose, teleport, update, resize, setMode,
     get capsuleHeight() { return capsule.shapeOptions.capsuleHeight; },
     dispose: () => capsule.dispose(),
   };

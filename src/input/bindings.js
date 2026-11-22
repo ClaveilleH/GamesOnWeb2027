@@ -11,7 +11,8 @@ export const actions = [
   { id: "respawn", label: "Réapparaître", defaults: ["KeyR", null] },
 ];
 const storageKey = "gow.bindings.v1";
-const reserved = new Set(["Escape", "F3", "Backspace", "Delete"]);
+// Tab libère la souris pour le menu debug.
+const reserved = new Set(["Escape", "F3", "Tab", "Backspace", "Delete"]);
 export const canBind = (code) => isKnownCode(code) && !reserved.has(code);
 
 function defaults() {

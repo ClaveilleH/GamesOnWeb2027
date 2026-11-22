@@ -46,6 +46,9 @@ Les modifications du code s'affichent automatiquement dans la page, sans relance
 | Souris (après un clic sur la scène) | Orienter la caméra |
 | Échap | Pause et menu des touches |
 | F3 | HUD : position, vitesse, infos des portails |
+| Ctrl + D | Menu debug (à droite) : vol, noclip, échelle, vitesse du temps, téléportation, profondeur des portails |
+| Tab | Libère la souris pour cliquer dans le menu debug (un clic sur la scène ou Tab la reprend) |
+| Espace / C (en vol ou noclip) | Monter / descendre |
 
 Ajouter `?dev` à l'adresse (http://localhost:5173/?dev) active les outils de développement (`window.gowDev`).
 
