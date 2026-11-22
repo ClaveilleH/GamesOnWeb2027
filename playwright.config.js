@@ -3,6 +3,8 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   workers: 1,
+  // Le runner de la CI rend en logiciel (SwiftShader) : un test qui recharge plusieurs fois le jeu y dépasse 30 s.
+  timeout: process.env.CI ? 60_000 : 30_000,
   use: {
     baseURL: "http://127.0.0.1:4187",
     viewport: { width: 780, height: 540 },
