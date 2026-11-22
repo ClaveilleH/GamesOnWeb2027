@@ -24,8 +24,11 @@ function element(tag, props = {}, children = []) {
   return node;
 }
 
-function section(title, ...children) {
-  return element("section", {}, [element("h2", { textContent: title }), ...children]);
+// Chaque catégorie est un menu déroulant repliable. `open` par défaut : fermé.
+function section(title, { open = false } = {}, ...children) {
+  const body = element("div", { className: "debug-section-body" }, children);
+  return element("details", { className: "debug-section", open },
+    [element("summary", { textContent: title }), body]);
 }
 
 function slider(label, { min, max, step, value, format }, onInput) {
@@ -108,6 +111,15 @@ export function createDebugMenu(canvas, game) {
     min: 0, max: 8, step: 1, value: portals.settings.maxDepth, format: String,
   }, (value) => { portals.settings.maxDepth = value; });
 
+  const fpsCounterToggle = element("input", { type: "checkbox" });
+  fpsCounterToggle.addEventListener("change", () => {
+    if (fpsCounterToggle.checked !== game.fpsCounterVisible) game.toggleFpsCounter();
+  }, options);
+  const fpsGraphToggle = element("input", { type: "checkbox" });
+  fpsGraphToggle.addEventListener("change", () => {
+    if (fpsGraphToggle.checked !== game.fpsGraphVisible) game.toggleFpsGraph();
+  }, options);
+
   const coordinates = element("output", { className: "debug-position" });
   const copy = element("button", { type: "button", textContent: "Copier" });
   copy.addEventListener("click", () => {
@@ -122,26 +134,29 @@ export function createDebugMenu(canvas, game) {
       element("h1", { textContent: "Debug" }),
       element("p", {}, [element("kbd", { textContent: "Tab" }), " souris · ", element("kbd", { textContent: "Ctrl D" }), " fermer"]),
     ]),
-    ...(characterButtons.length
-      ? [section("Personnage",
-          element("div", { className: "debug-choices" }, characterButtons),
-          element("p", { className: "debug-note" }, ["Recharge la page pour appliquer."]))]
-      : []),
-    section("Caméra", element("div", { className: "debug-choices" }, viewButtons)),
-    section("Déplacement",
+    section("Déplacement", {},
       element("div", { className: "debug-choices" }, modeButtons),
       flySpeed.row,
       element("p", { className: "debug-note" }, [
         element("kbd", { textContent: "Espace" }), " monter · ", element("kbd", { textContent: "C" }), " descendre · ",
         element("kbd", { textContent: "Maj" }), " ×2,5",
       ])),
-    section("Échelle du joueur", element("div", { className: "debug-choices" }, scaleButtons)),
-    section("Temps", timeScale.row),
-    section("Téléportation", element("ul", { className: "debug-destinations" }, destinations)),
-    section("Affichage",
+    section("Caméra", {}, element("div", { className: "debug-choices" }, viewButtons)),
+    section("Performance", { open: true },
+      element("label", { className: "debug-check" }, [fpsCounterToggle, "Compteur FPS"]),
+      element("label", { className: "debug-check" }, [fpsGraphToggle, "Graphique des FPS"])),
+    section("Affichage", {},
       element("label", { className: "debug-check" }, [hudToggle, "HUD et contours des portails (F3)"]),
       depth.row),
-    section("Position", element("div", { className: "debug-position-row" }, [coordinates, copy])),
+    section("Échelle du joueur", {}, element("div", { className: "debug-choices" }, scaleButtons)),
+    section("Téléportation", {}, element("ul", { className: "debug-destinations" }, destinations)),
+    section("Temps", {}, timeScale.row),
+    ...(characterButtons.length
+      ? [section("Personnage", {},
+          element("div", { className: "debug-choices" }, characterButtons),
+          element("p", { className: "debug-note" }, ["Recharge la page pour appliquer."]))]
+      : []),
+    section("Position", { open: true }, element("div", { className: "debug-position-row" }, [coordinates, copy])),
   );
   panel.setAttribute("aria-label", "Menu debug");
 
@@ -162,6 +177,8 @@ export function createDebugMenu(canvas, game) {
     timeScale.set(game.timeScale);
     depth.set(portals.settings.maxDepth);
     hudToggle.checked = game.hudVisible;
+    fpsCounterToggle.checked = game.fpsCounterVisible;
+    fpsGraphToggle.checked = game.fpsGraphVisible;
   }
 
   let lastText = "";

@@ -1,5 +1,8 @@
 export function createHud(bindings, layout, portals) {
   const hint = document.querySelector("#capture-hint");
+  const interactionPrompt = document.querySelector("#interaction-prompt");
+  const interactionKey = document.querySelector("#interaction-key");
+  const interactionVerb = document.querySelector("#interaction-verb");
   const movementKeys = document.querySelector("#movement-keys");
   const telemetry = document.querySelector("#player-state");
   const contact = document.querySelector("#ground-state");
@@ -55,6 +58,18 @@ export function createHud(bindings, layout, portals) {
       if (telemetry.dataset.fps !== rounded) telemetry.dataset.fps = fpsLabel.textContent = rounded;
     },
     showCaptureHint(visible) { hint.hidden = !visible; },
+    // Invite d'interaction en bas de l'écran. `verb` (ex. « jouer ») l'affiche ; null la masque.
+    // La touche montrée suit la touche affectée à « Interagir » et la disposition clavier.
+    showInteraction(verb) {
+      if (!verb) {
+        interactionPrompt.hidden = true;
+        return;
+      }
+      const [primary, secondary] = bindings.keys("interact");
+      interactionKey.textContent = layout.label(primary ?? secondary);
+      if (interactionVerb.textContent !== verb) interactionVerb.textContent = verb;
+      interactionPrompt.hidden = false;
+    },
     get debugVisible() { return !telemetry.hidden; },
     toggleDebug() {
       telemetry.hidden = !telemetry.hidden;

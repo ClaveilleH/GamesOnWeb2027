@@ -25,11 +25,12 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
   let ignoreMouseUntil = 0;
   let jump = false;
   let respawn = false;
+  let interact = false;
   let lookX = 0;
   let lookY = 0;
   let virtual = null;
   const controls = {
-    forward: 0, strafe: 0, sprint: false, jump: false, respawn: false, up: false, down: false, lookX: 0, lookY: 0,
+    forward: 0, strafe: 0, sprint: false, jump: false, respawn: false, interact: false, up: false, down: false, lookX: 0, lookY: 0,
   };
 
   function hasCapture() {
@@ -49,7 +50,7 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
     held.clear();
     descending = false;
     virtual = null;
-    jump = respawn = false;
+    jump = respawn = interact = false;
     lookX = lookY = 0;
   }
 
@@ -209,13 +210,19 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
     held.add(code);
     if (action === "jump") jump = true;
     if (action === "respawn") respawn = true;
+    if (action === "interact") interact = true;
   }, options);
   window.addEventListener("keyup", (event) => {
     held.delete(event.code);
     if (event.code === FLY_DOWN_CODE) descending = false;
     if (event.code === relockOnRelease) capture();
   }, options);
-  window.addEventListener("blur", pause, options);
+  window.addEventListener("blur", () => {
+    // Souris déjà libérée par Tab (menu debug) : un Alt+Tab ne doit pas ouvrir la pause.
+    // On relâche seulement les entrées pour éviter une touche restée enfoncée hors focus.
+    if (freeCursor) reset();
+    else pause();
+  }, options);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) pause();
   }, options);
@@ -239,11 +246,12 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
       controls.sprint = pressed("sprint") || Boolean(virtual?.sprint);
       controls.jump = jump;
       controls.respawn = respawn;
+      controls.interact = interact;
       controls.up = pressed("jump") || Boolean(virtual?.up);
       controls.down = descending || Boolean(virtual?.down);
       controls.lookX = looking ? lookX : 0;
       controls.lookY = looking ? lookY : 0;
-      jump = respawn = false;
+      jump = respawn = interact = false;
       lookX = lookY = 0;
       return controls;
     },

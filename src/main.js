@@ -15,6 +15,7 @@ import { createSkeletonVisual } from "./player/skeletonVisual.js";
 import { createThirdPersonCamera } from "./player/thirdPersonCamera.js";
 import { createPortalSystem } from "./portals/index.js";
 import { createDebugMenu } from "./ui/debugMenu.js";
+import { createFpsMeter } from "./ui/fpsMeter.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
@@ -154,6 +155,8 @@ async function start() {
     scene.onDisposeObservable.addOnce(layout.dispose);
     const hud = createHud(bindings, layout, portals);
     scene.onDisposeObservable.addOnce(hud.dispose);
+    const fpsMeter = createFpsMeter();
+    scene.onDisposeObservable.addOnce(fpsMeter.dispose);
     let previousFrameTime = 0;
     let accumulatedTime = 0;
     const debugGame = {
@@ -170,6 +173,10 @@ async function start() {
       setCameraView,
       get hudVisible() { return hud.debugVisible; },
       toggleHud: hud.toggleDebug,
+      get fpsCounterVisible() { return fpsMeter.counterVisible; },
+      toggleFpsCounter() { fpsMeter.setCounterVisible(!fpsMeter.counterVisible); },
+      get fpsGraphVisible() { return fpsMeter.graphVisible; },
+      toggleFpsGraph() { fpsMeter.setGraphVisible(!fpsMeter.graphVisible); },
       teleport(feet, yaw) {
         player.teleport(feet, yaw);
         portals.resetTraveler(playerTraveler);
@@ -200,6 +207,29 @@ async function start() {
     });
     scene.onDisposeObservable.addOnce(input.dispose);
 
+    // Décors interactifs (config `PROPS[].interact`) : à portée, une invite s'affiche en bas
+    // de l'écran ; l'appui sur « Interagir » déclenche le décor via `onPropInteraction`.
+    const interactables = props.filter((prop) => prop.spec.interact).map((prop) => ({ prop, config: prop.spec.interact }));
+    let activeInteractable = null;
+    function nearestInteractable(position) {
+      let best = null;
+      let bestDistance = Infinity;
+      for (const item of interactables) {
+        const distance = Math.hypot(position.x - item.prop.position.x, position.z - item.prop.position.z);
+        if (distance <= item.config.radius && distance < bestDistance) {
+          best = item;
+          bestDistance = distance;
+        }
+      }
+      return best;
+    }
+    // Point d'extension : ce que déclenche un décor à l'appui sur « Interagir » à portée.
+    // Rien n'est encore branché — on signale seulement le déclenchement (console + évènement).
+    function onPropInteraction(prop) {
+      console.info(`Interaction déclenchée : ${prop.spec.name}`);
+      window.dispatchEvent(new CustomEvent("gow:interact", { detail: { name: prop.spec.name } }));
+    }
+
     function present(dt, alpha) {
       const { previousPose, state } = player;
       const feet = visual.root.position;
@@ -215,6 +245,8 @@ async function start() {
         if (visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade))) portals.syncGhostAppearance(playerTraveler);
       }
       hud.update(state, camera, visual.root);
+      activeInteractable = nearestInteractable(state.position);
+      hud.showInteraction(activeInteractable ? activeInteractable.config.prompt : null);
       debugMenu.update();
     }
     camera.reset(SPAWN_YAW);
@@ -226,7 +258,11 @@ async function start() {
         if (restart) accumulatedTime = 0;
       },
     });
-    scene.onAfterRenderObservable.add(() => hud.updatePortals(engine.getFps()));
+    scene.onAfterRenderObservable.add(() => {
+      const fps = engine.getFps();
+      hud.updatePortals(fps);
+      fpsMeter.update(fps);
+    });
     scene.onBeforeRenderObservable.add(() => {
       if (menu.isOpen) return;
       const now = performance.now();
@@ -240,6 +276,7 @@ async function start() {
       // Une image sans pas physique laisse les entrées en attente pour le prochain pas.
       if (steps > 0) {
         const controls = input.read();
+        if (controls.interact && activeInteractable) onPropInteraction(activeInteractable.prop);
         camera.look(controls.lookX, controls.lookY);
         for (let i = 0; i < steps; i++) {
           if (player.update(FIXED_STEP, controls, camera.yaw).respawned) {

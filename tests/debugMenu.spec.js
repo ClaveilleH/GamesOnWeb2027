@@ -5,9 +5,14 @@ const player = (page) => page.evaluate(() => window.gowDev.state().player);
 const panel = (page) => page.getByRole("complementary", { name: "Menu debug" });
 
 // Ouvre le menu et libère la souris : capturée, elle enverrait les clics à la scène.
+// Les catégories sont des accordéons (certaines repliées par défaut) : on les déplie
+// toutes pour que les contrôles de chaque section soient cliquables dans les tests.
 async function openDebugMenu(page) {
   await page.keyboard.press("Control+KeyD");
   await page.keyboard.press("Tab");
+  await page.evaluate(() => {
+    for (const details of document.querySelectorAll("#debug-menu details")) details.open = true;
+  });
 }
 
 // Pointer lock minimal : accordé sur geste, rendu par exitPointerLock.
@@ -48,10 +53,25 @@ test("Ctrl+D ouvre et ferme le menu debug sans ouvrir la pause", async ({ page }
   await page.keyboard.press("Control+KeyD");
   await expect(panel(page)).toBeVisible();
   await expect(page.locator("#pause-menu")).not.toHaveAttribute("open");
+  // « Déplacement » est replié par défaut : on l'ouvre pour lire l'état du mode.
+  await panel(page).getByText("Déplacement", { exact: true }).click();
   await expect(panel(page).getByRole("button", { name: "Marche" })).toHaveAttribute("aria-pressed", "true");
   await expect(panel(page).locator(".debug-position")).toContainText("z -10");
   await page.keyboard.press("Control+KeyD");
   await expect(panel(page)).toBeHidden();
+});
+
+test("la souris libérée (Tab), un Alt+Tab (blur) n’ouvre pas la pause", async ({ page }) => {
+  await emulatePointerLock(page);
+  await startDevGame(page);
+  await page.locator("#scene").click();
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement?.id ?? null)).toBe("scene");
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement)).toBeNull();
+  // Alt+Tab retire le focus de la fenêtre : la souris étant déjà libre, aucune pause.
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await page.waitForTimeout(150);
+  await expect(page.locator("#pause-menu")).not.toHaveAttribute("open");
 });
 
 test("Tab libère la souris sans pause, un clic sur la scène la reprend", async ({ page }) => {
