@@ -15,6 +15,7 @@ import { createSkeletonVisual } from "./player/skeletonVisual.js";
 import { createThirdPersonCamera } from "./player/thirdPersonCamera.js";
 import { createPortalSystem } from "./portals/index.js";
 import { createDebugMenu } from "./ui/debugMenu.js";
+import { createFpsMeter } from "./ui/fpsMeter.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
@@ -143,6 +144,8 @@ async function start() {
     scene.onDisposeObservable.addOnce(layout.dispose);
     const hud = createHud(bindings, layout, portals);
     scene.onDisposeObservable.addOnce(hud.dispose);
+    const fpsMeter = createFpsMeter();
+    scene.onDisposeObservable.addOnce(fpsMeter.dispose);
     let previousFrameTime = 0;
     let accumulatedTime = 0;
     const debugGame = {
@@ -157,6 +160,10 @@ async function start() {
       },
       get hudVisible() { return hud.debugVisible; },
       toggleHud: hud.toggleDebug,
+      get fpsCounterVisible() { return fpsMeter.counterVisible; },
+      toggleFpsCounter() { fpsMeter.setCounterVisible(!fpsMeter.counterVisible); },
+      get fpsGraphVisible() { return fpsMeter.graphVisible; },
+      toggleFpsGraph() { fpsMeter.setGraphVisible(!fpsMeter.graphVisible); },
       teleport(feet, yaw) {
         player.teleport(feet, yaw);
         portals.resetTraveler(playerTraveler);
@@ -236,7 +243,11 @@ async function start() {
         if (restart) accumulatedTime = 0;
       },
     });
-    scene.onAfterRenderObservable.add(() => hud.updatePortals(engine.getFps()));
+    scene.onAfterRenderObservable.add(() => {
+      const fps = engine.getFps();
+      hud.updatePortals(fps);
+      fpsMeter.update(fps);
+    });
     scene.onBeforeRenderObservable.add(() => {
       if (menu.isOpen) return;
       const now = performance.now();

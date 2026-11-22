@@ -218,9 +218,36 @@ main:has(#debug-menu:not([hidden])) #player-state { right: calc(max(.8rem, env(s
 }
 #debug-menu h1 { font-size: .95rem; letter-spacing: -.02em; color: var(--accent); }
 #debug-menu header p, .debug-note { color: var(--muted); font-size: .7rem; }
-#debug-menu section { display: grid; gap: .45rem; padding: .6rem .8rem; border-bottom: 1px solid #2c4545; }
-#debug-menu section:last-child { border-bottom: 0; }
-#debug-menu h2 { font-size: .68rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+#debug-menu .debug-section { border-bottom: 1px solid #2c4545; }
+#debug-menu .debug-section:last-child { border-bottom: 0; }
+#debug-menu summary {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem .8rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#debug-menu summary::-webkit-details-marker { display: none; }
+#debug-menu summary::after {
+  content: "";
+  margin-left: auto;
+  width: .38rem;
+  height: .38rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform .15s ease;
+  opacity: .75;
+}
+#debug-menu .debug-section[open] > summary::after { transform: rotate(-135deg); }
+#debug-menu summary:hover { color: #cfe0d6; }
+.debug-section-body { display: grid; gap: .45rem; padding: 0 .8rem .6rem; }
 #debug-menu button {
   padding: .32rem .45rem;
   border: 1px solid #4c6864;
@@ -241,3 +268,30 @@ main:has(#debug-menu:not([hidden])) #player-state { right: calc(max(.8rem, env(s
 .debug-check input { accent-color: var(--accent); }
 .debug-position-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .debug-position { font-family: ui-monospace, monospace; font-size: .72rem; white-space: pre; }
+
+/* Overlay FPS (compteur et graphique), basculé depuis le menu debug. En haut à gauche. */
+#fps-meter {
+  position: absolute;
+  top: max(.8rem, env(safe-area-inset-top));
+  left: max(.8rem, env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  align-items: flex-start;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.fps-counter {
+  border: 1px solid var(--line);
+  border-radius: .4rem;
+  background: #10282bee;
+  padding: .2rem .5rem;
+  font-size: .82rem;
+  color: #e6efe6;
+}
+.fps-graph {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: .4rem;
+  background: #10282bcc;
+}
