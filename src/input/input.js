@@ -25,11 +25,12 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
   let ignoreMouseUntil = 0;
   let jump = false;
   let respawn = false;
+  let interact = false;
   let lookX = 0;
   let lookY = 0;
   let virtual = null;
   const controls = {
-    forward: 0, strafe: 0, sprint: false, jump: false, respawn: false, up: false, down: false, lookX: 0, lookY: 0,
+    forward: 0, strafe: 0, sprint: false, jump: false, respawn: false, interact: false, up: false, down: false, lookX: 0, lookY: 0,
   };
 
   function hasCapture() {
@@ -49,7 +50,7 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
     held.clear();
     descending = false;
     virtual = null;
-    jump = respawn = false;
+    jump = respawn = interact = false;
     lookX = lookY = 0;
   }
 
@@ -209,6 +210,7 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
     held.add(code);
     if (action === "jump") jump = true;
     if (action === "respawn") respawn = true;
+    if (action === "interact") interact = true;
   }, options);
   window.addEventListener("keyup", (event) => {
     held.delete(event.code);
@@ -239,11 +241,12 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
       controls.sprint = pressed("sprint") || Boolean(virtual?.sprint);
       controls.jump = jump;
       controls.respawn = respawn;
+      controls.interact = interact;
       controls.up = pressed("jump") || Boolean(virtual?.up);
       controls.down = descending || Boolean(virtual?.down);
       controls.lookX = looking ? lookX : 0;
       controls.lookY = looking ? lookY : 0;
-      jump = respawn = false;
+      jump = respawn = interact = false;
       lookX = lookY = 0;
       return controls;
     },

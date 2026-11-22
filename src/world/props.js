@@ -75,6 +75,8 @@ export async function loadDecorProp(scene, spec) {
   return {
     root,
     casters: meshes,
+    position,
+    spec,
     dispose() {
       collider?.dispose();
       container.dispose();

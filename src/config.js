@@ -85,7 +85,9 @@ export function characterByKey(key) {
 // de jouer. `yaw`/`pitch` orientent le modèle (radians ; +Z du fichier vers +Z du monde
 // à 0). `height` le met à l'échelle sur une hauteur en mètres (null : échelle du fichier).
 // `color` applique un matériau uni (utile pour un OBJ sans .mtl). `collision: false`
-// retire la boîte de collision statique.
+// retire la boîte de collision statique. `interact` ajoute une zone d'interaction :
+// `prompt` (verbe affiché « Appuyez sur E pour … »), `radius` (mètres) ; l'appui sur
+// « Interagir » à portée déclenche le décor (voir `onPropInteraction` dans main.js).
 export const PROPS = Object.freeze([
   Object.freeze({
     name: "borne d’arcade",
@@ -96,5 +98,6 @@ export const PROPS = Object.freeze([
     height: 1.8,
     color: "#6b7280",
     collision: true,
+    interact: Object.freeze({ prompt: "jouer", radius: 2.2 }),
   }),
 ]);
