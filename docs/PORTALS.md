@@ -190,7 +190,7 @@ portals.addTraveler({
   visual: {                                      // facultatif : active les fantômes et ombres traversantes
     root,                                        // TransformNode racine du visuel (pose interpolée de l’image)
     radius() { return 1.1 * scale; },            // rayon englobant du visuel, échelle comprise
-    center(out) { /* facultatif : centre du visuel (défaut : position monde de root) */ return out; },
+    center(out) { /* facultatif : centre du visuel (défaut : position monde de root), testé contre les ouvertures */ return out; },
     materials,                                   // matériaux exclusifs au voyageur (le système les clone pour le fantôme et l’ombre)
   },
 });
@@ -374,7 +374,7 @@ Soit W le warp du portail chevauché, R sa rotation et k son échelle. La doublu
 
 À chaque image, après la pose interpolée des visuels (`updateGhosts`), pour chaque voyageur avec visuel :
 
-1. **Fantômes (objet à cheval sur un ou deux portails).** `straddlingPortals` cherche les portails liés P tels que `|d(c)| < r` (c : position de la racine du visuel, r : `radius()`), que la projection de c sur le plan tombe dans l’ouverture élargie de r et que `canTraverse(P)` l’autorise. On retient jusqu’aux **deux** portails les plus proches (triés par distance euclidienne au rectangle d’ouverture) ; `straddlingPortal` renvoie le premier pour la doublure physique (§ 7.4) et le projecteur d’ombre ci-dessous. Pour chaque portail chevauché `P_i` (i ∈ {0, 1}) :
+1. **Fantômes (objet à cheval sur un ou deux portails).** `straddlingPortals` cherche les portails liés P tels que `|d(c)| < r` (c : centre du visuel, `visual.center` ou à défaut position monde de la racine ; r : `radius()`) et que `canTraverse(P)` l’autorise. Le **premier** portail retenu est le plus proche dont l’ouverture elle-même contient la projection de c : collé à l’extérieur d’un montant, un objet frôle le plan sans passer par l’ouverture, et le plan de coupe, infini, le trancherait en deux tandis que le fantôme montrerait l’autre moitié à côté de la sortie. Sans premier portail, rien n’est retenu. Le **second**, facultatif, est le plus proche des autres portails dont l’ouverture élargie de r contient la projection de c (jonction de deux ouvertures sans meneau, portails en angle). Le centre, et non la racine posée aux pieds du joueur, est testé : debout sur un linteau, le joueur n’est pas en face de l’ouverture. `straddlingPortal` renvoie le premier pour la doublure physique (§ 7.4) et le projecteur d’ombre ci-dessous. Pour chaque portail chevauché `P_i` (i ∈ {0, 1}) :
    - Côté `σ_i` = signe de `d_i(center())`, le centre **simulé** du dernier pas fixe (et non la position interpolée du visuel, qui a jusqu’à un pas de retard ; en cas de distance exactement nulle, repli sur `arrivalSide` si `P_i === arrival`, sinon `+1`).
    - Matériaux de l’original : `clipPlane = discardPlane(P_0, −σ_0)` et `clipPlane2 = discardPlane(P_1, −σ_1)` (ou `idlePlane` si un seul portail est chevauché). Chaque plan rejette la partie qui a traversé le portail correspondant.
    - Fantôme i (portail `P_i`, destination `D_i = P_i.target`, warp `W_i = P_i.warp`) : sa racine prend `W_i(pose de la racine)` (position, `rotationQuaternion`, `scaling × s`) et ses descendants copient leurs transformations locales depuis l’original. Ses matériaux clonés reçoivent :
@@ -627,7 +627,8 @@ Sans bridage, le pire cas (pavillon) prend environ 2 ms par image. Le coût GPU 
 ## 14. Limites connues
 
 - Portails verticaux et statiques uniquement (pas de portail mobile ni incliné).
-- Un voyageur qui chevauche plusieurs ouvertures affiche jusqu’à **deux** fantômes simultanés (les deux portails chevauchés les plus proches) ; au-delà de deux ouvertures chevauchées en même temps, seules les deux plus proches reçoivent un fantôme et un plan de coupe. La doublure physique (`bodyTraveler.js`) et le projecteur d’ombre traversante (`createShadowCaster`) continuent d’utiliser uniquement le portail chevauché le plus proche (`straddlingPortal`).
+- Un voyageur qui chevauche plusieurs ouvertures affiche jusqu’à **deux** fantômes simultanés (les deux portails chevauchés les plus proches) ; au-delà de deux ouvertures chevauchées en même temps, seules les deux plus proches reçoivent un fantôme et un plan de coupe. La doublure physique (`bodyTraveler.js`) et le projecteur d’ombre traversante (`createShadowCaster`) continuent d’utiliser uniquement le premier portail chevauché (`straddlingPortal`).
+- Un objet n’est coupé par un portail que lorsque son centre est en face de l’ouverture (§ 7.5). Avec un montant de chaque côté, comme pour toutes les ouvertures des démos, un objet dont le centre est à côté de l’ouverture n’y engage aucune partie. Au bord d’une ouverture sans montant, la partie engagée resterait visible côté source tant que le centre n’est pas en face.
 - La doublure transmet les variations de vitesse linéaire et angulaire. Ses corrections de position sont perdues à la resynchronisation. Sa boîte reste entière jusque dans la partie masquée par le plan de coupe du visuel. Seules les boîtes des caisses disposent d’une doublure physique. La capsule du joueur garde un seul corps.
 - **Ombres traversantes** :
   - Seuls les voyageurs enregistrés dotés d’un visuel (joueur, caisses) projettent leur ombre à travers un portail (pas le décor statique).

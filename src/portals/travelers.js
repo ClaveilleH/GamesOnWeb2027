@@ -1,7 +1,7 @@
-import { Light } from "@babylonjs/core/Lights/light";
-import { Plane } from "@babylonjs/core/Maths/math.plane";
-import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { Observable } from "@babylonjs/core/Misc/observable";
+import { Light } from "@babylonjs/core/Lights/light.js";
+import { Plane } from "@babylonjs/core/Maths/math.plane.js";
+import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector.js";
+import { Observable } from "@babylonjs/core/Misc/observable.js";
 import { PortalLayers } from "./layers.js";
 import {
   discardPlane, insideAperture, secondaryGhostClipPlane, segmentCrossing, shadowPortalCrossing,
@@ -79,48 +79,55 @@ function syncHierarchyPose(root, sources, copies, warp, position) {
   }
 }
 
-export function straddlingPortals(portals, adapter, position, radius, out = []) {
+// Portails liés chevauchés par un objet de centre `center` et de rayon `radius` (au plus deux, le plus
+// proche d’abord) : |d(center)| < radius. Le premier exige que le centre soit en face de l’ouverture
+// elle-même. Collé à l’extérieur d’un montant, l’objet frôle le plan sans passer par l’ouverture : le plan
+// de coupe, infini, le trancherait en deux et le fantôme montrerait l’autre moitié à côté de la sortie.
+// Le second accepte l’ouverture élargie du rayon (jonction de deux ouvertures sans meneau, portails en
+// angle) ; sans premier, pas de second.
+export function straddlingPortals(portals, adapter, center, radius, out = []) {
   let first = null;
-  let second = null;
+  let firstDistance = Infinity;
+  let near = null;
+  let next = null;
   let d0 = Infinity;
   let d1 = Infinity;
   for (let i = 0; i < portals.length; i++) {
     const portal = portals[i];
     if (!portal.warp) continue;
-    toLocal(portal, position, local);
+    toLocal(portal, center, local);
     const z = local.z;
     if (Math.abs(z) >= radius || !insideAperture(portal, local, radius)) continue;
     if (adapter.canTraverse && !adapter.canTraverse(portal)) continue;
     const dx = Math.max(0, Math.abs(local.x) - portal.width / 2);
     const dy = Math.max(0, -local.y, local.y - portal.height);
     const distanceSq = dx * dx + dy * dy + z * z;
+    if (dx === 0 && dy === 0 && distanceSq < firstDistance) {
+      first = portal;
+      firstDistance = distanceSq;
+    }
     if (distanceSq >= d1) continue;
     if (distanceSq < d0) {
-      second = first;
+      next = near;
       d1 = d0;
-      first = portal;
+      near = portal;
       d0 = distanceSq;
     } else {
-      second = portal;
+      next = portal;
       d1 = distanceSq;
     }
   }
+  const second = near === first ? next : near;
+  out.length = first ? (second ? 2 : 1) : 0;
   if (first) {
     out[0] = first;
-    if (second) {
-      out[1] = second;
-      out.length = 2;
-    } else {
-      out.length = 1;
-    }
-  } else {
-    out.length = 0;
+    if (second) out[1] = second;
   }
   return out;
 }
 
-export function straddlingPortal(portals, adapter, position, radius) {
-  return straddlingPortals(portals, adapter, position, radius, nearestResult)[0] ?? null;
+export function straddlingPortal(portals, adapter, center, radius) {
+  return straddlingPortals(portals, adapter, center, radius, nearestResult)[0] ?? null;
 }
 
 function shadowPortal(portals, adapter, center, radius, lightDir, straddling, straddleSide, out) {
@@ -518,7 +525,9 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
       const enabled = root.isEnabled();
       const position = root.parent ? root.computeWorldMatrix(true).getTranslationToRef(worldPosition) : root.position;
       const radius = adapter.visual.radius();
-      if (enabled) straddlingPortals(portals, adapter, position, radius, straddling);
+      // Le centre du visuel, et non sa racine (aux pieds du joueur) : debout sur un linteau, le joueur n’est pas en face de l’ouverture.
+      const center = adapter.visual.center ? adapter.visual.center(visualCenter) : position;
+      if (enabled) straddlingPortals(portals, adapter, center, radius, straddling);
       else straddling.length = 0;
       if (straddling.length > 0) {
         // Juste après le warp, l'interpolation peut encore présenter la pose d'avant le plan.
@@ -539,10 +548,9 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
         shadowCaster.hide();
         continue;
       }
-      // Le projecteur d’ombre continue d’utiliser le portail chevauché le plus proche.
+      // Le projecteur d’ombre continue d’utiliser le premier portail chevauché.
       const nearest = straddling[0] ?? null;
       const straddleSide = straddling.length > 0 ? straddleSides[0] : 0;
-      const center = adapter.visual.center ? adapter.visual.center(visualCenter) : position;
       const crossing = shadowPortal(portals, adapter, center, radius, lightDir, nearest, straddleSide, shadowHit);
       if (crossing && (!isLightBlocked || !isLightBlocked(center, lightDir.scaleToRef(-1, towardLight), lightBlockDistance))) {
         shadowCaster.show(crossing.portal, crossing.side, position, lightDir, margin);
