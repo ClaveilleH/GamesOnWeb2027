@@ -91,15 +91,15 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 | R11 | Cohérence | basse | `src/portals/system.js:52,110-115,178-189` | Variables déclarées après usage, démontage dupliqué, `hazeLevels` non validé à chaud | fait (lot 7) |
 | R12 | Bug | basse | `src/player/characterModel.js:50-62` | Échec du calage : conteneur et nœuds laissés dans la scène | fait (lot 4) |
 | R13 | Docs | basse | `docs/*.md`, `README.md`, `src/main.js:58` | Documentation désynchronisée du code | fait (lot 1) |
-| R14 | Outillage | info | `docs/babylon-patches/` | Correctifs Babylon non appliqués automatiquement | non retenu |
-| R15 | Nommage | basse | `src/core/physics.js:6`, `src/input/input.js:1-7`, `src/world/testTerrain.js` | Conventions de nommage mêlées | non retenu |
-| R16 | Conventions | basse | `src/portals/math.js:1-2`, `src/portals/cameraPath.js:1`, `src/dev/flickerProbe.js:1` | Imports Babylon avec ou sans `.js` | non retenu (règle documentée au lot 1) |
-| R17 | Tests | basse | `tests/portalMath.spec.js`, `tests/frameProbe.spec.js`, `tests/browser.spec.js` | Tests unitaires purs lancés par Playwright | non retenu |
-| R18 | Cohérence | basse | `src/portals/math.js:20-34,175,189-195,392-393` | Deux façons d’obtenir le repère d’un portail | non retenu |
-| R19 | HTML | basse | `index.html:31` | `role="dialog"` et `aria-modal` redondants sur `<dialog>` | non retenu |
-| R20 | Build | basse | `vite build` | Avertissement « chunks > 500 kB » | non retenu |
+| R14 | Outillage | info | `docs/babylon-patches/` | Correctifs Babylon non appliqués automatiquement | non retenu : choix délibéré, le jeu ne dépend d’aucun correctif |
+| R15 | Nommage | basse | `src/core/physics.js:6`, `src/input/input.js:1-7`, `src/world/testTerrain.js` | Conventions de nommage mêlées | non retenu : renommages transverses, conflits avec les branches en cours |
+| R16 | Conventions | basse | `src/portals/math.js:1-2`, `src/portals/cameraPath.js:1`, `src/dev/flickerProbe.js:1` | Imports Babylon avec ou sans `.js` | non retenu : 96 lignes de churn ; règle documentée (lot 1) |
+| R17 | Tests | basse | `tests/portalMath.spec.js`, `tests/frameProbe.spec.js`, `tests/browser.spec.js` | Tests unitaires purs lancés par Playwright | non retenu : dépendance de plus pour un gain faible |
+| R18 | Cohérence | basse | `src/portals/math.js:20-34,175,189-195,392-393` | Deux façons d’obtenir le repère d’un portail | non retenu : objets simples des tests unitaires, chemin chaud |
+| R19 | HTML | basse | `index.html:31` | `role="dialog"` et `aria-modal` redondants sur `<dialog>` | non retenu : inoffensif, à vérifier au lecteur d’écran |
+| R20 | Build | basse | `vite build` | Avertissement « chunks > 500 kB » | non retenu : décision produit, sans gain au chargement |
 | R21 | Docs | basse | `src/world/crates.js:26-29`, `src/main.js:112-120` | Ordre implicite entre l’inscription aux ombres et `addTraveler` | fait (lot 1) |
-| R22 | Tests | basse | `tests/player.spec.js` | Couverture : repli du modèle 3D, attentes fixes en millisecondes | fait (lot 4, partiel) |
+| R22 | Tests | basse | `tests/player.spec.js` | Couverture : repli du modèle 3D, attentes fixes en millisecondes | fait (lot 4, partiel : repli testé ; attentes en ms et `dispose` non traités) |
 | R23 | Tests | moyenne | `tests/portalFlicker.spec.js:54-75` | 280 lectures de pixels sans rendre la main : OOM sur une machine de 8 Go | fait (lot 2) |
 
 ### R1 — `npm test` ne reconstruit pas le site testé (moyenne)
@@ -369,4 +369,50 @@ Les lots vont du plus sûr au plus risqué. Après chaque lot : `npm run build` 
 
 ## 6. Bilan
 
-*À compléter en fin de chantier.*
+### Ce qui a été fait
+
+Sept lots, un commit chacun après la review (`d7a253a`), tous vérifiés par `npm run build`, `npm test` et, à partir du lot 3, `npm run lint`.
+
+- **Lot 1 : code mort et documentation (R10, R13, R16, R21).** Une dizaine d’exports, paramètres et valeurs par défaut jamais utilisés sont retirés. La documentation est resynchronisée : références par nom de fonction, API complète de `gowDev`, six limites de Babylon, contrat d’ordre des ombres, règle des extensions d’import, version de Node.
+- **Lot 2 : tests (R4, R23).** Gabarit commun `tests/support/devGame.js`. La sonde de scintillement rend la main toutes les 50 captures, ce qui supprime l’OOM du test du passage de la caméra dans A2 sur une machine de 8 Go.
+- **Lot 3 : outillage (R1, R2).** `npm test` reconstruit `dist/`. ESLint 10 est ajouté avec `npm run lint`, une étape lint en CI et un `.editorconfig`.
+- **Lot 4 : correctif (R12, R22).** Un modèle glTF refusé au calage ne laisse plus ses nœuds dans la scène. Deux tests couvrent le repli vers le squelette.
+- **Lot 5 : cohérence (R6 à R9).** `gait.js`, `world/lighting.js`, `createSightTest` ; réglages de caméra et de réapparition dans `config.js`.
+- **Lot 6 : séparation dev/prod (R3).** Le hook de pilotage est chargé à la demande. Le bundle principal perd 103 ko (gzip : −25 ko).
+- **Lot 7 : portails (R5, R11).** Fabrique commune des clones de voyageurs ; `system.js` remis en ordre.
+
+Volume : 16 fichiers de `src/` modifiés (+186/−190 lignes, dont deux modules ajoutés) et 7 fichiers de tests (+110/−104, dont 49 lignes de nouveaux tests). Aucun correctif Babylon n’a été touché.
+
+**Comportement.** Le comportement est inchangé, hors le correctif R12. Les rapports chiffrés de la suite sont identiques à l’octet près entre la référence et le dernier lot : contours et pixels isolés des dix trajets de scintillement, pires variations du voile, compilations d’effets pendant les premières traversées. Le seul rapport nouveau est celui du test A2 caméra, qui plantait auparavant. Il donne exactement la calibration documentée : 239 images, 58 pixels isolés, au plus 3 par image.
+
+### Tests avant et après
+
+| | Référence (`71406e0`) | Après le lot 7 (`182d5c4`) |
+| --- | --- | --- |
+| Tests | 102 | 104 (+2 : repli du modèle 3D) |
+| Réussis | 97 | 100 |
+| En échec | 5, liés à l’environnement (§ 2) | 4, tous déjà en échec à la référence |
+| Durée de `npm test` sur la machine de mesure | 38 min (la machine swappe pendant l’OOM) | 21 min |
+| `npm run build` | OK | OK |
+| `npm run lint` | (absent) | OK |
+
+Les quatre échecs restants sont ceux du § 2 :
+
+- `portalPhysics.spec.js` A2 et E, et `portals.spec.js` « l’arche montre l’esplanade » : blocage de `browser.newContext` dans `beforeEach` ;
+- `portals.spec.js` « passage au demi-format » : délai de 30 s dépassé.
+
+Ils échouent à l’identique sur le code de référence. Ils viennent de la machine de mesure (4 cœurs, 7,7 Go partagés avec d’autres services, Chromium headless et SwiftShader), pas du code.
+
+### Ce qui reste
+
+- **Les quatre échecs d’environnement.** À confirmer sur la CI GitHub, qui ne les présentait pas d’après `docs/PORTALS.md` § 16.
+  - Le blocage de `newContext` (`Browser.setDownloadBehavior : Failed to find browser context`, puis `browser.close` en 30 s) n’apparaît pas hors du lanceur Playwright. Piste : le couple `chromium-headless-shell` 1255 et SwiftShader sous faible mémoire.
+  - Si le test du demi-format reste lent ailleurs, un `test.setTimeout(60_000)` local serait justifié.
+- **Constats non retenus**, à reprendre au besoin :
+  - R15 (nommage), à l’occasion d’une refonte des fichiers concernés ;
+  - R17 (Vitest pour les tests unitaires) ;
+  - R18 (repère des portails) ;
+  - R19 (ARIA du menu) ;
+  - R20 (seuil de taille des chunks).
+- **Couverture (R22).** Attentes en millisecondes de `player.spec.js` et `dispose` du système de portails, non traités.
+- **Première exécution de l’étape lint en CI.** Les versions d’ESLint sont épinglées. En local, `npm ci` installe `eslint`, `@eslint/js` et `globals` depuis `package-lock.json`, puis `npm run lint` passe. Reste à le constater en CI au prochain push.
