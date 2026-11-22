@@ -33,6 +33,9 @@ export function createPortalSystem(scene, options = {}) {
   let maxDepth = 4;
   let maxPasses = 48;
   let apertureMargin = 0.03;
+  let hazeLevels = 2;
+  let sky = null;
+  let disposed = false;
   const settings = {
     get maxDepth() { return maxDepth; },
     set maxDepth(n) { maxDepth = Math.max(0, Math.min(8, Math.floor(n) || 0)); },
@@ -49,13 +52,15 @@ export function createPortalSystem(scene, options = {}) {
     hazeMinRange: options.hazeMinRange ?? 4,
     hazeSmoothing: options.hazeSmoothing ?? 8,
     // Nombre de niveaux de récursion voilés, en partant du plus profond (§ 6.6).
-    hazeLevels: Math.max(1, Math.floor(options.hazeLevels ?? 2)),
+    get hazeLevels() { return hazeLevels; },
+    set hazeLevels(n) { hazeLevels = Math.max(1, Math.floor(n) || 0); },
     clipBias: options.clipBias ?? 0.01,
     portalShadows: options.portalShadows ?? true,
   };
   settings.maxDepth = options.maxDepth ?? maxDepth;
   settings.maxPasses = options.maxPasses ?? maxPasses;
   settings.apertureMargin = options.apertureMargin ?? apertureMargin;
+  settings.hazeLevels = options.hazeLevels ?? hazeLevels;
   const isLightBlocked = typeof options.isLightBlocked === "function" ? options.isLightBlocked : null;
   const travelers = createTravelerRegistry(() => registry, settings, isLightBlocked);
   const warnedRotationLinks = new WeakMap();
@@ -83,6 +88,13 @@ export function createPortalSystem(scene, options = {}) {
     portal.warp = null;
   }
 
+  function disposePortal(portal) {
+    unlink(portal);
+    warnedRotationLinks.delete(portal);
+    portal.aperture.dispose(false, true);
+    portal.outline.dispose();
+  }
+
   const system = {
     camera: options.camera ?? scene.activeCamera,
     get portals() { return registry; },
@@ -107,12 +119,9 @@ export function createPortalSystem(scene, options = {}) {
     },
     removePortal(portal) {
       if (!registry.includes(portal)) return;
-      unlink(portal);
-      warnedRotationLinks.delete(portal);
       registry = Object.freeze(registry.filter((other) => other !== portal));
+      disposePortal(portal);
       renderer.removePortal(portal);
-      portal.aperture.dispose(false, true);
-      portal.outline.dispose();
       travelers.linksChanged();
       travelers.updateGhosts();
     },
@@ -175,17 +184,10 @@ export function createPortalSystem(scene, options = {}) {
       renderer.setSky(null);
       travelers.dispose();
       renderer.dispose();
-      for (const portal of registry) {
-        unlink(portal);
-        warnedRotationLinks.delete(portal);
-        portal.aperture.dispose(false, true);
-        portal.outline.dispose();
-      }
+      for (const portal of registry) disposePortal(portal);
       registry = Object.freeze([]);
     },
   };
   const renderer = createPortalRenderer(scene, system);
-  let sky = null;
-  let disposed = false;
   return system;
 }

@@ -132,43 +132,68 @@ function shadowPortal(portals, adapter, center, radius, lightDir, straddling, st
   return out;
 }
 
-function createGhostClone({ root, materials }, sources, index) {
-  const suffix = " · fantôme " + index;
+function sceneShadowGenerators(scene) {
+  return scene.lights.flatMap((light) => [...(light.getShadowGenerators()?.values() ?? [])]);
+}
+
+// Copie d’un visuel de voyageur pour un fantôme ou un projecteur d’ombre : racine détachée et masquée,
+// géométrie partagée, matériaux clonés, et chaque maillage inscrit dans les cartes d’ombre qui contiennent
+// sa source (parmi `generators`, ou tous les générateurs de la scène).
+function createVisualCopy({ root, materials }, sources, suffix, { layerMask, receiveShadows, generators }) {
   const clone = root.clone(root.name + suffix, null);
   clone.parent = null;
   clone.rotationQuaternion ??= Quaternion.Identity();
   clone.setEnabled(false);
   const copies = [clone, ...clone.getDescendants()];
   const duplicates = materials.map((material) => material.clone(material.name + suffix));
-  const targetPlane = idlePlane.clone();
-  const secondaryPlane = idlePlane.clone();
-  // Deux plans toujours définis pour partager les defines shader de l’original dès le préchauffage.
-  for (let i = 0; i < duplicates.length; i++) {
-    duplicates[i].clipPlane = targetPlane;
-    duplicates[i].clipPlane2 = secondaryPlane;
-  }
-
+  const targets = generators ?? sceneShadowGenerators(root.getScene());
   const meshes = [];
-  const shadowCasters = [];
+  const registered = [];
   for (let i = 0; i < sources.length; i++) {
     const source = sources[i];
     const copy = copies[i];
     if (i > 0) copy.rotationQuaternion ??= Quaternion.Identity();
     if (!source.subMeshes) continue;
-    copy.layerMask = PortalLayers.late;
+    copy.layerMask = layerMask;
     copy.isPickable = false;
+    if (receiveShadows !== undefined) copy.receiveShadows = receiveShadows;
     copy.material = duplicates[materials.indexOf(source.material)];
     meshes.push({ source, copy });
-    for (const light of root.getScene().lights) {
-      const generators = light.getShadowGenerators();
-      if (!generators) continue;
-      for (const generator of generators.values()) {
-        if (generator.getShadowMap()?.renderList?.includes(source)) {
-          addShadowCaster(generator, copy);
-          shadowCasters.push({ generator, copy });
-        }
+    for (const generator of targets) {
+      if (generator.getShadowMap()?.renderList?.includes(source)) {
+        addShadowCaster(generator, copy);
+        registered.push({ generator, copy });
       }
     }
+  }
+
+  return {
+    clone, copies, materials: duplicates,
+    syncAppearance() {
+      for (let i = 0; i < materials.length; i++) duplicates[i].alpha = materials[i].alpha;
+      for (let i = 0; i < meshes.length; i++) {
+        const { source, copy } = meshes[i];
+        copy.visibility = source.visibility;
+        copy.isVisible = source.isVisible;
+      }
+    },
+    dispose() {
+      for (const { generator, copy } of registered) generator.removeShadowCaster(copy, false);
+      clone.dispose();
+      for (const material of duplicates) material.dispose();
+    },
+  };
+}
+
+function createGhostClone(visual, sources, index) {
+  const copy = createVisualCopy(visual, sources, " · fantôme " + index, { layerMask: PortalLayers.late });
+  const { clone } = copy;
+  const targetPlane = idlePlane.clone();
+  const secondaryPlane = idlePlane.clone();
+  // Deux plans toujours définis pour partager les defines shader de l’original dès le préchauffage.
+  for (const material of copy.materials) {
+    material.clipPlane = targetPlane;
+    material.clipPlane2 = secondaryPlane;
   }
 
   function hide() {
@@ -178,33 +203,20 @@ function createGhostClone({ root, materials }, sources, index) {
     clone.setEnabled(false);
   }
 
-  function syncAppearance() {
-    for (let i = 0; i < materials.length; i++) duplicates[i].alpha = materials[i].alpha;
-    for (let i = 0; i < meshes.length; i++) {
-      const { source, copy } = meshes[i];
-      copy.visibility = source.visibility;
-      copy.isVisible = source.isVisible;
-    }
-  }
-
   function show(portal, side, otherPortal, otherSide, position) {
     discardPlane(portal.target, -side, targetPlane);
     if (!otherPortal || !secondaryGhostClipPlane(portal, side, otherPortal, otherSide, secondaryPlane)) {
       copyPlane(secondaryPlane, idlePlane);
     }
-    syncHierarchyPose(root, sources, copies, portal.warp, position);
-    syncAppearance();
+    syncHierarchyPose(visual.root, sources, copy.copies, portal.warp, position);
+    copy.syncAppearance();
     clone.setEnabled(true);
   }
 
   return {
-    show, hide, syncAppearance,
+    show, hide, syncAppearance: copy.syncAppearance,
     get active() { return clone.isEnabled(); },
-    dispose() {
-      for (const { generator, copy } of shadowCasters) generator.removeShadowCaster(copy, false);
-      clone.dispose();
-      for (const material of duplicates) material.dispose();
-    },
+    dispose: copy.dispose,
   };
 }
 
@@ -287,7 +299,8 @@ function createGhostSet(visual) {
   };
 }
 
-function createShadowCaster({ root, materials }) {
+function createShadowCaster(visual) {
+  const { root } = visual;
   const sources = [root, ...root.getDescendants()];
   const scene = root.getScene();
   const generators = [];
@@ -321,44 +334,19 @@ function createShadowCaster({ root, materials }) {
   }
   if (!primaryLight) return null;
 
-  const clone = root.clone(root.name + " · ombre", null);
-  clone.parent = null;
-  clone.rotationQuaternion ??= Quaternion.Identity();
-  clone.setEnabled(false);
-  const copies = [clone, ...clone.getDescendants()];
-  const duplicates = materials.map((material) => material.clone(material.name + " · ombre"));
+  // Calque 0 : ignoré par les caméras et les passes de portail, mais dessiné par la carte d’ombre (renderList sans forceLayerMaskCheck).
+  const copy = createVisualCopy(visual, sources, " · ombre", { layerMask: 0, receiveShadows: false, generators });
+  const { clone } = copy;
   const clipPlane = idlePlane.clone();
   const prismPlanes = Array.from({ length: 4 }, () => idlePlane.clone());
   // Cinq plans toujours définis pour figer les defines shader dès le préchauffage.
-  for (let i = 0; i < duplicates.length; i++) {
-    const material = duplicates[i];
+  for (const material of copy.materials) {
     material.clipPlane = clipPlane;
     material.clipPlane2 = prismPlanes[0];
     material.clipPlane3 = prismPlanes[1];
     material.clipPlane4 = prismPlanes[2];
     material.clipPlane5 = prismPlanes[3];
     material.clipPlane6 = null;
-  }
-
-  const meshes = [];
-  const registered = [];
-  for (let i = 0; i < sources.length; i++) {
-    const source = sources[i];
-    const copy = copies[i];
-    if (i > 0) copy.rotationQuaternion ??= Quaternion.Identity();
-    if (!source.subMeshes) continue;
-    // Calque 0 : ignoré par les caméras et les passes de portail, mais dessiné par la carte d’ombre (renderList sans forceLayerMaskCheck).
-    copy.layerMask = 0;
-    copy.isPickable = false;
-    copy.receiveShadows = false;
-    copy.material = duplicates[materials.indexOf(source.material)];
-    meshes.push({ source, copy });
-    for (const generator of generators) {
-      if (generator.getShadowMap()?.renderList?.includes(source)) {
-        addShadowCaster(generator, copy);
-        registered.push({ generator, copy });
-      }
-    }
   }
 
   function resetPlanes() {
@@ -370,15 +358,6 @@ function createShadowCaster({ root, materials }) {
     if (!clone.isEnabled()) return;
     resetPlanes();
     clone.setEnabled(false);
-  }
-
-  function syncAppearance() {
-    for (let i = 0; i < materials.length; i++) duplicates[i].alpha = materials[i].alpha;
-    for (let i = 0; i < meshes.length; i++) {
-      const { source, copy } = meshes[i];
-      copy.visibility = source.visibility;
-      copy.isVisible = source.isVisible;
-    }
   }
 
   function getLightDirection(out) {
@@ -396,19 +375,15 @@ function createShadowCaster({ root, materials }) {
       hide();
       return;
     }
-    syncHierarchyPose(root, sources, copies, portal.warp, position);
-    syncAppearance();
+    syncHierarchyPose(root, sources, copy.copies, portal.warp, position);
+    copy.syncAppearance();
     clone.setEnabled(true);
   }
 
   return {
-    show, hide, syncAppearance, getLightDirection,
+    show, hide, syncAppearance: copy.syncAppearance, getLightDirection,
     get active() { return clone.isEnabled(); },
-    dispose() {
-      for (const { generator, copy } of registered) generator.removeShadowCaster(copy, false);
-      clone.dispose();
-      for (const material of duplicates) material.dispose();
-    },
+    dispose: copy.dispose,
   };
 }
 

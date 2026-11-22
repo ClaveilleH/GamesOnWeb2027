@@ -4,7 +4,7 @@ Branche `review/codebase-2026-11-22`, créée le 22/11/2026 depuis `origin/exper
 
 **Question posée** : le projet est-il conventionnel et cohérent, et que peut-on simplifier ?
 
-**Méthode.** Lecture intégrale des 63 fichiers suivis : `src/` (34 modules), `tests/` (9 fichiers), `docs/` (4 documents et 5 correctifs Babylon), `ops/`, `.github/`, configuration racine, `README.md` et `LANCER.md`. Compléments :
+**Méthode.** Lecture intégrale des 63 fichiers suivis : `src/` (31 modules JavaScript et une feuille de style), `tests/` (9 fichiers), `docs/` (4 documents et 5 correctifs Babylon), `ops/`, `.github/`, configuration racine, `README.md` et `LANCER.md`. Compléments :
 
 - un passage ESLint 9 ponctuel, lancé hors du dépôt avec `no-unused-vars`, `no-undef` et `no-use-before-define` ;
 - le graphe des imports internes ;
@@ -82,13 +82,13 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 | R2 | Outillage | moyenne | `package.json:7-12` | Aucun linter ni `.editorconfig` | fait (lot 3) |
 | R3 | Dev/prod | moyenne | `src/main.js:12`, `src/dev/devHook.js:21,31` | Hook de dev embarqué en production, activation testée deux fois | fait (lot 6) |
 | R4 | Tests | moyenne | `tests/portal*.spec.js` | Gabarit `beforeEach`/`afterEach`/`withClock` copié dans 5 fichiers, filtre console incohérent | fait (lot 2) |
-| R5 | Simplification | moyenne | `src/portals/travelers.js:135-209, 290-413` | Fantôme et projecteur d’ombre dupliquent la fabrique de clone | à faire |
+| R5 | Simplification | moyenne | `src/portals/travelers.js:135-209, 290-413` | Fantôme et projecteur d’ombre dupliquent la fabrique de clone | fait (lot 7) |
 | R6 | Cohérence | moyenne | `src/player/skeletonVisual.js:155-157`, `src/player/characterModel.js:34-38` | Choix de la démarche dupliqué avec les mêmes seuils | fait (lot 5) |
 | R7 | Simplification | moyenne | `src/main.js:44-222` | `start()` de 180 lignes, éclairage et ciel mêlés à la boucle | fait (lot 5) |
 | R8 | Cohérence | basse | `src/main.js:81-88`, `src/player/thirdPersonCamera.js:18,37-40` | Masque et rayon de « ligne de vue » écrits deux fois | fait (lot 5) |
 | R9 | Config | basse | `src/player/thirdPersonCamera.js:8,16`, `src/main.js:101` | Réglages en dur hors de `config.js` | fait (lot 5) |
 | R10 | Code mort | basse | voir détail | Exports, paramètres et valeurs par défaut jamais utilisés | fait (lot 1) |
-| R11 | Cohérence | basse | `src/portals/system.js:52,110-115,178-189` | Variables déclarées après usage, démontage dupliqué, `hazeLevels` non validé à chaud | à faire |
+| R11 | Cohérence | basse | `src/portals/system.js:52,110-115,178-189` | Variables déclarées après usage, démontage dupliqué, `hazeLevels` non validé à chaud | fait (lot 7) |
 | R12 | Bug | basse | `src/player/characterModel.js:50-62` | Échec du calage : conteneur et nœuds laissés dans la scène | fait (lot 4) |
 | R13 | Docs | basse | `docs/*.md`, `README.md`, `src/main.js:58` | Documentation désynchronisée du code | fait (lot 1) |
 | R14 | Outillage | info | `docs/babylon-patches/` | Correctifs Babylon non appliqués automatiquement | non retenu |
@@ -365,6 +365,7 @@ Les lots vont du plus sûr au plus risqué. Après chaque lot : `npm run build` 
 | 4 | `fix(personnage): retire le modèle refusé au calage avant de reprendre le squelette` | OK | 104 tests : 100 réussis, 4 échecs (inclus dans la référence) | Deux tests ajoutés (repli du modèle 3D) |
 | 5 | `refactor: regroupe démarche, éclairage, ligne de vue et réglages de caméra` | OK | 100 réussis, 4 échecs (inclus dans la référence) | `start()` passe de 179 à 151 lignes. Lumières créées dans le même ordre et sous les mêmes noms (`ciel`, `soleil`) ; les tests d’ombres et de ciel, lus au pixel, sont inchangés. |
 | 6 | `perf(dev): charge le hook de pilotage à la demande` | OK | 100 réussis, 4 échecs (inclus dans la référence) | Bundle principal : 1 149 → 1 046 ko (gzip 292 → 267 ko). Chunk `devHook` de 21 ko, chargé seulement avec `?dev` (vérifié par les requêtes réseau ; sans `?dev`, `window.gowDev` est indéfini). |
+| 7 | `refactor(portals): factorise les clones des voyageurs et ordonne system.js` | OK | 100 réussis, 4 échecs (inclus dans la référence) | `travelers.js` : 572 → 547 lignes. Les rapports de scintillement (contours, pixels isolés par image et par bord), du voile et des compilations d’effets sont identiques à l’octet près à ceux de la référence. |
 
 ## 6. Bilan
 
