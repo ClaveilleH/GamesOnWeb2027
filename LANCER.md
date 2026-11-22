@@ -60,9 +60,10 @@ npx playwright install --only-shell chromium
 Ensuite :
 
 ```powershell
-npm run build
 npm test
 ```
+
+`npm test` reconstruit le site avant de lancer les tests.
 
 ## Problèmes fréquents
 

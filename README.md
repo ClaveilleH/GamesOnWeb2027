@@ -34,14 +34,15 @@ Pas à pas pour Windows et problèmes fréquents : [LANCER.md](LANCER.md).
 Pour tester la version de production avec Chromium, lancer
 
 ```sh
-npm run build
 npx playwright install --only-shell chromium
 npm test
 ```
 
+`npm test` reconstruit d’abord `dist/`, puis lance Playwright sur `vite preview`. `npm run lint` vérifie le code avec ESLint.
+
 ## Production
 
-GitHub Actions compile le site et teste le chargement de Havok, l’atterrissage, la marche et le saut du personnage, ainsi que le rendu et la traversée des portails sur les pull requests vers `main` et sur les pushs vers `main`. Après un push validé, le workflow publie le contenu de `dist/` dans une release GitHub. L’archive embarque Babylon.js et le module WebAssembly de Havok.
+GitHub Actions vérifie le code avec ESLint, compile le site et teste le chargement de Havok, l’atterrissage, la marche et le saut du personnage, ainsi que le rendu et la traversée des portails sur les pull requests vers `main` et sur les pushs vers `main`. Après un push validé, le workflow publie le contenu de `dist/` dans une release GitHub. L’archive embarque Babylon.js et le module WebAssembly de Havok.
 
 Le VPS vérifie la dernière release toutes les trois minutes. Il en vérifie la somme SHA-256 et le numéro de commit, puis bascule Nginx sur cette version. En cas d’échec, la version en ligne continue d’être servie. Le commit déployé est consultable sur [gow.bertho.tech/version.txt](https://gow.bertho.tech/version.txt).
 

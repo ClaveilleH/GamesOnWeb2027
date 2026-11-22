@@ -75,6 +75,7 @@ test("l’horloge manuelle avance la caisse d’un pas puis interpole son visuel
     crate.push({ x: 6, y: 0, z: 0 });
     const original = performance.now;
     const clock = dev.manualClock();
+    let sample;
     try {
       const positions = [crate.state().x];
       for (let i = 0; i < 6; i++) {
@@ -83,12 +84,14 @@ test("l’horloge manuelle avance la caisse d’un pas puis interpole son visuel
       }
       const previous = crate.visual().x;
       clock.step(1000 / 120);
-      return { positions, previous, body: crate.state(), visual: crate.visual(), fps: dev.state().fps };
+      sample = { positions, previous, body: crate.state(), visual: crate.visual(), fps: dev.state().fps };
     } finally {
       clock.release();
-      if (performance.now !== original) throw new Error("L’horloge réelle doit reprendre.");
     }
+    return { ...sample, realClock: performance.now === original };
   });
+  // L’horloge réelle doit reprendre.
+  expect(sample.realClock).toBe(true);
   for (let i = 1; i < sample.positions.length; i++) {
     expect(sample.positions[i] - sample.positions[i - 1]).toBeCloseTo(6 / 60, 3);
   }

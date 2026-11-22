@@ -78,8 +78,8 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 
 | ID | Axe | Sévérité | Emplacement | Résumé | Statut |
 | --- | --- | --- | --- | --- | --- |
-| R1 | Outillage | moyenne | `playwright.config.js:12` | `npm test` sert `dist/` sans le reconstruire | à faire |
-| R2 | Outillage | moyenne | `package.json:7-12` | Aucun linter ni `.editorconfig` | à faire |
+| R1 | Outillage | moyenne | `playwright.config.js:12` | `npm test` sert `dist/` sans le reconstruire | fait (lot 3) |
+| R2 | Outillage | moyenne | `package.json:7-12` | Aucun linter ni `.editorconfig` | fait (lot 3) |
 | R3 | Dev/prod | moyenne | `src/main.js:12`, `src/dev/devHook.js:21,31` | Hook de dev embarqué en production, activation testée deux fois | à faire |
 | R4 | Tests | moyenne | `tests/portal*.spec.js` | Gabarit `beforeEach`/`afterEach`/`withClock` copié dans 5 fichiers, filtre console incohérent | fait (lot 2) |
 | R5 | Simplification | moyenne | `src/portals/travelers.js:135-209, 290-413` | Fantôme et projecteur d’ombre dupliquent la fabrique de clone | à faire |
@@ -106,7 +106,7 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 
 - **Problème.** `playwright.config.js:12` lance `npm run preview`, qui sert le contenu existant de `dist/`. Après une modification de `src/`, un `npm test` sans `npm run build` teste l’ancienne build sans le signaler. La CI n’est pas touchée (elle construit avant), mais en local c’est un piège classique. Le README demande de penser au build à la main.
 - **Proposition.** `webServer.command: "npm run build && npm run preview -- …"`, l’usage documenté par Playwright pour Vite. La build prend environ 1,5 s. Le README est simplifié en conséquence.
-- **Risque.** Faible : environ 2 s de plus par lancement. La CI construit deux fois, ce qui reste négligeable.
+- **Risque.** Faible : environ 2 s de plus par lancement. La CI construit deux fois, ce qui reste négligeable. L’avertissement de taille des chunks de Vite (R20) apparaît désormais en tête de la sortie de `npm test`.
 
 ### R2 — Pas de linter (moyenne)
 
@@ -123,6 +123,7 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 
   Ajouter le script `npm run lint` et une étape `npm run lint` en CI avant la build, ainsi qu’un `.editorconfig` (2 espaces, LF, UTF-8). Pas de Prettier (voir R15).
 - **Risque.** Faible : trois devDependencies et aucun effet sur le bundle.
+- **Réalisé (lot 3).** `eslint` 10.15.0, `@eslint/js` 10.0.1 et `globals` 17.14.0, épinglés comme les autres dépendances. La configuration recommandée passe sans exception. Elle a relevé un `throw` dans un `finally` (`no-unsafe-finally`) dans `tests/portals.spec.js`, qui aurait masqué l’erreur d’origine du test : la vérification de l’horloge réelle se fait maintenant côté Node.
 
 ### R3 — Hook de dev embarqué en production (moyenne)
 
@@ -355,6 +356,7 @@ Les lots vont du plus sûr au plus risqué. Après chaque lot : `npm run build` 
 | --- | --- | --- | --- | --- |
 | 1 | `refactor: supprime l’API morte et resynchronise la documentation` | OK | 97 réussis, 5 échecs identiques à la référence | Lot 2 avancé avant l’outillage : il supprime l’OOM de `portalFlicker.spec.js:134`, qui fait aussi swapper la machine |
 | 2 | `test: partage le gabarit des tests de portails et borne la mémoire de la sonde` | OK | 98 réussis, 4 échecs (inclus dans la référence) | Le test du passage de la caméra dans A2 passe : 239 images, 58 pixels isolés, maximum 3 par image, soit exactement la calibration de `PORTALS.md` § 13.2. Pic mémoire de Chrome : 2,7 Go au lieu de 6,3 Go et d’un plantage. Suite en 20,5 min au lieu de 38. `portalPhysics.spec.js` applique désormais le filtre console commun, sans nouvel échec. |
+| 3 | `build: reconstruit le site avant les tests et ajoute ESLint` | OK | 98 réussis, 4 échecs (inclus dans la référence) | `dist/` supprimé avant le lancement : `npm test` l’a reconstruit. `npm run lint` passe. |
 
 ## 6. Bilan
 
