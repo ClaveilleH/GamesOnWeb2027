@@ -40,8 +40,12 @@ export const CAMERA = Object.freeze({
   fadeFar: 1.2,
   minPlayerOpacity: 0.03,
   fov: 0.82,
-  // Première personne (menu debug) : hauteur de l'œil au-dessus des pieds, à l'échelle 1, et tangage permis.
-  eyeHeight: 1.72,
+  // Première personne (menu debug). Œil et cou dépendent du modèle (src/player/firstPersonFit.js,
+  // `CHARACTERS[].firstPerson`). Le corps reste visible : la tête est coupée dans les vues dont la caméra
+  // est à moins de `headCutRadius` (échelle 1) du cou (vue directe, fantôme à cheval sur un portail).
+  headCutRadius: 0.6,
+  // Recul de l'œil devant un mur (le plan proche et ses coins restent hors du mur).
+  eyeWallClearance: 0.08,
   firstPersonPitch: 0,
   firstPersonMinPitch: -1.48,
   firstPersonMaxPitch: 1.48,
@@ -58,6 +62,9 @@ export const CAMERA = Object.freeze({
 //                      (idle, walk, run, jump, fall…). Un modèle à un seul clip le joue partout.
 //   walk/runAnimationSpeed : vitesses (m/s) où marche et course tournent à vitesse normale.
 //   blendRate        : vitesse de fondu entre deux animations (1/s).
+//   firstPerson      : facultatif, { eyeHeight, eyeForward, headCutHeight } en mètres à l'échelle 1,
+//                      pour remplacer la mesure automatique de la première personne (yeux, avancée
+//                      de l'œil devant l'axe du corps, hauteur de coupe de la tête).
 const noNamedAnimations = Object.freeze({ idle: null, walk: null, run: null, jump: null, fall: null });
 export const CHARACTERS = Object.freeze([
   Object.freeze({

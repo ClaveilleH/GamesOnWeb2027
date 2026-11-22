@@ -11,6 +11,7 @@ import { createKeyboardLayout } from "./input/keyboardLayout.js";
 import { readPreference, writePreference } from "./input/preferences.js";
 import { createPlayerController } from "./player/playerController.js";
 import { createCharacterModel } from "./player/characterModel.js";
+import { measureFirstPerson } from "./player/firstPersonFit.js";
 import { createSkeletonVisual } from "./player/skeletonVisual.js";
 import { createThirdPersonCamera } from "./player/thirdPersonCamera.js";
 import { createPortalSystem } from "./portals/index.js";
@@ -126,6 +127,8 @@ async function start() {
     const crates = demos.crates;
     for (const crate of crates) scene.onDisposeObservable.addOnce(crate.dispose);
     const bones = visual.root.getChildMeshes();
+    // Mesuré au repos, avant la première image animée.
+    const firstPersonFit = measureFirstPerson(visual.root, bones, character.firstPerson);
     const propCasters = props.flatMap((prop) => prop.casters);
     for (const mesh of [...casters, ...demos.casters, ...propCasters, ...bones]) shadows.addShadowCaster(mesh, false);
     const playerTraveler = {
@@ -139,16 +142,19 @@ async function start() {
     portals.onTraverseObservable.add(({ traveler, warp }) => {
       if (traveler === playerTraveler) camera.applyWarp(warp);
     });
-    const bodyLayers = new Map(bones.map((mesh) => [mesh, mesh.layerMask]));
-    // À la première personne, le corps quitte toutes les vues (calque 0) mais garde son ombre.
+    // À la première personne, le corps reste visible (pieds, reflets dans les portails) ; seule la tête
+    // est coupée là où la caméra est dedans. Le plan de coupe ajoute des variantes de shader : on les
+    // préchauffe, l’une après l’autre si on bascule plusieurs fois.
+    const headCut = { height: firstPersonFit.headCutHeight, radius: CAMERA.headCutRadius };
+    let warming = Promise.resolve();
     function setCameraView(view) {
       const firstPerson = view === "first";
       if (camera.firstPerson === firstPerson) return;
-      camera.setFirstPerson(firstPerson);
-      for (const mesh of bones) mesh.layerMask = firstPerson ? 0 : bodyLayers.get(mesh);
-      // Opaque : un maillage transparent ne projette pas d’ombre.
-      if (firstPerson) visual.setFade(1);
-      portals.syncGhostAppearance(playerTraveler);
+      camera.setFirstPerson(firstPerson, firstPersonFit);
+      player.state.faceCamera = firstPerson;
+      portals.setHeadCut(playerTraveler, firstPerson ? headCut : null);
+      if (firstPerson && visual.setFade(1)) portals.syncGhostAppearance(playerTraveler);
+      warming = warming.then(() => portals.warmUp()).catch((error) => console.error(error));
     }
     const bindings = createBindings();
     const layout = createKeyboardLayout();
@@ -252,7 +258,8 @@ async function start() {
     camera.reset(SPAWN_YAW);
     present(0, 0);
     dev?.installDevHook({
-      scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, presentPose: () => present(0, 1),
+      scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, firstPersonFit,
+      presentPose: () => present(0, 1),
       syncFrameTime(now, restart) {
         previousFrameTime = now;
         if (restart) accumulatedTime = 0;

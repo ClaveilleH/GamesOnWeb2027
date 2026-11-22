@@ -24,7 +24,7 @@ export function createThirdPersonCamera(scene) {
   const placementOptions = { epsilon: 0 };
   const simulatedEye = Vector3.Zero();
   const eyeLag = Vector3.Zero();
-  const eyeOptions = { epsilon: 0 };
+  const eyeOptions = { epsilon: 0, clearance: 0, collide };
   let yaw = SPAWN_YAW;
   let pitch = CAMERA.initialPitch;
   let distance = CAMERA.distance;
@@ -32,6 +32,8 @@ export function createThirdPersonCamera(scene) {
   let warped = false;
   let snap = false;
   let firstPerson = false;
+  // Œil du modèle à l’échelle 1 (src/player/firstPersonFit.js).
+  const eye = { height: 0, forward: 0 };
 
   const pitchLimits = () => (firstPerson
     ? [CAMERA.firstPersonMinPitch, CAMERA.firstPersonMaxPitch]
@@ -48,14 +50,19 @@ export function createThirdPersonCamera(scene) {
   }
 
   // L’œil suit les pieds interpolés, qui peuvent être de l’autre côté d’un portail juste après
-  // une traversée. Le chemin part de l’œil simulé : à l’aplomb du centre et les portails étant
-  // verticaux, il est toujours dans l’espace du joueur. Il ne suit que le retard d’interpolation :
-  // si la garde ε le raccourcit, l’œil recule de quelques millimètres au plus, sans changer de hauteur.
+  // une traversée, et se tient devant l’axe du corps : il peut donc franchir un portail avant le
+  // corps, ou entrer dans un mur. Le chemin part de l’axe à hauteur d’œil : à l’aplomb du centre et
+  // les portails étant verticaux, ce point est toujours dans l’espace du joueur. Le chemin reste à
+  // l’horizontale (retard d’interpolation et avancée) : si un mur ou la garde ε le raccourcit, l’œil
+  // recule sans changer de hauteur.
   function followEye(feet, scale, portals, simulatedFeet) {
-    const eyeHeight = CAMERA.eyeHeight * scale;
+    const eyeHeight = eye.height * scale;
+    const forward = eye.forward * scale;
     simulatedEye.set(simulatedFeet.x, simulatedFeet.y + eyeHeight, simulatedFeet.z);
-    eyeLag.set(feet.x, feet.y + eyeHeight, feet.z).subtractInPlace(simulatedEye);
+    eyeLag.set(feet.x + Math.sin(yaw) * forward, feet.y + eyeHeight, feet.z + Math.cos(yaw) * forward)
+      .subtractInPlace(simulatedEye);
     eyeOptions.epsilon = 2 * MIN_NEAR * scale;
+    eyeOptions.clearance = CAMERA.eyeWallClearance * scale;
     portals.traceView(simulatedEye, eyeLag, eyeLag.length(), eyeOptions, eyeView);
     cameraScale = scale * eyeView.warp.scale;
     warped = eyeView.crossed > 0;
@@ -94,7 +101,12 @@ export function createThirdPersonCamera(scene) {
     camera, reset,
     get firstPerson() { return firstPerson; },
     // Garde le regard ; l’épaule lissée repart de la position du joueur au retour à l’épaule.
-    setFirstPerson(enabled) {
+    // `fit` : { eyeHeight, eyeForward } du modèle, à l’échelle 1.
+    setFirstPerson(enabled, fit) {
+      if (fit) {
+        eye.height = fit.eyeHeight;
+        eye.forward = fit.eyeForward;
+      }
       if (firstPerson === enabled) return;
       firstPerson = enabled;
       pitch = clampPitch(pitch);

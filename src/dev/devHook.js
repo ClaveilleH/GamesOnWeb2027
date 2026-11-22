@@ -27,6 +27,7 @@ export function observeDevEffects(engine) {
 
 export function installDevHook({
   scene, player, playerTraveler, visual, camera, portals, input, crates, presentPose, getEffects, syncFrameTime,
+  firstPersonFit,
 }) {
   const engine = scene.getEngine();
   const canvas = engine.getRenderingCanvas();
@@ -64,6 +65,7 @@ export function installDevHook({
           minZ: mainCamera.minZ, warped: camera.warped, firstPerson: camera.firstPerson },
         portals: { depth: stats.depthReached, maxDepth: settings.maxDepth, passes: stats.passes, fallbacks: stats.fallbacks,
           haze: stats.haze.map((range) => ({ ...range })) },
+        firstPersonFit: { ...firstPersonFit },
         fps: engine.getFps(), ghosts: portals.activeGhosts, shadowCasters: portals.activeShadowCasters,
         effects: getEffects(),
         traversals: Array.from({ length: Math.min(history.length, traversalCount) }, (_, i) =>

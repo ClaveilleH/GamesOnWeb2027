@@ -339,6 +339,13 @@ export function createPortalRenderer(scene, system) {
     lateMeshes.length = lateCount;
   }
 
+  // Les voyageurs à coupe de tête (première personne) se coupent selon la caméra de chaque vue.
+  function drawLate(node) {
+    system.placeHeadPlanes(node.eye);
+    scene.resetCachedMaterial();
+    drawVisible(node, lateMeshes);
+  }
+
   function drawVisible(node, meshes) {
     let count = 0;
     for (const mesh of meshes) {
@@ -457,7 +464,7 @@ export function createPortalRenderer(scene, system) {
         drawChildren(child);
         stencil(child.level);
         setFog(child);
-        drawVisible(child, lateMeshes);
+        drawLate(child);
       }
       drawAperture(child, parent, true);
       scissor(parent);
@@ -482,8 +489,9 @@ export function createPortalRenderer(scene, system) {
       drawChildren(root);
       stencil(0);
       setFog(root);
-      drawVisible(root, lateMeshes);
+      drawLate(root);
     } finally {
+      system.clearHeadPlanes();
       if (drawingCamera) renderer.finishRender();
       drawingCamera = null;
       engine.setStencilBuffer(false);

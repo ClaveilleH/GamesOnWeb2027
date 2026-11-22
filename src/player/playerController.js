@@ -44,6 +44,8 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     position: Vector3.Zero(), yaw: SPAWN_YAW, speed: 0, scale: 1,
     grounded: false, verticalSpeed: 0, respawned: true,
     mode: "walk", flySpeed: 8,
+    // Première personne : le corps regarde où regarde la caméra au lieu de se tourner vers sa course.
+    faceCamera: false,
   };
   const noGravity = Vector3.Zero();
   const flyStart = Vector3.Zero();
@@ -166,6 +168,15 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     placedSupport = true;
   }
 
+  function turn(dt, dx, dz, cameraYaw) {
+    if (state.faceCamera && !state.respawned) {
+      state.yaw = cameraYaw;
+    } else if (state.speed > 0.08 * state.scale) {
+      const delta = Math.atan2(dx, dz) - state.yaw;
+      state.yaw += Math.atan2(Math.sin(delta), Math.cos(delta)) * -Math.expm1(-PLAYER.turnRate * dt);
+    }
+  }
+
   function fly(dt, input, cameraYaw) {
     const sin = Math.sin(cameraYaw);
     const cos = Math.cos(cameraYaw);
@@ -192,10 +203,7 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     state.speed = Math.hypot(dx, dz) / dt;
     state.verticalSpeed = capsule.getVelocity().y;
     state.grounded = false;
-    if (state.speed > 0.08 * state.scale) {
-      const delta = Math.atan2(dx, dz) - state.yaw;
-      state.yaw += Math.atan2(Math.sin(delta), Math.cos(delta)) * -Math.expm1(-PLAYER.turnRate * dt);
-    }
+    turn(dt, dx, dz, cameraYaw);
     placedSupport = true;
   }
 
@@ -260,10 +268,7 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     state.verticalSpeed = capsule.getVelocity().y;
     state.grounded = grounded && !jumping;
     if (state.verticalSpeed <= 0) risingFromJump = false;
-    if (state.speed > 0.08 * state.scale) {
-      const delta = Math.atan2(dx, dz) - state.yaw;
-      state.yaw += Math.atan2(Math.sin(delta), Math.cos(delta)) * -Math.expm1(-PLAYER.turnRate * dt);
-    }
+    turn(dt, dx, dz, cameraYaw);
     if (state.respawned) syncPreviousPose();
     return state;
   }

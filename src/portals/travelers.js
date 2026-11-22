@@ -21,6 +21,20 @@ function copyPlane(target, source) {
   target.d = source.d;
 }
 
+// Coupe de tête : rejette ce qui dépasse `height` (unités locales du visuel) au-dessus de la racine,
+// seulement si la caméra de la vue est à moins de `radius` de ce point. Sinon, plan inactif.
+const headPoint = new Vector3();
+function placeHeadPlane(node, cut, eye, plane) {
+  const scale = node.scaling.y;
+  headPoint.set(node.position.x, node.position.y + cut.height * scale, node.position.z);
+  if (Vector3.DistanceSquared(eye, headPoint) < (cut.radius * scale) ** 2) {
+    plane.normal.set(0, 1, 0);
+    plane.d = -headPoint.y;
+  } else {
+    copyPlane(plane, idlePlane);
+  }
+}
+
 const filteredShadowMaps = new WeakSet();
 
 // Les clones des fantômes et des projecteurs restent dans la liste de la carte d’ombre pour que
@@ -175,8 +189,6 @@ function createVisualCopy({ root, materials }, sources, suffix, { layerMask, rec
         const { source, copy } = meshes[i];
         copy.visibility = source.visibility;
         copy.isVisible = source.isVisible;
-        // Un original retiré des vues (calque 0, ex. corps à la première personne) garde son ombre : sa copie aussi.
-        copy.layerMask = source.layerMask === 0 ? 0 : layerMask;
       }
     },
     dispose() {
@@ -205,6 +217,11 @@ function createGhostClone(visual, sources, index) {
     clone.setEnabled(false);
   }
 
+  const headPlane = idlePlane.clone();
+  function setHeadCut(on) {
+    for (const material of copy.materials) material.clipPlane3 = on ? headPlane : null;
+  }
+
   function show(portal, side, otherPortal, otherSide, position) {
     discardPlane(portal.target, -side, targetPlane);
     if (!otherPortal || !secondaryGhostClipPlane(portal, side, otherPortal, otherSide, secondaryPlane)) {
@@ -216,7 +233,9 @@ function createGhostClone(visual, sources, index) {
   }
 
   return {
-    show, hide, syncAppearance: copy.syncAppearance,
+    show, hide, syncAppearance: copy.syncAppearance, setHeadCut,
+    placeHeadPlane(cut, eye) { placeHeadPlane(clone, cut, eye, headPlane); },
+    clearHeadPlane() { copyPlane(headPlane, idlePlane); },
     get active() { return clone.isEnabled(); },
     dispose: copy.dispose,
   };
@@ -248,6 +267,8 @@ function createGhostSet(visual) {
     createGhostClone(visual, sources, 1),
     createGhostClone(visual, sources, 2),
   ];
+  const headPlane = idlePlane.clone();
+  let headCut = null;
 
   function update(straddling, sides, position) {
     const count = straddling.length;
@@ -284,6 +305,26 @@ function createGhostSet(visual) {
 
   return {
     update, syncAppearance,
+    // Le troisième plan reste posé tant que la coupe est active : ses variantes se préchauffent par warmUp.
+    setHeadCut(cut) {
+      headCut = cut;
+      for (const material of materials) material.clipPlane3 = cut ? headPlane : null;
+      for (const ghost of ghosts) ghost.setHeadCut(Boolean(cut));
+      copyPlane(headPlane, idlePlane);
+      for (const ghost of ghosts) ghost.clearHeadPlane();
+    },
+    placeHeadPlanes(eye) {
+      if (!headCut) return;
+      placeHeadPlane(root, headCut, eye, headPlane);
+      for (const ghost of ghosts) {
+        if (ghost.active) ghost.placeHeadPlane(headCut, eye);
+      }
+    },
+    clearHeadPlanes() {
+      if (!headCut) return;
+      copyPlane(headPlane, idlePlane);
+      for (const ghost of ghosts) ghost.clearHeadPlane();
+    },
     // false : plans toujours posés (préchauffage de la variante à plans) ; true : plans nuls au repos.
     setRestAtIdle(value) {
       restAtIdle = value;
@@ -294,6 +335,7 @@ function createGhostSet(visual) {
       for (let i = 0; i < materials.length; i++) {
         materials[i].clipPlane = previousPlanes[i].clipPlane;
         materials[i].clipPlane2 = previousPlanes[i].clipPlane2;
+        materials[i].clipPlane3 = null;
       }
       ghosts[0].dispose();
       ghosts[1].dispose();
@@ -519,6 +561,16 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
     ghostCount,
     isGhostActive(adapter) { return ghostCount(adapter) > 0; },
     isShadowCasterActive(adapter) { return entryFor(adapter)?.shadowCaster?.active ?? false; },
+    // Coupe de tête d’un voyageur ({ height, radius } en unités locales de son visuel, ou null).
+    setHeadCut(adapter, cut) { entryFor(adapter)?.ghosts?.setHeadCut(cut); },
+    // Avant chaque passe des maillages late, depuis la position de la caméra de cette vue.
+    placeHeadPlanes(eye) {
+      for (const entry of entries) entry.ghosts?.placeHeadPlanes(eye);
+    },
+    // Après les vues : la carte d’ombre de l’image suivante voit le corps entier.
+    clearHeadPlanes() {
+      for (const entry of entries) entry.ghosts?.clearHeadPlanes();
+    },
     get activeGhosts() { return entries.reduce((n, entry) => n + (entry.ghosts?.activeCount ?? 0), 0); },
     get activeShadowCasters() { return entries.reduce((n, entry) => n + (entry.shadowCaster?.active ? 1 : 0), 0); },
     linksChanged() {

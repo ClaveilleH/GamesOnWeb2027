@@ -99,16 +99,19 @@ async function firstPersonBeforePair(page) {
   });
   await page.keyboard.press("Control+KeyD");
   await page.keyboard.press("Tab");
-  await page.getByRole("complementary", { name: "Menu debug" }).getByRole("button", { name: "1re personne" }).click();
+  // Les sections du menu sont des accordéons : « Caméra » est repliée par défaut.
+  const menu = page.getByRole("complementary", { name: "Menu debug" });
+  await menu.getByText("Caméra", { exact: true }).click();
+  await menu.getByRole("button", { name: "1re personne" }).click();
   await page.waitForFunction(() => {
-    const { camera, player } = window.gowDev.state();
-    return camera.firstPerson && Math.abs(camera.y - player.y - 1.72) < 0.02;
+    const { camera, player, firstPersonFit } = window.gowDev.state();
+    return camera.firstPerson && Math.abs(camera.y - player.y - firstPersonFit.eyeHeight) < 0.02;
   });
-  return pair;
+  return { ...pair, fit: await page.evaluate(() => window.gowDev.state().firstPersonFit) };
 }
 
 test("à la 1re personne, l’œil traverse une paire de portails sans entrer dans la garde du plan proche", async ({ page }) => {
-  const { entry, exit } = await firstPersonBeforePair(page);
+  const { entry, exit, fit } = await firstPersonBeforePair(page);
 
   // Relevé de la caméra à chaque image, jusqu’à 20 images après la traversée.
   const frames = await page.evaluate(() => new Promise((resolve) => {
@@ -146,25 +149,25 @@ test("à la 1re personne, l’œil traverse une paire de portails sans entrer da
   const { player } = await page.evaluate(() => window.gowDev.state());
   expect(facing(exit, last)).toBe(true);
   expect(signedDistance(exit, last)).toBeGreaterThan(0);
-  expect(Math.hypot(last.x - player.x, last.z - player.z)).toBeLessThan(0.2);
+  expect(Math.hypot(last.x - player.x, last.z - player.z)).toBeLessThan(fit.eyeForward + 0.2);
 
-  // Arrêté à 4 mm de l’entrée, sans l’avoir franchie : la garde repousse l’œil devant le plan.
-  const eye = await page.evaluate(async (entry) => {
+  // Arrêté avec l’œil à 4 mm de l’entrée, sans l’avoir franchie : la garde le repousse devant le plan.
+  const eye = await page.evaluate(async ({ entry, fit }) => {
     const dev = window.gowDev;
-    const gap = 0.004;
+    const back = 0.004 + fit.eyeForward;
     dev.teleportPlayer({
-      x: entry.origin.x + gap * Math.sin(entry.yaw), y: entry.origin.y, z: entry.origin.z + gap * Math.cos(entry.yaw),
+      x: entry.origin.x + back * Math.sin(entry.yaw), y: entry.origin.y, z: entry.origin.z + back * Math.cos(entry.yaw),
       yaw: entry.yaw + Math.PI,
     });
     for (let i = 0; i < 3; i++) await new Promise(requestAnimationFrame);
     return dev.state().camera;
-  }, entry);
+  }, { entry, fit });
   expect(eye.warped).toBe(false);
   expect(signedDistance(entry, eye)).toBeGreaterThan(0.0099);
 });
 
 test("à la 1re personne, une traversée au ralenti garde l’œil à hauteur constante", async ({ page }) => {
-  await firstPersonBeforePair(page);
+  const { fit } = await firstPersonBeforePair(page);
   // 2 ms par image : chaque pas physique est interpolé sur ~8 images, et l’œil comme le centre
   // passent plusieurs images à moins de ε du plan, des deux côtés.
   const heights = await page.evaluate(() => {
@@ -187,5 +190,5 @@ test("à la 1re personne, une traversée au ralenti garde l’œil à hauteur co
     }
   });
   expect(heights.length).toBeGreaterThan(60);
-  for (const height of heights) expect(height).toBeCloseTo(1.72, 3);
+  for (const height of heights) expect(height).toBeCloseTo(fit.eyeHeight, 3);
 });
