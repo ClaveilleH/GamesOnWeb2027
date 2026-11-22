@@ -3,11 +3,12 @@ import { Scene } from "@babylonjs/core/scene";
 import { Color4 } from "@babylonjs/core/Maths/math.color";
 import { Clamp, InverseLerp, NormalizeRadians, SmoothStep } from "@babylonjs/core/Maths/math.scalar.functions";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { CAMERA, CHARACTER, FIXED_STEP, MAX_ACCUMULATED_TIME, PLAYER, SPAWN_YAW } from "./config.js";
+import { CAMERA, CHARACTERS, DEFAULT_CHARACTER, FIXED_STEP, MAX_ACCUMULATED_TIME, PLAYER, PROPS, SPAWN_YAW, characterByKey } from "./config.js";
 import { createSightTest, initPhysics } from "./core/physics.js";
 import { createBindings } from "./input/bindings.js";
 import { createInput } from "./input/input.js";
 import { createKeyboardLayout } from "./input/keyboardLayout.js";
+import { readPreference, writePreference } from "./input/preferences.js";
 import { createPlayerController } from "./player/playerController.js";
 import { createCharacterModel } from "./player/characterModel.js";
 import { createSkeletonVisual } from "./player/skeletonVisual.js";
@@ -19,6 +20,7 @@ import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
 import { createLighting, skyPalette } from "./world/lighting.js";
 import { createPortalDemos } from "./world/portalDemos.js";
+import { loadDecorProp } from "./world/props.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
 const canvas = document.querySelector("#scene");
@@ -26,18 +28,56 @@ const status = document.querySelector("#status");
 // `npm run dev` ou `?dev` : hook de pilotage des tests (docs/PORTALS.md § 10.3), chargé à part du bundle principal.
 const devMode = import.meta.env.DEV || new URLSearchParams(location.search).has("dev");
 
-// Modèle configuré (ou `?model=` dans l'URL), sinon squelette procédural. Un modèle
-// introuvable ou illisible n'empêche pas de jouer : on revient au squelette.
-async function createPlayerVisual(scene) {
-  const url = new URLSearchParams(location.search).get("model") || CHARACTER.model;
-  if (url) {
+const CHARACTER_PREFERENCE = "character";
+
+// Personnage à charger : `?model=<url>` (outils/tests) > `?character=<clé>` > choix mémorisé
+// > Shrek par défaut. Les tests automatisés (`navigator.webdriver`) gardent le squelette,
+// léger et stable, sauf override explicite.
+function resolveCharacter() {
+  const params = new URLSearchParams(location.search);
+  const model = params.get("model");
+  if (model !== null) {
+    const base = characterByKey(DEFAULT_CHARACTER) ?? CHARACTERS[0];
+    return { ...base, key: "custom", label: "Modèle imposé", model: model === "none" ? null : model };
+  }
+  const key = params.get("character")
+    || readPreference(CHARACTER_PREFERENCE)
+    || (navigator.webdriver ? "squelette" : DEFAULT_CHARACTER);
+  return characterByKey(key) ?? characterByKey("squelette");
+}
+
+// Modèle choisi, sinon squelette procédural. Un modèle introuvable ou illisible n'empêche
+// pas de jouer : on revient au squelette.
+async function createPlayerVisual(scene, character) {
+  if (character.model) {
     try {
-      return await createCharacterModel(scene, url);
+      return await createCharacterModel(scene, character);
     } catch (error) {
-      console.warn(`Modèle ${url} non chargé, retour au squelette procédural.`, error);
+      console.warn(`Modèle ${character.model} non chargé, retour au squelette procédural.`, error);
     }
   }
   return createSkeletonVisual(scene);
+}
+
+// Décors fixes (CONFIG `PROPS`). Un fichier absent est vérifié avant le chargement
+// pour ne laisser ni erreur réseau ni erreur Babylon : il est simplement ignoré.
+async function loadProps(scene) {
+  const loaded = [];
+  for (const spec of PROPS) {
+    try {
+      // En dev, Vite renvoie `index.html` (text/html) pour un fichier absent au lieu d'un 404 :
+      // on traite les deux cas comme « introuvable » pour éviter une tentative de chargement vouée à l'échec.
+      const head = await fetch(spec.url, { method: "HEAD" });
+      if (!head.ok || (head.headers.get("content-type") || "").includes("text/html")) {
+        console.warn(`Décor ${spec.url} introuvable, ignoré.`);
+        continue;
+      }
+      loaded.push(await loadDecorProp(scene, spec));
+    } catch (error) {
+      console.warn(`Décor ${spec.url} non chargé, ignoré : ${error.message}`);
+    }
+  }
+  return loaded;
 }
 
 async function start() {
@@ -55,7 +95,8 @@ async function start() {
     const { shadows } = createLighting(scene);
 
     const casters = createTestTerrain(scene);
-    const visual = await createPlayerVisual(scene);
+    const character = resolveCharacter();
+    const visual = await createPlayerVisual(scene, character);
     scene.onDisposeObservable.addOnce(visual.dispose);
     const camera = createThirdPersonCamera(scene);
     const sightTest = createSightTest(physics);
@@ -67,6 +108,8 @@ async function start() {
     const portals = createPortalSystem(scene, { camera: camera.camera, isLightBlocked });
     scene.onDisposeObservable.addOnce(portals.dispose);
     const demos = createPortalDemos(scene, portals);
+    const props = await loadProps(scene);
+    for (const prop of props) scene.onDisposeObservable.addOnce(prop.dispose);
     // Le ciel est peint par le quad de fond du renderer, après le décor, là où la profondeur vaut encore 1.
     portals.createSky(skyPalette);
     function shouldRespawn(position) {
@@ -82,7 +125,8 @@ async function start() {
     const crates = demos.crates;
     for (const crate of crates) scene.onDisposeObservable.addOnce(crate.dispose);
     const bones = visual.root.getChildMeshes();
-    for (const mesh of [...casters, ...demos.casters, ...bones]) shadows.addShadowCaster(mesh, false);
+    const propCasters = props.flatMap((prop) => prop.casters);
+    for (const mesh of [...casters, ...demos.casters, ...propCasters, ...bones]) shadows.addShadowCaster(mesh, false);
     const playerTraveler = {
       name: "joueur", center: player.center, applyWarp: player.applyWarp,
       visual: {
@@ -103,6 +147,14 @@ async function start() {
     let accumulatedTime = 0;
     const debugGame = {
       player, portals, timeScale: 1,
+      characters: CHARACTERS.map(({ key, label }) => ({ key, label })),
+      currentCharacter: character.key,
+      // Le personnage est choisi au chargement : on mémorise et on recharge la page.
+      selectCharacter(key) {
+        if (key === character.key) return;
+        writePreference(CHARACTER_PREFERENCE, key);
+        location.reload();
+      },
       get hudVisible() { return hud.debugVisible; },
       toggleHud: hud.toggleDebug,
       teleport(feet, yaw) {

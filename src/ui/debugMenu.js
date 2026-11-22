@@ -48,6 +48,14 @@ export function createDebugMenu(canvas, game) {
   const options = { signal: listeners.signal };
   const { player, portals } = game;
 
+  const characterButtons = (game.characters ?? []).map(({ key, label }) => {
+    const button = element("button", { type: "button", textContent: label });
+    button.dataset.character = key;
+    button.setAttribute("aria-pressed", String(key === game.currentCharacter));
+    button.addEventListener("click", () => game.selectCharacter(key), options);
+    return button;
+  });
+
   const modeButtons = movementModes.map((mode) => {
     const button = element("button", { type: "button", textContent: modeLabels[mode] });
     button.dataset.mode = mode;
@@ -103,6 +111,11 @@ export function createDebugMenu(canvas, game) {
       element("h1", { textContent: "Debug" }),
       element("p", {}, [element("kbd", { textContent: "Tab" }), " souris · ", element("kbd", { textContent: "Ctrl D" }), " fermer"]),
     ]),
+    ...(characterButtons.length
+      ? [section("Personnage",
+          element("div", { className: "debug-choices" }, characterButtons),
+          element("p", { className: "debug-note" }, ["Recharge la page pour appliquer."]))]
+      : []),
     section("Déplacement",
       element("div", { className: "debug-choices" }, modeButtons),
       flySpeed.row,

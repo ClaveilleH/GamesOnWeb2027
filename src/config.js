@@ -45,17 +45,56 @@ export const CAMERA = Object.freeze({
   maxZ: 500,
 });
 
-// Modèle 3D du personnage. `model` à null garde le squelette procédural. Le paramètre
-// d'URL `?model=/models/fichier.glb` remplace ce réglage pour essayer un modèle.
-export const CHARACTER = Object.freeze({
-  model: null,
-  // Rotation (radians) à ajouter si le modèle ne regarde pas vers +Z.
-  yawOffset: 0,
-  // Noms exacts des animations du fichier. null : détection par mots-clés (idle, walk, run, jump, fall…).
-  animations: Object.freeze({ idle: null, walk: null, run: null, jump: null, fall: null }),
-  // Vitesses (m/s) auxquelles les animations de marche et de course sont jouées à vitesse normale.
-  walkAnimationSpeed: 1.6,
-  runAnimationSpeed: 4.5,
-  // Vitesse de fondu entre deux animations (1/s).
-  blendRate: 10,
-});
+// Personnages jouables. `model` à null garde le squelette procédural ; sinon un
+// fichier glTF/GLB de `public/models/`. On choisit dans le menu debug (Ctrl+D), le
+// choix est mémorisé. `?character=<clé>` ou `?model=<url>` force un personnage.
+//   yawOffset        : rotation (radians) à ajouter si le modèle ne regarde pas vers +Z.
+//   animations       : noms exacts des clips du fichier ; null = détection par mots-clés
+//                      (idle, walk, run, jump, fall…). Un modèle à un seul clip le joue partout.
+//   walk/runAnimationSpeed : vitesses (m/s) où marche et course tournent à vitesse normale.
+//   blendRate        : vitesse de fondu entre deux animations (1/s).
+const noNamedAnimations = Object.freeze({ idle: null, walk: null, run: null, jump: null, fall: null });
+export const CHARACTERS = Object.freeze([
+  Object.freeze({
+    key: "squelette", label: "Squelette", model: null, yawOffset: 0,
+    animations: noNamedAnimations, walkAnimationSpeed: 1.6, runAnimationSpeed: 4.5, blendRate: 10,
+  }),
+  Object.freeze({
+    key: "shrek", label: "Shrek", model: "/models/shrek_2001_xbox_doing_toothless_dancing.glb",
+    yawOffset: 0, animations: noNamedAnimations, walkAnimationSpeed: 1.6, runAnimationSpeed: 4.5, blendRate: 10,
+    // Pilote les os avec la démarche du squelette (marche/course/idle/saut) au lieu de la danse.
+    procedural: true,
+  }),
+  Object.freeze({
+    key: "shrek-clips", label: "Shrek (clips)", model: "/models/shrek_2001_xbox_doing_toothless_dancing.glb",
+    yawOffset: 0, animations: noNamedAnimations, walkAnimationSpeed: 1.6, runAnimationSpeed: 4.5, blendRate: 10,
+    // Même démarche, mais figée en vrais clips keyframés (idle/walk/run/jump/fall) et mélangée.
+    bakedClips: true,
+  }),
+]);
+
+// Personnage par défaut en jeu. Les tests automatisés gardent le squelette (léger et stable).
+export const DEFAULT_CHARACTER = "shrek";
+
+export function characterByKey(key) {
+  return CHARACTERS.find((character) => character.key === key) ?? null;
+}
+
+// Décors fixes chargés depuis des fichiers glTF/GLB/OBJ déposés dans `public/models/`
+// (voir `src/world/props.js`). Un fichier absent ou illisible est ignoré sans empêcher
+// de jouer. `yaw`/`pitch` orientent le modèle (radians ; +Z du fichier vers +Z du monde
+// à 0). `height` le met à l'échelle sur une hauteur en mètres (null : échelle du fichier).
+// `color` applique un matériau uni (utile pour un OBJ sans .mtl). `collision: false`
+// retire la boîte de collision statique.
+export const PROPS = Object.freeze([
+  Object.freeze({
+    name: "borne d’arcade",
+    url: "/models/borne-arcade.obj",
+    position: Object.freeze({ x: 6, y: 0, z: -6 }),
+    yaw: Math.PI,
+    pitch: 0,
+    height: 1.8,
+    color: "#6b7280",
+    collision: true,
+  }),
+]);
