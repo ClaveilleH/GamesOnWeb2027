@@ -81,7 +81,7 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 | R1 | Outillage | moyenne | `playwright.config.js:12` | `npm test` sert `dist/` sans le reconstruire | à faire |
 | R2 | Outillage | moyenne | `package.json:7-12` | Aucun linter ni `.editorconfig` | à faire |
 | R3 | Dev/prod | moyenne | `src/main.js:12`, `src/dev/devHook.js:21,31` | Hook de dev embarqué en production, activation testée deux fois | à faire |
-| R4 | Tests | moyenne | `tests/portal*.spec.js` | Gabarit `beforeEach`/`afterEach`/`withClock` copié dans 5 fichiers, filtre console incohérent | à faire |
+| R4 | Tests | moyenne | `tests/portal*.spec.js` | Gabarit `beforeEach`/`afterEach`/`withClock` copié dans 5 fichiers, filtre console incohérent | fait (lot 2) |
 | R5 | Simplification | moyenne | `src/portals/travelers.js:135-209, 290-413` | Fantôme et projecteur d’ombre dupliquent la fabrique de clone | à faire |
 | R6 | Cohérence | moyenne | `src/player/skeletonVisual.js:155-157`, `src/player/characterModel.js:34-38` | Choix de la démarche dupliqué avec les mêmes seuils | à faire |
 | R7 | Simplification | moyenne | `src/main.js:44-222` | `start()` de 180 lignes, éclairage et ciel mêlés à la boucle | à faire |
@@ -100,7 +100,7 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 | R20 | Build | basse | `vite build` | Avertissement « chunks > 500 kB » | non retenu |
 | R21 | Docs | basse | `src/world/crates.js:26-29`, `src/main.js:112-120` | Ordre implicite entre l’inscription aux ombres et `addTraveler` | fait (lot 1) |
 | R22 | Tests | basse | `tests/player.spec.js` | Couverture : repli du modèle 3D, attentes fixes en millisecondes | à faire (partiel) |
-| R23 | Tests | moyenne | `tests/portalFlicker.spec.js:54-75` | 280 lectures de pixels sans rendre la main : OOM sur une machine de 8 Go | à faire |
+| R23 | Tests | moyenne | `tests/portalFlicker.spec.js:54-75` | 280 lectures de pixels sans rendre la main : OOM sur une machine de 8 Go | fait (lot 2) |
 
 ### R1 — `npm test` ne reconstruit pas le site testé (moyenne)
 
@@ -354,6 +354,7 @@ Les lots vont du plus sûr au plus risqué. Après chaque lot : `npm run build` 
 | Lot | Commit | Build | Tests | Remarques |
 | --- | --- | --- | --- | --- |
 | 1 | `refactor: supprime l’API morte et resynchronise la documentation` | OK | 97 réussis, 5 échecs identiques à la référence | Lot 2 avancé avant l’outillage : il supprime l’OOM de `portalFlicker.spec.js:134`, qui fait aussi swapper la machine |
+| 2 | `test: partage le gabarit des tests de portails et borne la mémoire de la sonde` | OK | 98 réussis, 4 échecs (inclus dans la référence) | Le test du passage de la caméra dans A2 passe : 239 images, 58 pixels isolés, maximum 3 par image, soit exactement la calibration de `PORTALS.md` § 13.2. Pic mémoire de Chrome : 2,7 Go au lieu de 6,3 Go et d’un plantage. Suite en 20,5 min au lieu de 38. `portalPhysics.spec.js` applique désormais le filtre console commun, sans nouvel échec. |
 
 ## 6. Bilan
 

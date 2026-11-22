@@ -1,20 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { PLAYER } from "../src/config.js";
 import { signedDistance } from "../src/portals/math.js";
+import { expectCleanPage, startDevGame } from "./support/devGame.js";
 
 const hz = 144;
 const archCrate = "caisse de l’arche";
 const tunnelCrate = "caisse du tunnel";
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/?dev");
-  await page.getByRole("button", { name: "Jouer", exact: true }).click();
-  await page.waitForFunction(() => window.gowDev?.state().player.grounded);
-});
-
-test.afterEach(async ({ page }) => {
-  expect((await page.pageErrors()).map((error) => error.message)).toEqual([]);
-});
+test.beforeEach(({ page }) => startDevGame(page));
+test.afterEach(({ page }) => expectCleanPage(page));
 
 async function record(page, portal, name, launch = false) {
   return page.evaluate(({ portal, name, launch, hz }) => {

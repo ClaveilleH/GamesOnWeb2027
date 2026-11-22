@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { CAMERA } from "../src/config.js";
 import { signedDistance } from "../src/portals/math.js";
+import { expectCleanPage, startDevGame } from "./support/devGame.js";
 
 async function place(page, pose) {
   await page.evaluate((pose) => window.gowDev.teleportPlayer(pose), pose);
@@ -22,18 +23,8 @@ function expectColor(actual, expected, tolerance) {
   for (let i = 0; i < 3; i++) expect(Math.abs(actual[i] - expected[i])).toBeLessThanOrEqual(tolerance);
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/?dev");
-  await page.getByRole("button", { name: "Jouer", exact: true }).click();
-  await page.waitForFunction(() => window.gowDev?.state().player.grounded);
-});
-
-test.afterEach(async ({ page }) => {
-  expect((await page.pageErrors()).map((error) => error.message)).toEqual([]);
-  const messages = await page.consoleMessages();
-  expect(messages.filter((m) => m.type() === "error" || (m.type() === "warning" && /BJS|Babylon/i.test(m.text())))
-    .map((m) => m.text())).toEqual([]);
-});
+test.beforeEach(({ page }) => startDevGame(page));
+test.afterEach(({ page }) => expectCleanPage(page));
 
 test("l’arche montre l’esplanade de sable", async ({ page }) => {
   await place(page, { x: 0, y: 0, z: 27, yaw: 0 });

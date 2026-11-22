@@ -1,34 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { expectCleanPage, startDevGame, withClock } from "./support/devGame.js";
 
 const dt = 1000 / 144;
 const archCrate = "caisse de l’arche";
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/?dev");
-  await page.getByRole("button", { name: "Jouer", exact: true }).click();
-  await page.waitForFunction(() => window.gowDev?.state().player.grounded);
-});
-
-test.afterEach(async ({ page }) => {
-  expect((await page.pageErrors()).map((error) => error.message)).toEqual([]);
-  const messages = await page.consoleMessages();
-  expect(messages.filter((m) => m.type() === "error" || (m.type() === "warning" && /BJS|Babylon/i.test(m.text())))
-    .map((m) => m.text())).toEqual([]);
-});
-
-async function withClock(page, run) {
-  const clock = await page.evaluateHandle(() => window.gowDev.manualClock());
-  try {
-    return await run(clock);
-  } finally {
-    await clock.evaluate((clock) => {
-      clock.release();
-      window.gowDev.setControls(null);
-      window.gowDev.setPlayerVisible(true);
-    });
-    await clock.dispose();
-  }
-}
+test.beforeEach(({ page }) => startDevGame(page));
+test.afterEach(({ page }) => expectCleanPage(page));
 
 function evalPlane(plane, p) {
   return plane.normal.x * p.x + plane.normal.y * p.y + plane.normal.z * p.z + plane.d;

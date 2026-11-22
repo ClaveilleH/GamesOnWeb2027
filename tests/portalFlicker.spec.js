@@ -1,36 +1,13 @@
 import { expect, test } from "@playwright/test";
+import { expectCleanPage, startDevGame, withClock } from "./support/devGame.js";
 
 const dt = 1000 / 144;
 const east = Math.PI / 2;
 
 test.describe.configure({ timeout: 180_000 });
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/?dev");
-  await page.getByRole("button", { name: "Jouer", exact: true }).click();
-  await page.waitForFunction(() => window.gowDev?.state().player.grounded);
-});
-
-test.afterEach(async ({ page }) => {
-  expect((await page.pageErrors()).map((error) => error.message)).toEqual([]);
-  const messages = await page.consoleMessages();
-  expect(messages.filter((m) => m.type() === "error" || (m.type() === "warning" && /BJS|Babylon/i.test(m.text())))
-    .map((m) => m.text())).toEqual([]);
-});
-
-async function withClock(page, run) {
-  const clock = await page.evaluateHandle(() => window.gowDev.manualClock());
-  try {
-    return await run(clock);
-  } finally {
-    await clock.evaluate((clock) => {
-      clock.release();
-      window.gowDev.setControls(null);
-      window.gowDev.setPlayerVisible(true);
-    });
-    await clock.dispose();
-  }
-}
+test.beforeEach(({ page }) => startDevGame(page));
+test.afterEach(({ page }) => expectCleanPage(page));
 
 function pose(x, z, yaw) {
   return { x, y: 0, z, yaw };
@@ -52,17 +29,21 @@ function logReport(label, report) {
 }
 
 async function measureOutline(clock, portals, phases, followCamera = false) {
-  return clock.evaluate((clock, { portals, phases, followCamera, dt }) => {
+  return clock.evaluate(async (clock, { portals, phases, followCamera, dt }) => {
     const dev = window.gowDev;
     const probe = dev.flickerProbe({ portals });
     let seenWarp = false;
     let arrivalFrames = 0;
+    let captures = 0;
     for (const { frames, forward = 0, strafe = 0, look = 0 } of phases) {
       dev.setControls({ forward, strafe });
       for (let i = 0; i < frames; i++) {
         if (look) dev.look(look, 0);
         clock.step(dt);
         probe.capture();
+        // Chromium ne libère la mémoire des lectures de pixels synchrones qu’en reprenant la main :
+        // sans cette pause, 280 captures dépassent 6 Go. L’horloge manuelle fige le rendu pendant ce temps.
+        if (++captures % 50 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
         if (followCamera) {
           const { camera } = dev.state();
           if (camera.warped) seenWarp = true;
