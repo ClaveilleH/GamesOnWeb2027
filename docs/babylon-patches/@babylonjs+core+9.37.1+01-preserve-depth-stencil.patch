@@ -1,0 +1,57 @@
+diff --git a/node_modules/@babylonjs/core/Cameras/camera.pure.d.ts b/node_modules/@babylonjs/core/Cameras/camera.pure.d.ts
+index cad91ac..4f842cf 100644
+--- a/node_modules/@babylonjs/core/Cameras/camera.pure.d.ts
++++ b/node_modules/@babylonjs/core/Cameras/camera.pure.d.ts
+@@ -239,6 +239,8 @@ export declare class Camera extends Node {
+      * If the desire is to use the output of a camera as a texture in the scene consider using camera.customRenderTargets instead
+      */
+     outputRenderTarget: Nullable<RenderTargetTexture>;
++    /** Autorise l’effacement de la profondeur et du stencil du framebuffer par défaut avant cette caméra. */
++    clearDepthStencilBeforeRender: boolean;
+     /**
+      * Observable triggered when the camera view matrix has changed.
+      * Beware of reentrance! Some methods like Camera.getViewMatrix and Camera.getWorldMatrix can trigger the onViewMatrixChangedObservable
+diff --git a/node_modules/@babylonjs/core/Cameras/camera.pure.js b/node_modules/@babylonjs/core/Cameras/camera.pure.js
+index b8fa5fb..39c1191 100644
+--- a/node_modules/@babylonjs/core/Cameras/camera.pure.js
++++ b/node_modules/@babylonjs/core/Cameras/camera.pure.js
+@@ -298,6 +298,8 @@ let Camera = (() => {
+                  * If the desire is to use the output of a camera as a texture in the scene consider using camera.customRenderTargets instead
+                  */
+                 this.outputRenderTarget = null;
++                /** Autorise l’effacement de la profondeur et du stencil du framebuffer par défaut avant cette caméra. */
++                this.clearDepthStencilBeforeRender = true;
+                 /**
+                  * Observable triggered when the camera view matrix has changed.
+                  * Beware of reentrance! Some methods like Camera.getViewMatrix and Camera.getWorldMatrix can trigger the onViewMatrixChangedObservable
+diff --git a/node_modules/@babylonjs/core/scene.pure.js b/node_modules/@babylonjs/core/scene.pure.js
+index dfd5bc9..6aadc22 100644
+--- a/node_modules/@babylonjs/core/scene.pure.js
++++ b/node_modules/@babylonjs/core/scene.pure.js
+@@ -4163,11 +4163,12 @@ export class Scene {
+             }
+         }
+         else {
++            const clearDepthStencil = camera?.clearDepthStencilBeforeRender !== false;
+             if (!this._defaultFrameBufferCleared) {
+                 this._defaultFrameBufferCleared = true;
+-                this._clear();
++                this._clear(clearDepthStencil && this.autoClearDepthAndStencil);
+             }
+-            else {
++            else if (clearDepthStencil) {
+                 this._engine.clear(null, false, true, true);
+             }
+         }
+@@ -4434,9 +4435,9 @@ export class Scene {
+             }
+         }
+     }
+-    _clear() {
++    _clear(clearDepthAndStencil = this.autoClearDepthAndStencil) {
+         if (this.autoClearDepthAndStencil || this.autoClear) {
+-            this._engine.clear(this._clearColor, this.autoClear || this.forceWireframe || this.forcePointsCloud, this.autoClearDepthAndStencil, this.autoClearDepthAndStencil);
++            this._engine.clear(this._clearColor, this.autoClear || this.forceWireframe || this.forcePointsCloud, clearDepthAndStencil, clearDepthAndStencil);
+         }
+     }
+     _checkCameraRenderTarget(camera) {

@@ -1,0 +1,41 @@
+diff --git a/node_modules/@babylonjs/core/Cameras/targetCamera.pure.js b/node_modules/@babylonjs/core/Cameras/targetCamera.pure.js
+index 179fea9..c9d4107 100644
+--- a/node_modules/@babylonjs/core/Cameras/targetCamera.pure.js
++++ b/node_modules/@babylonjs/core/Cameras/targetCamera.pure.js
+@@ -10,6 +10,7 @@ import { TargetCameraMovement } from "./targetCameraMovement.js";
+ // Temporary cache variables to avoid allocations.
+ const TmpMatrix = /*#__PURE__*/ Matrix.Zero();
+ const TmpQuaternion = /*#__PURE__*/ Quaternion.Identity();
++const TmpEye = /*#__PURE__*/ Vector3.Zero();
+ /**
+  * A target camera takes a mesh or position as a target and continues to look at it while it moves.
+  * This is the base of the follow, arc rotate cameras and Free camera
+@@ -261,21 +262,23 @@ let TargetCamera = (() => {
+              */
+             setTarget(target) {
+                 this.upVector.normalize();
+-                const focalDistance = target.subtract(this.position).length();
++                let eye = this.position;
++                const focalDistance = Vector3.Distance(target, eye);
+                 if (focalDistance === 0) {
+                     // Scaling the reference point to zero would prevent later targets from restoring the view direction.
+                     return;
+                 }
+                 this._initialFocalDistance = focalDistance;
+-                if (this.position.z === target.z) {
+-                    this.position.z += Epsilon;
++                if (eye.z === target.z) {
++                    eye = TmpEye.copyFrom(eye);
++                    eye.z += Epsilon;
+                 }
+                 this._referencePoint.normalize().scaleInPlace(this._initialFocalDistance);
+                 if (this.getScene().useRightHandedSystem) {
+-                    Matrix.LookAtRHToRef(this.position, target, Vector3.UpReadOnly, TmpMatrix);
++                    Matrix.LookAtRHToRef(eye, target, Vector3.UpReadOnly, TmpMatrix);
+                 }
+                 else {
+-                    Matrix.LookAtLHToRef(this.position, target, Vector3.UpReadOnly, TmpMatrix);
++                    Matrix.LookAtLHToRef(eye, target, Vector3.UpReadOnly, TmpMatrix);
+                 }
+                 TmpMatrix.invert();
+                 const rotationQuaternion = this.rotationQuaternion || TmpQuaternion;

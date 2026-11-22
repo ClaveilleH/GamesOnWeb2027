@@ -1,0 +1,103 @@
+diff --git a/node_modules/@babylonjs/core/Culling/boundingBox.js b/node_modules/@babylonjs/core/Culling/boundingBox.js
+index df598b5..89102b6 100644
+--- a/node_modules/@babylonjs/core/Culling/boundingBox.js
++++ b/node_modules/@babylonjs/core/Culling/boundingBox.js
+@@ -255,7 +255,7 @@ export class BoundingBox {
+      * @returns true if there is an inclusion
+      */
+     static IsCompletelyInFrustum(boundingVectors, frustumPlanes) {
+-        for (let p = 0; p < 6; ++p) {
++        for (let p = 0; p < frustumPlanes.length; ++p) {
+             const frustumPlane = frustumPlanes[p];
+             for (let i = 0; i < 8; ++i) {
+                 if (frustumPlane.dotCoordinate(boundingVectors[i]) < 0) {
+@@ -272,7 +272,7 @@ export class BoundingBox {
+      * @returns true if there is an intersection
+      */
+     static IsInFrustum(boundingVectors, frustumPlanes) {
+-        for (let p = 0; p < 6; ++p) {
++        for (let p = 0; p < frustumPlanes.length; ++p) {
+             let canReturnFalse = true;
+             const frustumPlane = frustumPlanes[p];
+             for (let i = 0; i < 8; ++i) {
+diff --git a/node_modules/@babylonjs/core/Rendering/objectRenderer.d.ts b/node_modules/@babylonjs/core/Rendering/objectRenderer.d.ts
+index 3ef19d5..4e98754 100644
+--- a/node_modules/@babylonjs/core/Rendering/objectRenderer.d.ts
++++ b/node_modules/@babylonjs/core/Rendering/objectRenderer.d.ts
+@@ -1,4 +1,5 @@
+ import { type Nullable, type Immutable, type Camera, type Scene, type AbstractMesh, type SubMesh, type Material, type IParticleSystem, type BoundingBox, type AbstractEngine, type ISpriteManager } from "../index.js";
++import { type Plane } from "../Maths/math.plane.js";
+ import { UniformBuffer } from "../Materials/uniformBuffer.js";
+ import { Observable } from "../Misc/observable.js";
+ import { RenderingManager } from "../Rendering/renderingManager.js";
+@@ -102,6 +103,8 @@ export declare class ObjectRenderer {
+      * Force checking the layerMask property even if a custom list of meshes is provided (ie. if renderList is not undefined)
+      */
+     forceLayerMaskCheck: boolean;
++    /** Plans monde orientés vers le volume à rendre. La valeur null désactive ce filtrage. */
++    cullingPlanes: Nullable<Plane[]>;
+     /**
+      * Enables the rendering of bounding boxes for meshes (still subject to Mesh.showBoundingBox or scene.forceShowBoundingBoxes). Default is false.
+      */
+diff --git a/node_modules/@babylonjs/core/Rendering/objectRenderer.js b/node_modules/@babylonjs/core/Rendering/objectRenderer.js
+index be8cb5f..05d2cca 100644
+--- a/node_modules/@babylonjs/core/Rendering/objectRenderer.js
++++ b/node_modules/@babylonjs/core/Rendering/objectRenderer.js
+@@ -231,6 +231,8 @@ export class ObjectRenderer {
+          * Force checking the layerMask property even if a custom list of meshes is provided (ie. if renderList is not undefined)
+          */
+         this.forceLayerMaskCheck = false;
++        /** Plans monde orientés vers le volume à rendre. La valeur null désactive ce filtrage. */
++        this.cullingPlanes = null;
+         /**
+          * Enables the rendering of bounding boxes for meshes (still subject to Mesh.showBoundingBox or scene.forceShowBoundingBoxes). Default is false.
+          */
+@@ -709,21 +711,23 @@ export class ObjectRenderer {
+         if (this.getCustomRenderList) {
+             currentRenderList = this.getCustomRenderList(passIndex, defaultRenderList, defaultRenderListLength);
+         }
++        const cullingPlanes = this.cullingPlanes;
+         if (!currentRenderList) {
+             // No custom render list provided, we prepare the rendering for the default list, but check
+             // first if we did not already performed the preparation (in this frame) before so as to avoid re-doing it several times.
+             // In WebGPU, instance data (visibleInstances) is stored per render pass ID. Each cascade/face (in CSM) uses a different
+             // render pass ID, so we must re-prepare for each pass to register instances in the correct per-pass storage.
+-            if (this._defaultRenderListPrepared && !winterIsComing && !this._engine.isWebGPU) {
++            if (this._defaultRenderListPrepared && !cullingPlanes && !winterIsComing && !this._engine.isWebGPU) {
+                 return defaultRenderList;
+             }
+-            this._defaultRenderListPrepared = true;
++            this._defaultRenderListPrepared = !cullingPlanes;
+             currentRenderList = defaultRenderList;
+             currentRenderListLength = defaultRenderListLength;
+             checkLayerMask = !this.renderList || this.forceLayerMaskCheck;
+         }
+         else {
+             // Prepare the rendering for the custom render list provided
++            this._defaultRenderListPrepared = false;
+             currentRenderListLength = currentRenderList.length;
+             checkLayerMask = this.forceLayerMaskCheck;
+         }
+@@ -765,6 +769,12 @@ export class ObjectRenderer {
+                         this.resetRefreshCounter();
+                         continue;
+                     }
++                    if (cullingPlanes) {
++                        mesh.computeWorldMatrix();
++                        if (!mesh.getBoundingInfo().boundingBox.isInFrustum(cullingPlanes)) {
++                            continue;
++                        }
++                    }
+                     let meshToRender;
+                     if (cameraForLOD) {
+                         const meshToRenderAndFrameId = mesh._internalAbstractMeshDataInfo._currentLOD.get(cameraForLOD);
+@@ -888,6 +898,9 @@ export class ObjectRenderer {
+         if (this.renderList) {
+             newRenderer.renderList = this.renderList.slice(0);
+         }
++        if (this.cullingPlanes) {
++            newRenderer.cullingPlanes = this.cullingPlanes.map((plane) => plane.clone());
++        }
+         return newRenderer;
+     }
+     /**

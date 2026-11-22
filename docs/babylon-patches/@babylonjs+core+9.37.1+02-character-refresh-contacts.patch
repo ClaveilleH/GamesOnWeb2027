@@ -1,0 +1,41 @@
+diff --git a/node_modules/@babylonjs/core/Physics/v2/characterController.d.ts b/node_modules/@babylonjs/core/Physics/v2/characterController.d.ts
+index f390fe8..7178871 100644
+--- a/node_modules/@babylonjs/core/Physics/v2/characterController.d.ts
++++ b/node_modules/@babylonjs/core/Physics/v2/characterController.d.ts
+@@ -346,8 +346,11 @@ export declare class PhysicsCharacterController {
+     /**
+      * Teleport character to a new position
+      * @param position new position
++     * @param refreshContacts Recalcule les contacts à destination avant le prochain test d’appui (défaut false).
+      */
+-    setPosition(position: Vector3): void;
++    setPosition(position: Vector3, refreshContacts?: boolean): void;
++    /** Reconstruit les contacts à la position actuelle du personnage. */
++    refreshContacts(): void;
+     /**
+      * Character velocity
+      * @returns Character velocity vector
+diff --git a/node_modules/@babylonjs/core/Physics/v2/characterController.js b/node_modules/@babylonjs/core/Physics/v2/characterController.js
+index 3314942..e8031ef 100644
+--- a/node_modules/@babylonjs/core/Physics/v2/characterController.js
++++ b/node_modules/@babylonjs/core/Physics/v2/characterController.js
+@@ -288,10 +288,18 @@ export class PhysicsCharacterController {
+     /**
+      * Teleport character to a new position
+      * @param position new position
++     * @param refreshContacts Recalcule les contacts à destination avant le prochain test d’appui (défaut false).
+      */
+-    setPosition(position) {
++    setPosition(position, refreshContacts = false) {
+         this._position.copyFrom(position);
+         this._transformNode.position.copyFrom(this._position);
++        if (refreshContacts) {
++            this.refreshContacts();
++        }
++    }
++    /** Reconstruit les contacts à la position actuelle du personnage. */
++    refreshContacts() {
++        this._refreshManifoldAtPosition(this._position);
+     }
+     /**
+      * Character velocity

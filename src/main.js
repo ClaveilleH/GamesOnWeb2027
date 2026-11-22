@@ -1,62 +1,102 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
-import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
+import { Color4 } from "@babylonjs/core/Maths/math.color";
 import { Clamp, InverseLerp, NormalizeRadians, SmoothStep } from "@babylonjs/core/Maths/math.scalar.functions";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
-import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
-import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
-import { CAMERA, FIXED_STEP, MAX_ACCUMULATED_TIME, SPAWN_YAW } from "./config.js";
-import { initPhysics } from "./core/physics.js";
+import { CAMERA, CHARACTER, FIXED_STEP, MAX_ACCUMULATED_TIME, PLAYER, SPAWN_YAW } from "./config.js";
+import { createSightTest, initPhysics } from "./core/physics.js";
 import { createBindings } from "./input/bindings.js";
 import { createInput } from "./input/input.js";
 import { createKeyboardLayout } from "./input/keyboardLayout.js";
 import { createPlayerController } from "./player/playerController.js";
+import { createCharacterModel } from "./player/characterModel.js";
 import { createSkeletonVisual } from "./player/skeletonVisual.js";
 import { createThirdPersonCamera } from "./player/thirdPersonCamera.js";
+import { createPortalSystem } from "./portals/index.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
+import { createLighting, skyPalette } from "./world/lighting.js";
+import { createPortalDemos } from "./world/portalDemos.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
 const canvas = document.querySelector("#scene");
 const status = document.querySelector("#status");
+// `npm run dev` ou `?dev` : hook de pilotage des tests (docs/PORTALS.md § 10.3), chargé à part du bundle principal.
+const devMode = import.meta.env.DEV || new URLSearchParams(location.search).has("dev");
+
+// Modèle configuré (ou `?model=` dans l'URL), sinon squelette procédural. Un modèle
+// introuvable ou illisible n'empêche pas de jouer : on revient au squelette.
+async function createPlayerVisual(scene) {
+  const url = new URLSearchParams(location.search).get("model") || CHARACTER.model;
+  if (url) {
+    try {
+      return await createCharacterModel(scene, url);
+    } catch (error) {
+      console.warn(`Modèle ${url} non chargé, retour au squelette procédural.`, error);
+    }
+  }
+  return createSkeletonVisual(scene);
+}
 
 async function start() {
+  // Chargé avant le moteur : le compteur de compilations doit voir les tout premiers effets.
+  const dev = devMode ? await import("./dev/devHook.js") : null;
   const engine = new Engine(canvas, true, { alpha: true, stencil: true });
+  const getEffects = dev?.observeDevEffects(engine);
   const scene = new Scene(engine);
   try {
     scene.clearColor = new Color4(0, 0, 0, 0);
     const gravity = await initPhysics(scene);
-    const sky = new HemisphericLight("ciel", Vector3.Up(), scene);
-    sky.intensity = 0.72;
-    sky.groundColor = Color3.FromHexString("#76918b");
-    const sun = new DirectionalLight("soleil", new Vector3(-0.58, -1, 0.48), scene);
-    sun.position.set(12, 22, -11);
-    sun.intensity = 0.78;
-    sun.diffuse = Color3.FromHexString("#ffecd3");
-    sun.shadowMinZ = 1;
-    sun.shadowMaxZ = 65;
-    const shadows = new ShadowGenerator(1024, sun);
-    shadows.usePercentageCloserFiltering = true;
-    shadows.filteringQuality = ShadowGenerator.QUALITY_LOW;
-    // Le personnage continue de projeter son ombre pendant le fondu de proximité.
-    shadows.transparencyShadow = true;
-    shadows.bias = 0.0007;
-    shadows.normalBias = 0.025;
-    shadows.setDarkness(0.2);
+    scene.physicsEnabled = false;
+    const physics = scene.getPhysicsEngine();
+    const plugin = physics.getPhysicsPlugin();
+    const { shadows } = createLighting(scene);
 
     const casters = createTestTerrain(scene);
-    const player = createPlayerController(scene, spawnPoint, gravity);
-    scene.onDisposeObservable.addOnce(player.dispose);
-    const visual = createSkeletonVisual(scene);
+    const visual = await createPlayerVisual(scene);
     scene.onDisposeObservable.addOnce(visual.dispose);
-    for (const mesh of [...casters, ...visual.root.getChildMeshes()]) shadows.addShadowCaster(mesh, false);
     const camera = createThirdPersonCamera(scene);
+    const sightTest = createSightTest(physics);
+    const lightRayEnd = new Vector3();
+    function isLightBlocked(origin, towardLight, maxDistance) {
+      towardLight.scaleToRef(maxDistance, lightRayEnd).addInPlace(origin);
+      return sightTest(origin, lightRayEnd) !== null;
+    }
+    const portals = createPortalSystem(scene, { camera: camera.camera, isLightBlocked });
+    scene.onDisposeObservable.addOnce(portals.dispose);
+    const demos = createPortalDemos(scene, portals);
+    // Le ciel est peint par le quad de fond du renderer, après le décor, là où la profondeur vaut encore 1.
+    portals.createSky(skyPalette);
+    function shouldRespawn(position) {
+      if (position.y >= PLAYER.respawnBelow) return false;
+      if (position.y < PLAYER.interiorRespawnBelow) return true;
+      for (const volume of demos.interiors) {
+        if (volume.intersectsPoint(position)) return false;
+      }
+      return true;
+    }
+    const player = createPlayerController(scene, spawnPoint, gravity, shouldRespawn);
+    scene.onDisposeObservable.addOnce(player.dispose);
+    const crates = demos.crates;
+    for (const crate of crates) scene.onDisposeObservable.addOnce(crate.dispose);
+    const bones = visual.root.getChildMeshes();
+    for (const mesh of [...casters, ...demos.casters, ...bones]) shadows.addShadowCaster(mesh, false);
+    const playerTraveler = {
+      name: "joueur", center: player.center, applyWarp: player.applyWarp,
+      visual: {
+        root: visual.root, materials: visual.materials, radius: () => 1.1 * player.state.scale,
+        center: (out) => out.set(visual.root.position.x, visual.root.position.y + player.capsuleHeight / 2, visual.root.position.z),
+      },
+    };
+    portals.addTraveler(playerTraveler);
+    portals.onTraverseObservable.add(({ traveler, warp }) => {
+      if (traveler === playerTraveler) camera.applyWarp(warp);
+    });
     const bindings = createBindings();
     const layout = createKeyboardLayout();
     scene.onDisposeObservable.addOnce(layout.dispose);
-    const hud = createHud(bindings, layout);
+    const hud = createHud(bindings, layout, portals);
     scene.onDisposeObservable.addOnce(hud.dispose);
     let previousFrameTime = 0;
     let accumulatedTime = 0;
@@ -65,6 +105,7 @@ async function start() {
       previousFrameTime = performance.now();
       accumulatedTime = 0;
       player.syncPreviousPose();
+      for (const crate of crates) crate.capturePose();
       input.resume(key);
     });
     scene.onDisposeObservable.addOnce(menu.dispose);
@@ -76,19 +117,30 @@ async function start() {
     });
     scene.onDisposeObservable.addOnce(input.dispose);
 
-    function present(dt, alpha, respawned) {
+    function present(dt, alpha) {
       const { previousPose, state } = player;
       const feet = visual.root.position;
       Vector3.LerpToRef(previousPose.position, state.position, alpha, feet);
       visual.root.rotation.y = previousPose.yaw + NormalizeRadians(state.yaw - previousPose.yaw) * alpha;
-      visual.update(dt, state);
-      const shoulderDistance = camera.follow(dt, feet, respawned);
+      visual.root.scaling.setAll(state.scale);
+      visual.update(dt, state.speed / state.scale, state.grounded, state.verticalSpeed / state.scale);
+      for (const crate of crates) crate.present(alpha);
+      portals.updateGhosts();
+      const shoulderDistance = camera.follow(dt, feet, state.scale, portals, state.position);
       const fade = InverseLerp(CAMERA.fadeNear, CAMERA.fadeFar, shoulderDistance);
-      visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade));
+      if (visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade))) portals.syncGhostAppearance(playerTraveler);
       hud.update(state, camera, visual.root);
     }
-    present(0, 0, true);
-    menu.open();
+    camera.reset(SPAWN_YAW);
+    present(0, 0);
+    dev?.installDevHook({
+      scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, presentPose: () => present(0, 1),
+      syncFrameTime(now, restart) {
+        previousFrameTime = now;
+        if (restart) accumulatedTime = 0;
+      },
+    });
+    scene.onAfterRenderObservable.add(() => hud.updatePortals(engine.getFps()));
     scene.onBeforeRenderObservable.add(() => {
       if (menu.isOpen) return;
       const now = performance.now();
@@ -98,22 +150,27 @@ async function start() {
       const steps = Math.floor(accumulatedTime / FIXED_STEP);
       accumulatedTime -= steps * FIXED_STEP;
 
-      let respawned = false;
       // Une image sans pas physique laisse les entrées en attente pour le prochain pas.
       if (steps > 0) {
         const controls = input.read();
-        let yaw = camera.look(controls.lookX, controls.lookY);
+        camera.look(controls.lookX, controls.lookY);
         for (let i = 0; i < steps; i++) {
-          if (player.update(FIXED_STEP, controls, yaw).respawned) {
-            respawned = true;
-            yaw = SPAWN_YAW;
+          if (player.update(FIXED_STEP, controls, camera.yaw).respawned) {
+            camera.reset(SPAWN_YAW);
+            portals.resetTraveler(playerTraveler);
+            portals.resetHaze();
           }
+          for (const crate of crates) crate.capturePose();
+          plugin.executeStep(FIXED_STEP, physics.getBodies());
+          for (const crate of crates) crate.afterStep();
+          portals.updateTravelers();
+          for (const crate of crates) crate.syncProxy();
           controls.jump = false;
           controls.respawn = false;
         }
       }
       const alpha = Clamp(accumulatedTime / FIXED_STEP);
-      present(frameTime, alpha, respawned);
+      present(frameTime, alpha);
     });
 
     const resize = new ResizeObserver(() => engine.resize());
@@ -126,6 +183,8 @@ async function start() {
     window.addEventListener("pagehide", onPageHide);
     scene.onDisposeObservable.addOnce(() => window.removeEventListener("pagehide", onPageHide));
     if (import.meta.hot) import.meta.hot.dispose(() => engine.dispose());
+    await portals.warmUp();
+    menu.open();
     engine.runRenderLoop(() => scene.render());
     status.hidden = true;
   } catch (error) {

@@ -574,3 +574,52 @@ test("masquer l’onglet met en pause et revenir le laisse en pause", async ({ p
   await expect(page.getByRole("dialog")).toBeVisible();
   expect(await position(hud)).toEqual(paused);
 });
+
+// Plus petit GLB valide : un triangle posé à plat, que le calage du modèle refuse faute de hauteur.
+function flatTriangleGlb() {
+  const chunk = (type, data, padding) => {
+    const length = Math.ceil(data.length / 4) * 4;
+    const out = Buffer.alloc(8 + length, padding);
+    out.writeUInt32LE(length, 0);
+    out.writeUInt32LE(type, 4);
+    data.copy(out, 8);
+    return out;
+  };
+  const positions = Buffer.from(new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 1]).buffer);
+  const json = Buffer.from(JSON.stringify({
+    asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0, name: "triangle plat" }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+    buffers: [{ byteLength: positions.length }], bufferViews: [{ buffer: 0, byteLength: positions.length }],
+    accessors: [{ bufferView: 0, componentType: 5126, count: 3, type: "VEC3", min: [0, 0, 0], max: [1, 0, 1] }],
+  }));
+  const body = Buffer.concat([chunk(0x4e4f534a, json, 0x20), chunk(0x004e4942, positions, 0)]);
+  const header = Buffer.alloc(12);
+  header.write("glTF", 0);
+  header.writeUInt32LE(2, 4);
+  header.writeUInt32LE(12 + body.length, 8);
+  return Buffer.concat([header, body]);
+}
+
+for (const [label, url, body] of [["introuvable", "/models/absent.glb", null], ["sans hauteur", "/models/plat.glb", flatTriangleGlb()]]) {
+  test(`un modèle 3D ${label} laisse place au squelette sans rien laisser dans la scène`, async ({ page }) => {
+    // Filtre sur le chemin : l’URL de la page se termine elle aussi par `?model=${url}`.
+    await page.route((requested) => requested.pathname === url,
+      (route) => route.fulfill(body ? { body, contentType: "model/gltf-binary" } : { status: 404, body: "" }));
+    const warnings = [];
+    page.on("console", (message) => {
+      if (message.type() === "warning") warnings.push(message.text());
+    });
+    await startOnGround(page, `/?dev&model=${url}`);
+    expect(warnings.some((text) => text.includes(url) && text.includes("squelette"))).toBe(true);
+    const scene = await page.evaluate(() => {
+      const { transformNodes, meshes } = window.gowDev.portalSystem.camera.getScene();
+      const names = [...transformNodes, ...meshes].map(({ name }) => name);
+      return {
+        character: window.gowDev.character(),
+        leftovers: names.filter((name) => name.startsWith("personnage") || name === "__root__" || name === "triangle plat"),
+        skeleton: names.includes("squelette"),
+      };
+    });
+    expect(scene).toEqual({ character: { animations: null, weights: null }, leftovers: [], skeleton: true });
+  });
+}
