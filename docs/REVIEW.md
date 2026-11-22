@@ -89,7 +89,7 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 | R9 | Config | basse | `src/player/thirdPersonCamera.js:8,16`, `src/main.js:101` | Réglages en dur hors de `config.js` | à faire |
 | R10 | Code mort | basse | voir détail | Exports, paramètres et valeurs par défaut jamais utilisés | fait (lot 1) |
 | R11 | Cohérence | basse | `src/portals/system.js:52,110-115,178-189` | Variables déclarées après usage, démontage dupliqué, `hazeLevels` non validé à chaud | à faire |
-| R12 | Bug | basse | `src/player/characterModel.js:50-62` | Échec du calage : conteneur et nœuds laissés dans la scène | à faire |
+| R12 | Bug | basse | `src/player/characterModel.js:50-62` | Échec du calage : conteneur et nœuds laissés dans la scène | fait (lot 4) |
 | R13 | Docs | basse | `docs/*.md`, `README.md`, `src/main.js:58` | Documentation désynchronisée du code | fait (lot 1) |
 | R14 | Outillage | info | `docs/babylon-patches/` | Correctifs Babylon non appliqués automatiquement | non retenu |
 | R15 | Nommage | basse | `src/core/physics.js:6`, `src/input/input.js:1-7`, `src/world/testTerrain.js` | Conventions de nommage mêlées | non retenu |
@@ -99,7 +99,7 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 | R19 | HTML | basse | `index.html:31` | `role="dialog"` et `aria-modal` redondants sur `<dialog>` | non retenu |
 | R20 | Build | basse | `vite build` | Avertissement « chunks > 500 kB » | non retenu |
 | R21 | Docs | basse | `src/world/crates.js:26-29`, `src/main.js:112-120` | Ordre implicite entre l’inscription aux ombres et `addTraveler` | fait (lot 1) |
-| R22 | Tests | basse | `tests/player.spec.js` | Couverture : repli du modèle 3D, attentes fixes en millisecondes | à faire (partiel) |
+| R22 | Tests | basse | `tests/player.spec.js` | Couverture : repli du modèle 3D, attentes fixes en millisecondes | fait (lot 4, partiel) |
 | R23 | Tests | moyenne | `tests/portalFlicker.spec.js:54-75` | 280 lectures de pixels sans rendre la main : OOM sur une machine de 8 Go | fait (lot 2) |
 
 ### R1 — `npm test` ne reconstruit pas le site testé (moyenne)
@@ -228,6 +228,11 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 - **Problème.** `createCharacterModel` appelle `container.addAllToScene()` (l. 50) avant de mesurer la hauteur. Si le calage échoue (l. 62, `Le modèle … n’a pas de hauteur mesurable`), l’exception remonte. `main.js:38` reprend alors le squelette, mais les maillages du modèle, les nœuds `personnage` et `personnage · calage` restent dans la scène, visibles à l’origine.
 - **Proposition.** `try/catch` après `addAllToScene` qui libère `container` et `root` avant de relancer l’erreur. Ajouter un test du repli : un modèle introuvable donne le squelette.
 - **Risque.** Nul.
+- **Réalisé (lot 4).** Libération explicite de `container` et `root` au seul point d’échec situé après `addAllToScene`. Deux tests dans `tests/player.spec.js` :
+  - un modèle introuvable (404) ;
+  - un GLB minimal servi par `page.route`, un triangle posé à plat donc de hauteur nulle.
+
+  Dans les deux cas, le squelette est utilisé et aucun nœud du modèle ne reste. Sans le correctif, le second test échoue en trouvant `personnage`, `personnage · calage`, `__root__` et `triangle plat` dans la scène.
 
 ### R13 — Documentation désynchronisée (basse)
 
@@ -357,6 +362,7 @@ Les lots vont du plus sûr au plus risqué. Après chaque lot : `npm run build` 
 | 1 | `refactor: supprime l’API morte et resynchronise la documentation` | OK | 97 réussis, 5 échecs identiques à la référence | Lot 2 avancé avant l’outillage : il supprime l’OOM de `portalFlicker.spec.js:134`, qui fait aussi swapper la machine |
 | 2 | `test: partage le gabarit des tests de portails et borne la mémoire de la sonde` | OK | 98 réussis, 4 échecs (inclus dans la référence) | Le test du passage de la caméra dans A2 passe : 239 images, 58 pixels isolés, maximum 3 par image, soit exactement la calibration de `PORTALS.md` § 13.2. Pic mémoire de Chrome : 2,7 Go au lieu de 6,3 Go et d’un plantage. Suite en 20,5 min au lieu de 38. `portalPhysics.spec.js` applique désormais le filtre console commun, sans nouvel échec. |
 | 3 | `build: reconstruit le site avant les tests et ajoute ESLint` | OK | 98 réussis, 4 échecs (inclus dans la référence) | `dist/` supprimé avant le lancement : `npm test` l’a reconstruit. `npm run lint` passe. |
+| 4 | `fix(personnage): retire le modèle refusé au calage avant de reprendre le squelette` | OK | 104 tests : 100 réussis, 4 échecs (inclus dans la référence) | Deux tests ajoutés (repli du modèle 3D) |
 
 ## 6. Bilan
 

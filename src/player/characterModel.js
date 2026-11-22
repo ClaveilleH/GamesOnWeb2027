@@ -59,7 +59,12 @@ export async function createCharacterModel(scene, url) {
   fit.computeWorldMatrix(true);
   let { min, max } = fit.getHierarchyBoundingVectors(true);
   const height = max.y - min.y;
-  if (!(height > 0)) throw new Error(`Le modèle ${url} n'a pas de hauteur mesurable.`);
+  if (!(height > 0)) {
+    // Le modèle est déjà dans la scène : le retirer avant que le jeu ne reprenne le squelette.
+    container.dispose();
+    root.dispose();
+    throw new Error(`Le modèle ${url} n'a pas de hauteur mesurable.`);
+  }
   fit.scaling.setAll(PLAYER.height / height);
   fit.computeWorldMatrix(true);
   ({ min, max } = fit.getHierarchyBoundingVectors(true));
