@@ -468,7 +468,7 @@ test("le ciel couvre le canevas au départ avec le dégradé attendu et laisse l
   const sample = await page.evaluate(async () => {
     const dev = window.gowDev;
     const canvas = document.querySelector("#scene");
-    const { width, height } = canvas.getBoundingClientRect();
+    const { width } = canvas.getBoundingClientRect();
     const topLeft = await dev.samplePixel(width * 0.08, 16);
     const topMid = await dev.samplePixel(width * 0.5, 16);
     const topSun = await dev.samplePixel(width * 0.7, 16);

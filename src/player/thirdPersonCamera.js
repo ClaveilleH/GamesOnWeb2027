@@ -3,11 +3,9 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { PhysicsRaycastResult } from "@babylonjs/core/Physics/physicsRaycastResult";
 import { CAMERA, SPAWN_YAW } from "../config.js";
 import { collisionLayer } from "../core/physics.js";
-import { createViewResult, isViewWarped, MIN_NEAR, traceView } from "../portals/cameraPath.js";
+import { createViewResult, isViewWarped, MIN_NEAR } from "../portals/cameraPath.js";
 
 const baseMinZ = 0.04;
-const noPortals = Object.freeze([]);
-const traceWithoutPortals = traceView.bind(null, noPortals);
 
 export function createThirdPersonCamera(scene) {
   const camera = new TargetCamera("caméra épaule", Vector3.Zero(), scene);
@@ -40,7 +38,6 @@ export function createThirdPersonCamera(scene) {
   }
 
   function locateShoulder(portals, simulatedFeet, scale) {
-    if (!portals) return null;
     simulatedShoulder.set(simulatedFeet.x, simulatedFeet.y + CAMERA.shoulderHeight * scale, simulatedFeet.z);
     target.subtractToRef(simulatedShoulder, lagDirection);
     let lag = lagDirection.length();
@@ -79,23 +76,21 @@ export function createThirdPersonCamera(scene) {
       pitch = Math.max(CAMERA.minPitch, Math.min(CAMERA.maxPitch, pitch + dy * CAMERA.sensitivity));
       return yaw;
     },
-    follow(dt, feet, respawned = false, scale = 1, portals, simulatedFeet = feet) {
-      if (respawned) reset(SPAWN_YAW);
+    follow(dt, feet, scale, portals, simulatedFeet = feet) {
       shoulder.set(feet.x, feet.y + CAMERA.shoulderHeight * scale, feet.z);
       Vector3.LerpToRef(target, shoulder, snap ? 1 : -Math.expm1(-CAMERA.followRate * dt), target);
       const horizontal = Math.cos(pitch);
       direction.set(-Math.sin(yaw) * horizontal, Math.sin(pitch), -Math.cos(yaw) * horizontal);
-      const trace = portals?.traceView ?? traceWithoutPortals;
       const anchor = locateShoulder(portals, simulatedFeet, scale);
       const origin = anchor?.position ?? target;
       const shoulderScale = scale * (anchor?.warp.scale ?? 1);
       if (anchor) anchor.warp.direction(direction, direction).normalize();
       viewOptions.clearance = CAMERA.wallClearance * shoulderScale;
       viewOptions.epsilon = placementOptions.epsilon = 2 * MIN_NEAR * shoulderScale;
-      const allowed = trace(origin, direction, CAMERA.distance * shoulderScale, viewOptions, eyeView).allowed / shoulderScale;
+      const allowed = portals.traceView(origin, direction, CAMERA.distance * shoulderScale, viewOptions, eyeView).allowed / shoulderScale;
       if (snap || allowed < distance) distance = allowed;
       else distance += (allowed - distance) * -Math.expm1(-CAMERA.releaseRate * dt);
-      trace(origin, direction, distance * shoulderScale, placementOptions, eyeView);
+      portals.traceView(origin, direction, distance * shoulderScale, placementOptions, eyeView);
       cameraScale = shoulderScale * eyeView.warp.scale;
       warped = isViewWarped(eyeView, anchor);
       const nearestInCameraUnits = eyeView.nearestPortalDistance / cameraScale;
@@ -115,6 +110,5 @@ export function createThirdPersonCamera(scene) {
       snap = false;
       return eyeView.allowed / shoulderScale;
     },
-    dispose: () => camera.dispose(),
   };
 }

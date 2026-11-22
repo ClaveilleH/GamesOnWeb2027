@@ -18,7 +18,7 @@ const apertureShader = Object.freeze({
   `,
 });
 
-export function createPortal(scene, { name, origin, yaw, width, height, sides = "front", apertureMargin = 0.03 }) {
+export function createPortal(scene, { name, origin, yaw, width, height, sides = "front", apertureMargin }) {
   if (!(width > 0 && height > 0) || !["front", "both"].includes(sides)) {
     throw new Error("Ouverture ou faces de portail invalides.");
   }

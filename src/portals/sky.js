@@ -23,8 +23,8 @@ vec4 computePortalSky(vec3 direction) {
 }
 `;
 
-export function skyVeilFactor(scene, maxZ, clearEnd = clearFogEnd) {
-  if (scene.fogEnabled && scene.fogMode === Scene.FOGMODE_LINEAR && Number.isFinite(scene.fogEnd) && scene.fogEnd < clearEnd) {
+export function skyVeilFactor(scene, maxZ) {
+  if (scene.fogEnabled && scene.fogMode === Scene.FOGMODE_LINEAR && Number.isFinite(scene.fogEnd) && scene.fogEnd < clearFogEnd) {
     const range = scene.fogEnd - scene.fogStart;
     return range > 0 ? Clamp((maxZ - scene.fogStart) / range, 0, 1) : (maxZ >= scene.fogEnd ? 1 : 0);
   }
@@ -41,7 +41,7 @@ function toUnitVector3(value, fallback) {
   return vector.lengthSquared() > 0 ? vector.normalize() : fallback.clone();
 }
 
-export function createPortalSky(scene, options = {}) {
+export function createPortalSky(options = {}) {
   const { sunExponent = 5.5, sunStrength = 0.68 } = options;
   const zenithColor = toColor3(options.zenithColor, "#e1dfbd");
   const midColor = toColor3(options.midColor, "#adc2b2");

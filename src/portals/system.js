@@ -156,7 +156,7 @@ export function createPortalSystem(scene, options = {}) {
     resetHaze() { renderer.resetHaze(); },
     createSky(skyOptions) {
       sky?.dispose();
-      sky = createPortalSky(scene, skyOptions);
+      sky = createPortalSky(skyOptions);
       renderer.setSky(sky);
       return sky;
     },

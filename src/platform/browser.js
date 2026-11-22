@@ -18,8 +18,6 @@ const profiles = {
   },
 };
 
-export const browserNames = Object.keys(profiles);
-
 // `?browser=firefox` force un profil, pour tester ses règles dans un autre navigateur.
 export function detectBrowser(userAgent = navigator.userAgent, search = location.search) {
   const forced = new URLSearchParams(search).get("browser");

@@ -15,7 +15,6 @@ import { aperturePyramidPlanes, applyObliqueNearPlane, distanceToAperture, inter
 import { clearFogEnd, skyColorGlsl, skyVeilFactor } from "./sky.js";
 
 const clearFogStart = 1e8;
-export { clearFogEnd };
 const byDistance = (a, b) => a.distance - b.distance;
 
 function createNode() {
@@ -418,7 +417,7 @@ export function createPortalRenderer(scene, system) {
     quad.material.setFloat("useSky", 1);
     quad.material.setMatrix("invViewProjection", invViewProjection);
     quad.material.setVector3("eyePosition", node.eye);
-    quad.material.setFloat("veilFactor", skyVeilFactor(scene, node.camera.maxZ, clearFogEnd));
+    quad.material.setFloat("veilFactor", skyVeilFactor(scene, node.camera.maxZ));
     quad.material.setColor3("veilColor", scene.fogColor);
   }
 

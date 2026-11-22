@@ -22,12 +22,14 @@ Le squelette procédural peut être remplacé par un modèle glTF/GLB animé, d�
 
 ## Développement
 
-Avec Node.js 24 et npm, lancer
+Avec Node.js 20.19 ou plus récent (la CI utilise Node 24) et npm, lancer
 
 ```sh
 npm ci
 npm run dev
 ```
+
+Pas à pas pour Windows et problèmes fréquents : [LANCER.md](LANCER.md).
 
 Pour tester la version de production avec Chromium, lancer
 

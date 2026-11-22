@@ -412,7 +412,7 @@ function createShadowCaster({ root, materials }) {
   };
 }
 
-export function createTravelerRegistry(getPortals, settings = {}, isLightBlocked = null) {
+export function createTravelerRegistry(getPortals, settings, isLightBlocked = null) {
   let entries = [];
   const onTraverseObservable = new Observable();
   const simulatedCenter = new Vector3();
@@ -491,7 +491,7 @@ export function createTravelerRegistry(getPortals, settings = {}, isLightBlocked
   function updateGhosts() {
     const portals = getPortals();
     const shadowsEnabled = settings.portalShadows !== false;
-    const margin = settings.apertureMargin ?? 0.03;
+    const margin = settings.apertureMargin;
     for (let i = 0; i < entries.length; i++) {
       const { adapter, ghosts, shadowCaster, arrival, arrivalSide } = entries[i];
       if (!ghosts) continue;

@@ -57,7 +57,20 @@ Un seul vrai défaut a été trouvé : une fuite de nœuds quand un modèle glTF
 Après `npm ci` (Node 20.19.2, npm 9.2.0), au commit `71406e0`, sans aucune modification :
 
 - `npm run build` : réussit. Vite avertit que des chunks dépassent 500 kB (voir R20).
-- `npm test` : mesure en cours au moment de la rédaction, reportée ici avec le lot 1.
+- `npm test` : 102 tests. **97 réussis et 5 en échec, tous liés à l’environnement** et non au code. La machine de mesure est un serveur partagé : 4 cœurs, 7,7 Go de RAM, d’autres services (Jellyfin, MongoDB, Docker) et des pics de charge (load average jusqu’à 160 pendant la première exécution).
+
+Le premier passage complet a été interrompu à 92/102 au bout d’une heure, pendant un pic de charge, avec 6 échecs. Les tests en échec ou non exécutés ont été relancés à charge normale, sur la même build de référence. Les échecs stables :
+
+| Test | Symptôme | Cause établie |
+| --- | --- | --- |
+| `portalFlicker.spec.js:134` (contour de A2 jusqu’au passage de la caméra) | `Target crashed` après le délai de 180 s | OOM : 280 images rendues et lues par `readPixels` dans un seul `page.evaluate`. Chromium ne libère la mémoire des lectures synchrones qu’en rendant la main, d’où environ 45 Mo/s jusqu’à 6,3 Go (R23). En boucle `requestAnimationFrame`, la mémoire reste stable : le jeu ne fuit pas. |
+| `portalPhysics.spec.js:92` (A2) et `:111` (E) | délai dépassé dans `beforeEach`, `browser.newContext : Failed to find browser context` | Le test précédent du même navigateur réussit, puis la création du contexte suivant bloque 30 s. `browser.close` prend aussi 30 s. Le phénomène n’apparaît pas hors du lanceur de tests (script Playwright direct : fermeture en 0,2 à 0,4 s). C’est un problème du couple Chromium headless/SwiftShader sur cette machine. Après l’échec, le worker redémarre et le test suivant passe. |
+| `portals.spec.js:38` (l’arche montre l’esplanade) | même blocage de `newContext` dans `beforeEach` | idem, juste après le dernier test de `portalPhysics.spec.js` |
+| `portals.spec.js:437` (passage au demi-format) | délai de 30 s dépassé dans `page.evaluate` | test le plus long de la suite (quatre traversées) sur une machine lente |
+
+`portals.spec.js:62` (benchmark) a aussi échoué une fois pendant le pic de charge, sans se reproduire.
+
+**Règle de comparaison retenue** : après chaque lot, l’ensemble des tests en échec doit être inclus dans celui de la référence. Tout nouvel échec est relancé isolément et analysé.
 
 ## 3. Constats
 
@@ -74,19 +87,20 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 | R7 | Simplification | moyenne | `src/main.js:44-222` | `start()` de 180 lignes, éclairage et ciel mêlés à la boucle | à faire |
 | R8 | Cohérence | basse | `src/main.js:81-88`, `src/player/thirdPersonCamera.js:18,37-40` | Masque et rayon de « ligne de vue » écrits deux fois | à faire |
 | R9 | Config | basse | `src/player/thirdPersonCamera.js:8,16`, `src/main.js:101` | Réglages en dur hors de `config.js` | à faire |
-| R10 | Code mort | basse | voir détail | Exports, paramètres et valeurs par défaut jamais utilisés | à faire |
+| R10 | Code mort | basse | voir détail | Exports, paramètres et valeurs par défaut jamais utilisés | fait (lot 1) |
 | R11 | Cohérence | basse | `src/portals/system.js:52,110-115,178-189` | Variables déclarées après usage, démontage dupliqué, `hazeLevels` non validé à chaud | à faire |
 | R12 | Bug | basse | `src/player/characterModel.js:50-62` | Échec du calage : conteneur et nœuds laissés dans la scène | à faire |
-| R13 | Docs | basse | `docs/*.md`, `README.md`, `src/main.js:58` | Documentation désynchronisée du code | à faire |
+| R13 | Docs | basse | `docs/*.md`, `README.md`, `src/main.js:58` | Documentation désynchronisée du code | fait (lot 1) |
 | R14 | Outillage | info | `docs/babylon-patches/` | Correctifs Babylon non appliqués automatiquement | non retenu |
 | R15 | Nommage | basse | `src/core/physics.js:6`, `src/input/input.js:1-7`, `src/world/testTerrain.js` | Conventions de nommage mêlées | non retenu |
-| R16 | Conventions | basse | `src/portals/math.js:1-2`, `src/portals/cameraPath.js:1`, `src/dev/flickerProbe.js:1` | Imports Babylon avec ou sans `.js` | non retenu (règle documentée) |
+| R16 | Conventions | basse | `src/portals/math.js:1-2`, `src/portals/cameraPath.js:1`, `src/dev/flickerProbe.js:1` | Imports Babylon avec ou sans `.js` | non retenu (règle documentée au lot 1) |
 | R17 | Tests | basse | `tests/portalMath.spec.js`, `tests/frameProbe.spec.js`, `tests/browser.spec.js` | Tests unitaires purs lancés par Playwright | non retenu |
 | R18 | Cohérence | basse | `src/portals/math.js:20-34,175,189-195,392-393` | Deux façons d’obtenir le repère d’un portail | non retenu |
 | R19 | HTML | basse | `index.html:31` | `role="dialog"` et `aria-modal` redondants sur `<dialog>` | non retenu |
 | R20 | Build | basse | `vite build` | Avertissement « chunks > 500 kB » | non retenu |
-| R21 | Docs | basse | `src/world/crates.js:26-29`, `src/main.js:112-120` | Ordre implicite entre l’inscription aux ombres et `addTraveler` | à faire |
+| R21 | Docs | basse | `src/world/crates.js:26-29`, `src/main.js:112-120` | Ordre implicite entre l’inscription aux ombres et `addTraveler` | fait (lot 1) |
 | R22 | Tests | basse | `tests/player.spec.js` | Couverture : repli du modèle 3D, attentes fixes en millisecondes | à faire (partiel) |
+| R23 | Tests | moyenne | `tests/portalFlicker.spec.js:54-75` | 280 lectures de pixels sans rendre la main : OOM sur une machine de 8 Go | à faire |
 
 ### R1 — `npm test` ne reconstruit pas le site testé (moyenne)
 
@@ -288,6 +302,17 @@ Babylon core (1,15 Mo) et le chargeur glTF (1,06 Mo, déjà chargé à la demand
 - **Proposition retenue** : un test du repli vers le squelette (avec R12).
 - **Non retenu** : réécrire les attentes en millisecondes (stables en CI à ce jour) et tester `dispose` (le chemin ne sert qu’au rechargement à chaud de Vite).
 
+### R23 — Lectures de pixels en boucle synchrone : la suite ne passe pas sur 8 Go (moyenne)
+
+- **Problème.** `measureOutline` (`tests/portalFlicker.spec.js:54-75`) rend et lit le framebuffer (`readPixels` de 780 × 540) jusqu’à 280 fois dans un seul `page.evaluate`. Chromium ne libère la mémoire de ces lectures synchrones qu’au retour à sa boucle d’événements. Mesures sur la machine de référence :
+  - le navigateur et le moteur de rendu grossissent chacun d’environ 45 Mo/s, jusqu’à 6,3 Go au total ;
+  - le moteur de rendu est alors tué (`Target crashed`) et la machine swappe ;
+  - sans lecture de pixels, ou en `requestAnimationFrame`, la mémoire reste stable.
+
+  Le test du passage de la caméra dans A2 échoue donc à chaque fois sur une machine de 8 Go. La CI (16 Go) le laisse passer.
+- **Proposition.** Rendre la main au navigateur (`setTimeout(0)`) toutes les 50 captures dans `measureOutline`. Le rendu est figé par l’horloge manuelle, donc la mesure reste identique.
+- **Risque.** Faible : aucune image n’est rendue pendant la pause (boucles du moteur arrêtées, `performance.now` figé).
+
 ### Points conformes, sans action
 
 - **Structure** par domaine (`core`, `input`, `platform`, `player`, `portals`, `ui`, `world`, `dev`), un module par responsabilité.
@@ -315,8 +340,8 @@ Les lots vont du plus sûr au plus risqué. Après chaque lot : `npm run build` 
 | Lot | Constats | Contenu | Risque |
 | --- | --- | --- | --- |
 | 1 | R10, R13, R16, R21 | Suppression de l’API morte ; documentation resynchronisée | nul |
-| 2 | R1, R2 | `npm test` reconstruit le site ; ESLint, `npm run lint`, CI, `.editorconfig` | faible |
-| 3 | R4 | `tests/support/devGame.js` partagé par les cinq fichiers de tests des portails | faible |
+| 2 | R4, R23 | `tests/support/devGame.js` partagé par les cinq fichiers de tests des portails ; sonde de scintillement qui rend la main | faible |
+| 3 | R1, R2 | `npm test` reconstruit le site ; ESLint, `npm run lint`, CI, `.editorconfig` | faible |
 | 4 | R12, R22 | Correctif du modèle glTF et test du repli | nul |
 | 5 | R6, R7, R8, R9 | `gait.js`, `world/lighting.js`, `createSightTest`, réglages dans `config.js` | faible |
 | 6 | R3 | Hook de dev chargé à la demande | faible à moyen |
@@ -324,7 +349,11 @@ Les lots vont du plus sûr au plus risqué. Après chaque lot : `npm run build` 
 
 ## 5. Suivi
 
-*Mis à jour à chaque lot.*
+*Mis à jour à chaque lot. Les tests sont comparés à la référence du § 2 (5 échecs d’environnement).*
+
+| Lot | Commit | Build | Tests | Remarques |
+| --- | --- | --- | --- | --- |
+| 1 | `refactor: supprime l’API morte et resynchronise la documentation` | OK | 97 réussis, 5 échecs identiques à la référence | Lot 2 avancé avant l’outillage : il supprime l’OOM de `portalFlicker.spec.js:134`, qui fait aussi swapper la machine |
 
 ## 6. Bilan
 

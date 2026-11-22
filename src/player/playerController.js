@@ -207,7 +207,7 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
   syncFeet();
   syncPreviousPose();
   return {
-    state, previousPose, center, setScale, applyWarp, syncPreviousPose, teleport, update,
+    state, previousPose, center, applyWarp, syncPreviousPose, teleport, update,
     get capsuleHeight() { return capsule.shapeOptions.capsuleHeight; },
     dispose: () => capsule.dispose(),
   };

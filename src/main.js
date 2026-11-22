@@ -55,7 +55,7 @@ async function start() {
     sky.intensity = 0.72;
     sky.groundColor = Color3.FromHexString("#76918b");
     const sun = new DirectionalLight("soleil", new Vector3(-0.58, -1, 0.48), scene);
-    // Le volume fixe englobe la dalle et les futurs intérieurs à −20 m, même hors champ.
+    // Le volume fixe englobe la dalle et les intérieurs cachés à −20 m, même hors champ.
     sun.direction.scaleToRef(-90, sun.position);
     sun.shadowFrustumSize = 150;
     sun.intensity = 0.78;
@@ -154,7 +154,7 @@ async function start() {
       visual.update(dt, state.speed / state.scale, state.grounded, state.verticalSpeed / state.scale);
       for (const crate of crates) crate.present(alpha);
       portals.updateGhosts();
-      const shoulderDistance = camera.follow(dt, feet, false, state.scale, portals, state.position);
+      const shoulderDistance = camera.follow(dt, feet, state.scale, portals, state.position);
       const fade = InverseLerp(CAMERA.fadeNear, CAMERA.fadeFar, shoulderDistance);
       if (visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade))) portals.syncGhostAppearance(playerTraveler);
       hud.update(state, camera, visual.root);

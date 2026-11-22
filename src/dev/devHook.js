@@ -89,7 +89,7 @@ export function installDevHook({
     },
     look(dx, dy) {
       camera.look(dx, dy);
-      camera.follow(0, playerTraveler.visual.root.position, false, player.state.scale, portals, player.state.position);
+      camera.follow(0, playerTraveler.visual.root.position, player.state.scale, portals, player.state.position);
     },
     manualClock() {
       if (manual || benchmarking) throw new Error("La boucle de rendu est déjà pilotée.");

@@ -96,7 +96,7 @@ export const PortalLayers = Object.freeze({ world: 0x1, late: 0x2, internal: 0x4
 | `src/portals/layers.js` | Constantes de calques (§ 3.7). |
 | `src/portals/portal.js` | `createPortal(scene, options)` : données d’un portail (repère, ouverture, faces, lien, warp en cache), maillage d’ouverture interne, contour de debug. |
 | `src/portals/renderer.js` | Rendu : arbre de passes de l’image, caméras virtuelles, projection oblique, opérations stencil, passes `ObjectRenderer`, repli, voile, statistiques. |
-| `src/portals/sky.js` | `createPortalSky(scene, options)` : paramètres du ciel (trois teintes, direction et force de la lueur solaire), GLSL du dégradé (`skyColorGlsl`) et calcul du voile (`skyVeilFactor`). Le ciel n’est pas un maillage : le quad de fond du renderer le peint dans la passe racine et dans chaque passe de portail (§ 6.4). |
+| `src/portals/sky.js` | `createPortalSky(options)` (appelée par `portals.createSky`) : paramètres du ciel (trois teintes, direction et force de la lueur solaire), GLSL du dégradé (`skyColorGlsl`) et calcul du voile (`skyVeilFactor`). Le ciel n’est pas un maillage : le quad de fond du renderer le peint dans la passe racine et dans chaque passe de portail (§ 6.4). |
 | `src/portals/travelers.js` | Voyageurs : détection des franchissements (pas fixe), appel du warp, recherche des portails chevauchés (jusqu’à deux plus proches pour les fantômes, le plus proche pour les corps et les ombres), plans de coupe au rendu, double fantôme et projecteurs d’ombre traversants. |
 | `src/portals/bodyTraveler.js` | Adaptateur générique pour un corps dynamique Havok (`PhysicsBody`) : téléportation, vitesses, échelle de la forme, de la masse et de la gravité, filtrage du corps à cheval, doublure physique facultative et interpolation du visuel. |
 | `src/portals/cameraPath.js` | Chemin de vue à travers les portails pour la caméra à la troisième personne : segments, collisions, warp cumulé, garde ε, plan proche adaptatif. |
@@ -197,6 +197,8 @@ portals.addTraveler({
 ```
 
 `addTraveler` exige des matériaux **exclusifs** : le plan de coupe est posé sur le matériau. L’adaptateur clone donc les matériaux partagés avant l’enregistrement. Le système synchronise à chaque image `alpha` et `visibility` des matériaux du fantôme avec ceux de l’original.
+
+Les clones du fantôme et du projecteur d’ombre ne rejoignent que les cartes d’ombre qui contiennent **déjà** les maillages du visuel. Il faut donc inscrire le visuel auprès de ses générateurs d’ombres (`addShadowCaster`) **avant** `addTraveler`, comme le font `src/world/crates.js` et `src/main.js`. Sinon le voyageur n’a ni ombre de fantôme ni projecteur d’ombre traversante.
 
 `createBodyTraveler(portals, { body, visual, size, scale, name, straddleIgnoreMask, proxy })` adapte un corps dynamique Havok de forme boîte (§ 7.4). `size` donne le côté ou les trois dimensions à l’échelle 1. `scale` vaut 1 par défaut et `name` reprend le nom du visuel.
 
@@ -470,6 +472,10 @@ gowDev.setMaxDepth(n)
 gowDev.setPortalShadows(enabled)                     // active ou coupe les projecteurs d’ombre traversants
 gowDev.manualClock() → { step(ms = 1000 / 60), release() }
 gowDev.flickerProbe({ portals, band = 4, threshold = 60, returnThreshold = 24 }) → { capture(), report() }
+gowDev.benchmark({ frames = 120, warmup = 10 }) → Promise<{ frames, cpuMs, frameMs, passes, drawCalls, renderWidth, renderHeight }>   // § 13.3
+gowDev.project({ x, y, z }) → { x, y }               // point monde → pixel CSS du canevas (caméra principale)
+gowDev.samplePixel(x, y) → Promise<[r, g, b, a]>     // couleur du pixel CSS (x, y) après le prochain rendu
+gowDev.character() → { animations, weights }         // modèle glTF chargé (null avec le squelette), docs/PERSONNAGE.md
 ```
 
 Pour une caisse, `state()` lit la pose simulée. `straddling` donne le nom du portail chevauché et `proxy` la position monde `{ x, y, z }` de la doublure. Ces champs valent `null` loin des ouvertures. `visual()` donne la pose monde interpolée de la caisse dessinée, `{ x, y, z, yaw, tilt, ghost, ghosts }`. `tilt` mesure en radians l’angle entre la verticale de la caisse et celle du monde. Le booléen `ghost` est vrai dès qu’au moins un fantôme est affiché ; `ghosts` indique le nombre de fantômes actifs (0, 1 ou 2). `ghosts()` expose `{ original: { clipPlane, clipPlane2 }, ghosts: [{ name, active, x, y, z, yaw, scaling, clipPlane, clipPlane2 }] }` pour contrôler les poses et les plans de coupe dans les tests. `gowDev.portalSystem` expose le système retourné par `createPortalSystem` pour créer, lier et supprimer des portails de test à la volée.
@@ -573,7 +579,9 @@ Ces règles garantissent un éclairage et des ombres cohérents. La scène a un 
 
 ### 13.1 Tests unitaires (Node, sans navigateur)
 
-`tests/portalMath.spec.js` importe `src/portals/math.js`, comme `tests/browser.spec.js` importe `src/platform/browser.js`. Il couvre :
+`tests/portalMath.spec.js` importe `src/portals/math.js`, comme `tests/browser.spec.js` importe `src/platform/browser.js`. Ces modules sont chargés par Node, sans Vite. `@babylonjs/core` n’ayant pas de champ `exports`, leurs imports Babylon doivent donc nommer le fichier avec son extension (`@babylonjs/core/Maths/math.vector.js`). Les autres modules suivent la forme sans extension de la documentation Babylon, que Vite résout vers le même fichier.
+
+`tests/portalMath.spec.js` couvre :
 
 - warp (point, direction, lacet, inverse, composition, échelle, cas translatif, détection de rotation `hasWarpRotation` modulo `2π` avec tolérance `1e-6`) ;
 - franchissement de segment (avant, arrière, hors de l’ouverture, à sens unique) ;
@@ -709,9 +717,11 @@ Corrections du 21/11/2026 : le débord des cadres, le décalage constant des sol
 Les limites de Babylon rencontrées, et les patchs proposés (non appliqués, le jeu n’en dépend pas), sont décrits dans `docs/BABYLON_PATCHES.md`. L’ordre de priorité pour les proposer en amont est dans `docs/BABYLON_UPSTREAM.md` :
 
 - effacement forcé de la profondeur et du stencil entre `activeCameras` ;
-- pas de culling optionnel dans `ObjectRenderer` ;
+- pas de culling optionnel dans `ObjectRenderer` (et `BoundingBox.IsInFrustum` limité à six plans) ;
 - pas d’API publique pour rafraîchir les contacts du contrôleur de personnage après une téléportation ;
-- pas d’aide pour la projection oblique en perspective.
+- pas d’aide pour la projection oblique en perspective ;
+- `TargetCamera.setTarget` déplace la caméra de 1 mm quand elle et sa cible ont la même coordonnée z ;
+- opérations stencil des faces arrière réglées à part (piège documentaire plutôt que défaut).
 
 ## 16. Tâches ordonnées
 
@@ -737,4 +747,4 @@ Suite du 21 novembre 2026 (branche `experiment/portals-polish`), mêmes règles 
 13. **Liens avec rotation** : avertissement de `link` (§ 11.1).
 14. **Performances** : candidats de la caméra principale, carte d’ombre limitée aux projecteurs activés, projecteurs seulement au soleil, ciel peint par le quad de fond, plans nuls au repos (§ 6.7, 13.3).
 
-Les tâches 7 à 13 et la première version de la tâche 14 ont été générées par Codex (`gpt-6.2-astra`) puis par Gemini (`gemini-4-neon-xhigh`, via `agy`), et relues ; la fin de la tâche 14 a été écrite directement. `npm run build` passe et `npm test` donne 100 tests verts.
+Les tâches 7 à 13 et la première version de la tâche 14 ont été générées par Codex (`gpt-6.2-astra`) puis par Gemini (`gemini-4-neon-xhigh`, via `agy`), et relues ; la fin de la tâche 14 a été écrite directement. `npm run build` passait alors et `npm test` donnait 100 tests verts. La suite compte 102 tests au commit `71406e0`. L’état des tests après la review de cohérence est dans `docs/REVIEW.md`.
