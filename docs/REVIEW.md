@@ -80,7 +80,7 @@ Sévérité : **haute**, un défaut ou un risque fort pour la maintenance ; **mo
 | --- | --- | --- | --- | --- | --- |
 | R1 | Outillage | moyenne | `playwright.config.js:12` | `npm test` sert `dist/` sans le reconstruire | fait (lot 3) |
 | R2 | Outillage | moyenne | `package.json:7-12` | Aucun linter ni `.editorconfig` | fait (lot 3) |
-| R3 | Dev/prod | moyenne | `src/main.js:12`, `src/dev/devHook.js:21,31` | Hook de dev embarqué en production, activation testée deux fois | à faire |
+| R3 | Dev/prod | moyenne | `src/main.js:12`, `src/dev/devHook.js:21,31` | Hook de dev embarqué en production, activation testée deux fois | fait (lot 6) |
 | R4 | Tests | moyenne | `tests/portal*.spec.js` | Gabarit `beforeEach`/`afterEach`/`withClock` copié dans 5 fichiers, filtre console incohérent | fait (lot 2) |
 | R5 | Simplification | moyenne | `src/portals/travelers.js:135-209, 290-413` | Fantôme et projecteur d’ombre dupliquent la fabrique de clone | à faire |
 | R6 | Cohérence | moyenne | `src/player/skeletonVisual.js:155-157`, `src/player/characterModel.js:34-38` | Choix de la démarche dupliqué avec les mêmes seuils | fait (lot 5) |
@@ -364,6 +364,7 @@ Les lots vont du plus sûr au plus risqué. Après chaque lot : `npm run build` 
 | 3 | `build: reconstruit le site avant les tests et ajoute ESLint` | OK | 98 réussis, 4 échecs (inclus dans la référence) | `dist/` supprimé avant le lancement : `npm test` l’a reconstruit. `npm run lint` passe. |
 | 4 | `fix(personnage): retire le modèle refusé au calage avant de reprendre le squelette` | OK | 104 tests : 100 réussis, 4 échecs (inclus dans la référence) | Deux tests ajoutés (repli du modèle 3D) |
 | 5 | `refactor: regroupe démarche, éclairage, ligne de vue et réglages de caméra` | OK | 100 réussis, 4 échecs (inclus dans la référence) | `start()` passe de 179 à 151 lignes. Lumières créées dans le même ordre et sous les mêmes noms (`ciel`, `soleil`) ; les tests d’ombres et de ciel, lus au pixel, sont inchangés. |
+| 6 | `perf(dev): charge le hook de pilotage à la demande` | OK | 100 réussis, 4 échecs (inclus dans la référence) | Bundle principal : 1 149 → 1 046 ko (gzip 292 → 267 ko). Chunk `devHook` de 21 ko, chargé seulement avec `?dev` (vérifié par les requêtes réseau ; sans `?dev`, `window.gowDev` est indéfini). |
 
 ## 6. Bilan
 

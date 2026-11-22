@@ -5,7 +5,6 @@ import { Clamp, InverseLerp, NormalizeRadians, SmoothStep } from "@babylonjs/cor
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { CAMERA, CHARACTER, FIXED_STEP, MAX_ACCUMULATED_TIME, PLAYER, SPAWN_YAW } from "./config.js";
 import { createSightTest, initPhysics } from "./core/physics.js";
-import { installDevHook, observeDevEffects } from "./dev/devHook.js";
 import { createBindings } from "./input/bindings.js";
 import { createInput } from "./input/input.js";
 import { createKeyboardLayout } from "./input/keyboardLayout.js";
@@ -23,6 +22,8 @@ import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
 const canvas = document.querySelector("#scene");
 const status = document.querySelector("#status");
+// `npm run dev` ou `?dev` : hook de pilotage des tests (docs/PORTALS.md § 10.3), chargé à part du bundle principal.
+const devMode = import.meta.env.DEV || new URLSearchParams(location.search).has("dev");
 
 // Modèle configuré (ou `?model=` dans l'URL), sinon squelette procédural. Un modèle
 // introuvable ou illisible n'empêche pas de jouer : on revient au squelette.
@@ -39,8 +40,10 @@ async function createPlayerVisual(scene) {
 }
 
 async function start() {
+  // Chargé avant le moteur : le compteur de compilations doit voir les tout premiers effets.
+  const dev = devMode ? await import("./dev/devHook.js") : null;
   const engine = new Engine(canvas, true, { alpha: true, stencil: true });
-  const getEffects = observeDevEffects(engine);
+  const getEffects = dev?.observeDevEffects(engine);
   const scene = new Scene(engine);
   try {
     scene.clearColor = new Color4(0, 0, 0, 0);
@@ -130,7 +133,7 @@ async function start() {
     }
     camera.reset(SPAWN_YAW);
     present(0, 0);
-    installDevHook({
+    dev?.installDevHook({
       scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, presentPose: () => present(0, 1),
       syncFrameTime(now, restart) {
         previousFrameTime = now;

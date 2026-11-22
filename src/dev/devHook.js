@@ -17,8 +17,8 @@ function timingStats(samples) {
   };
 }
 
+// Ce module n'est chargé qu'en mode dev (import dynamique de src/main.js).
 export function observeDevEffects(engine) {
-  if (!import.meta.env.DEV && !new URLSearchParams(location.search).has("dev")) return;
   let count = 0;
   const observer = engine.onAfterShaderCompilationObservable.add(() => count++);
   engine.onDisposeObservable.addOnce(() => engine.onAfterShaderCompilationObservable.remove(observer));
@@ -28,7 +28,6 @@ export function observeDevEffects(engine) {
 export function installDevHook({
   scene, player, playerTraveler, visual, camera, portals, input, crates, presentPose, getEffects, syncFrameTime,
 }) {
-  if (!getEffects) return;
   const engine = scene.getEngine();
   const canvas = engine.getRenderingCanvas();
   const mainCamera = camera.camera;

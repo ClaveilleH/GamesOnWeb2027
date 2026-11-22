@@ -451,7 +451,7 @@ Le panneau `#player-state` affiche en plus `Portails : profondeur 3/4 · 9 passe
 
 ### 10.3 Hook dev
 
-Le hook est actif si `import.meta.env.DEV` est vrai ou si l’URL contient `?dev`. La CI teste la build de production, qu’elle publie ensuite : on ne peut pas retirer le hook à la compilation. Le paramètre d’URL suit le précédent de `?browser=`. Il expose `window.gowDev` :
+Le hook est chargé si `import.meta.env.DEV` est vrai ou si l’URL contient `?dev` : `src/main.js` l’importe dynamiquement avant de créer le moteur, pour que le compteur de compilations voie les premiers effets. La CI teste la build de production, qu’elle publie ensuite, donc le hook reste dans `dist/`. Il y forme un chunk séparé, téléchargé seulement avec `?dev`. Le paramètre d’URL suit le précédent de `?browser=`. Il expose `window.gowDev` :
 
 ```js
 gowDev.state() → {
