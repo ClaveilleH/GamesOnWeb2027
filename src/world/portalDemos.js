@@ -353,7 +353,20 @@ export function createPortalDemos(scene, portals) {
     // Le porche et le tableau de la porte abritent le dernier demi-mètre jusqu’au jardin.
     coveredTunnel("porche du jardin", -27.5, -27 - t, 0, z, 1.5, 1.6, 0.08, blue, stone);
     doorway("porte du jardin", -27, 0, z, east, 1.34, 1.52, 8 + 2 * t, 2.6, t, stone);
-    block("jardin · mur est", -19 + t / 2, 1.3, z, t, 2.6, 8 + 2 * t, stone);
+    // Test : une poterne à la taille réduite laisse ressortir le joueur rétréci, qui peut
+    // contourner les tunnels jusqu’à l’entrée de P1 et rétrécir à nouveau (0,5 → 0,25 → …).
+    const wallX = -19 + t / 2;
+    const wallFrom = z - 4 - t;
+    const wallTo = z + 4 + t;
+    const posternZ = 29.5;
+    const posternWidth = 1.34;
+    const posternHeight = 1.52;
+    const posternFrom = posternZ - posternWidth / 2;
+    const posternTo = posternZ + posternWidth / 2;
+    block("jardin · mur est", wallX, 1.3, (wallFrom + posternFrom) / 2, t, 2.6, posternFrom - wallFrom, stone);
+    block("jardin · mur est", wallX, 1.3, (posternTo + wallTo) / 2, t, 2.6, wallTo - posternTo, stone);
+    block("jardin · linteau de la poterne", wallX, (posternHeight + 2.6) / 2, posternZ, t, 2.6 - posternHeight, posternWidth, stone);
+    sign("RETOUR VERS P1", -16.5, 0, posternZ, 4.2, 1.1, west);
     for (const side of [-1, 1]) {
       block("jardin · enceinte", -23, 1.3, z + side * (4 + t / 2), 8, 2.6, t, stone);
     }
