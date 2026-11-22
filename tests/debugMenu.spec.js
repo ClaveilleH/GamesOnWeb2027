@@ -48,10 +48,25 @@ test("Ctrl+D ouvre et ferme le menu debug sans ouvrir la pause", async ({ page }
   await page.keyboard.press("Control+KeyD");
   await expect(panel(page)).toBeVisible();
   await expect(page.locator("#pause-menu")).not.toHaveAttribute("open");
+  // « Déplacement » est replié par défaut : on l'ouvre pour lire l'état du mode.
+  await panel(page).getByText("Déplacement", { exact: true }).click();
   await expect(panel(page).getByRole("button", { name: "Marche" })).toHaveAttribute("aria-pressed", "true");
   await expect(panel(page).locator(".debug-position")).toContainText("z -10");
   await page.keyboard.press("Control+KeyD");
   await expect(panel(page)).toBeHidden();
+});
+
+test("la souris libérée (Tab), un Alt+Tab (blur) n’ouvre pas la pause", async ({ page }) => {
+  await emulatePointerLock(page);
+  await startDevGame(page);
+  await page.locator("#scene").click();
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement?.id ?? null)).toBe("scene");
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement)).toBeNull();
+  // Alt+Tab retire le focus de la fenêtre : la souris étant déjà libre, aucune pause.
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await page.waitForTimeout(150);
+  await expect(page.locator("#pause-menu")).not.toHaveAttribute("open");
 });
 
 test("Tab libère la souris sans pause, un clic sur la scène la reprend", async ({ page }) => {

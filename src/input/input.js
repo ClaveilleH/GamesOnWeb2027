@@ -217,7 +217,12 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
     if (event.code === FLY_DOWN_CODE) descending = false;
     if (event.code === relockOnRelease) capture();
   }, options);
-  window.addEventListener("blur", pause, options);
+  window.addEventListener("blur", () => {
+    // Souris déjà libérée par Tab (menu debug) : un Alt+Tab ne doit pas ouvrir la pause.
+    // On relâche seulement les entrées pour éviter une touche restée enfoncée hors focus.
+    if (freeCursor) reset();
+    else pause();
+  }, options);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) pause();
   }, options);
