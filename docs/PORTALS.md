@@ -532,7 +532,7 @@ Ces règles garantissent un éclairage et des ombres cohérents. La scène a un 
 ### 12.1 Carte
 
 - Champ de 100 m × 100 m (x, z ∈ [−50, 50]). La dalle physique `dalle` est agrandie. Le reste du sol reçoit une texture de quadrillage répétée (maille de 1 m, traits majeurs tous les 5 m, mêmes teintes que l’existant).
-- La zone d’entraînement actuelle (sol peint de 40 m, rampes, sauts, escalier, point de départ `(0, 3.65, −10)`) est inchangée au centre. Les tests existants en dépendent.
+- La zone d’entraînement actuelle (sol peint de 40 m, rampes, sauts, escalier, point de départ `(0, 3.65, −10)`) est inchangée au centre. Les tests en dépendent : ils supposent un sol plat et dégagé autour du point de départ.
 - Le relief lointain passe des rayons 59 et 82 à 95 et 125. Il reste dessiné devant le ciel (`portals.createSky(skyPalette)` dans `src/main.js`, palette dans `src/world/lighting.js`), qui reprend selon la direction de vue les trois teintes du dégradé CSS (`#e1dfbd`, `#adc2b2`, `#789b95`) avec une lueur solaire calibrée sur la vue de départ (tangage 0,18, tache lumineuse vers 70 % de la largeur).
 - Chaque zone a son sol peint (`DynamicTexture` de 1024 px environ par zone) avec un **panneau au sol** qui la nomme, dans le style du marquage « DÉPART » : « PARADOXE SPATIAL », « ARCHITECTURE NON EUCLIDIENNE », « PIÈCES CYCLIQUES INFINIES », « GÉOMÉTRIE IMPOSSIBLE », « MANIPULATION D’ÉCHELLE ».
 - Les intérieurs cachés sont sous la dalle (§ 11.3).
@@ -564,7 +564,7 @@ Ces règles garantissent un éclairage et des ombres cohérents. La scène a un 
 
 - Cabine au sud-est de 2,6 × 2,6 m au sol, 3 m de haut, centrée sur `(30, 0, −30)`. Sa porte est sur la face nord. Portail P à `(30, 0, −28.7)`, face avant +Z (`yaw = 0`), ouverture 1,6 × 2,4 m.
 - Grande salle cachée de 14 × 14 m, 6 m sous plafond, sol à y = −20, z ∈ [−47, −33], centrée en x = 30, avec colonnes et grand marquage au sol. Portail Q à `(30, −20, −33)` sur son mur nord, face avant −Z (`yaw = π`). Lien P ↔ Q translatif.
-- La mosaïque et la pierre des deux seuils utilisent le niveau anisotrope 1. Le filtrage isotrope des mipmaps atténue leurs joints vus de biais pendant la rotation devant P (§ 13.2).
+- La mosaïque et la pierre des deux seuils utilisent le niveau anisotrope 1. Le filtrage isotrope des mipmaps atténue leurs joints vus de biais pendant la rotation devant P.
 
 ### 12.6 Zone 5 : manipulation d’échelle
 
@@ -592,80 +592,14 @@ Ces règles garantissent un éclairage et des ombres cohérents. La scène a un 
 
 `tests/frameProbe.spec.js` importe le module pur `src/dev/frameProbe.js`. Il couvre le retour d’un pixel à sa couleur, un changement durable, le filtrage par masque et la bande d’un segment oblique jusqu’à ses extrémités. Un framebuffer synthétique vérifie aussi l’attribution aux bords de l’image centrale et la rotation des trois tampons.
 
-### 13.2 Tests Playwright, un par concept
+### 13.2 Tests Playwright
 
-Chaque test charge `/?dev`, attend `gowDev`, place le joueur ou une caisse devant le portail avec le hook, la fait traverser (`setControls` ou `push`), puis vérifie à l’arrivée la position (côté et décalage latéral attendus par rapport au portail de destination, calculés à partir de `gowDev.portal`), l’orientation (lacet + Δ) et l’échelle :
+Les tests de bout en bout ne dépendent pas de la carte : ils n’utilisent ni les noms ni les coordonnées des démos. Ils supposent seulement quelques mètres de sol plat et dégagé autour du point de départ. `tests/portals.spec.js` vérifie :
 
-1. joueur à travers l’arche A → esplanade (échelle 1) ;
-2. joueur dans le tunnel extérieur → couloir souterrain (y ≈ −20), puis sortie par D → C ;
-3. joueur par la porte est → porte ouest de la même pièce (x diminue d’environ 6 m) ;
-4. joueur dans la cabine → grande salle ;
-5. joueur à travers P1 (échelle 0,5, capsule de 0,96 m, caméra rapprochée de moitié), puis une caisse à travers P1 (échelle 0,5) ;
-6. en plus : caméra seule de l’autre côté d’un portail (`camera.warped === true` alors que le joueur n’a pas traversé).
+- que chaque portail de la carte a un nom unique et un lien réciproque (`portal.target.target === portal`), et que F3 affiche la ligne des portails ;
+- qu’une paire de portails créée au départ avec `gowDev.portalSystem` fonctionne. L’entrée fait face au joueur, la sortie regarde dans la même direction (lien translatif), à l’échelle 1 puis 0,5. L’entrée ajoute au moins une passe de rendu. Le joueur la traverse et ressort devant la sortie avec le décalage latéral, le lacet, l’échelle et la hauteur de capsule attendus.
 
-`tests/portals.spec.js` vérifie aussi qu’une image manuelle de 1/60 s fait avancer une caisse d’un pas Havok. La demi-image suivante présente la pose interpolée. Pour vérifier la réinitialisation du voile, un test maintient la caméra et l’horloge immobiles dans le pavillon, puis ramène la profondeur de 4 à 2. La distance lissée reste fixe jusqu’à l’appel de `teleportPlayer` à la même position. Au rendu suivant, elle diminue immédiatement des 12 m qui séparent les deux replis.
-
-`tests/portalPhysics.spec.js` enregistre à 144 Hz le visuel interpolé de la caisse, la position du joueur et les franchissements. Chaque échantillon est ramené dans le repère de l’entrée par le warp inverse. Les distances et les vitesses du tableau sont donc comparables sur A, A2 et P1. La vitesse minimale porte sur l’intervalle où seule la caisse a franchi. La variation de déplacement compare deux déplacements consécutifs sur l’ensemble des 260 images de poussée.
-
-| Portail | Séparation minimale avant → après (m) | Vitesse minimale avant → après (m/s) | Variation maximale avant → après (mm/image) |
-| --- | ---: | ---: | ---: |
-| A | 0,193 → 0,821 | −0,36 → 1,93 | 6,24 → 2,90 |
-| A2 | 0,237 → 0,821 | −0,17 → 2,13 | 5,45 → 2,90 |
-| P1 | 0,237 → 0,821 | −0,17 → 2,08 | 8,76 → 2,90 |
-
-Sur ces trois poussées, la caisse avance sans recul. L’écart de hauteur maximal est de 9,615 mm et l’inclinaison maximale de 0,021 rad. Le joueur et la caisse sortent de P1 à l’échelle 0,5. Pendant le chevauchement de P1 puis de P2, l’écart mesuré entre la position de la doublure et W(centre simulé) est nul. Le test vérifie aussi le placement direct et la désactivation hors de l’ouverture.
-
-Lancée seule à 6,5 m/s avec un lacet de 45°, la caisse restait bloquée à 0,111 m devant E et perdait jusqu’à 92,7 % de sa vitesse en un pas près de Q. Elle franchit désormais les deux ouvertures. La plus forte perte de vitesse horizontale près du plan est de 5,0 % sur E et de 4,7 % sur Q, pour une limite de 15 %.
-
-`tests/portalFlicker.spec.js` mesure dix trajets à 144 Hz, avec le squelette masqué, dans Chromium avec SwiftShader en 780 × 540. La sonde compte les changements isolés d’un pixel fixe sur trois images (§ 10.3). Chaque trajet dure 100 images, sauf le passage de la caméra dans A2 qui en dure 239.
-
-Le calibrage utilise deux mesures indépendantes. Le plafond du total vaut `ceil(1,5 × spikes mesurés)`. Le plafond d’une image vaut `max(8, ceil(1,5 × maxPerFrame mesuré))`. Huit trajets respectent aussi la limite de `floor(frames / 2)`. Pour A2 en approche et P2 au retour, ce contrôle ramène le plafond effectif à 50. Les deux exceptions concernent les pas chassés devant E et la rotation devant P, dont les captures montrent des détails sous-pixel (§ 14).
-
-| Trajet | Total avant | Total mesuré | Seuil total effectif | Max/image avant | Max/image mesuré | Seuil par image |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| B, approche sur le sable | 1 554 | 19 | 29 | 155 | 2 | 8 |
-| A, approche | 3 188 | 29 | 44 | 270 | 2 | 8 |
-| A2, approche | 12 312 | 35 | 50 (calibré à 53) | 856 | 4 | 8 |
-| A2, recul | 13 432 | 23 | 35 | 813 | 4 | 8 |
-| E, pas chassés | 652 | 101 | 152 | 48 | 39 | 59 |
-| P, approche | 15 136 | 0 | 0 | 724 | 0 | 8 |
-| P, rotation | 18 084 | 56 | 84 | 651 | 8 | 12 |
-| P1, approche | 186 | 0 | 0 | 44 | 0 | 8 |
-| P2, retour à demi-échelle | 18 633 | 41 | 50 (calibré à 62) | 1 033 | 4 | 8 |
-| A2, passage de la caméra | 117 067 | 58 | 87 | 4 119 | 3 | 8 |
-
-Devant E, le crénelage du montant porte le plafond par image à 59, au-dessus de l’ancien pic de 48. Le test exige donc aussi zéro pixel isolé sur le bord bas, où la régression initiale en produisait 534.
-
-Les variantes de texture utilisent les mêmes poses, commandes et seuils de détection.
-
-- **Filtrage.** Avec le dessin final des joints et le niveau 4 de Babylon, P en rotation donne 2 554 pixels (seuil 84). Passer les seuls seuils pavés au niveau 1 en laisse 394. Passer la seule mosaïque au niveau 1 en laisse 2 215. Les trois surfaces utilisent donc le niveau 1 et le total descend à 56. Le même réglage sur la texture commune des tunnels ramène P1 de 8 à 0 (seuil 0). Le flou à distance reste limité aux matériaux où les joints déclenchent la sonde.
-- **Joints.** Avec le niveau 4 dans le pavillon et des joints de 5 % du carreau, les arrêter au filet donne 112 pixels devant E. Les prolonger au bord en donne 101. Le dessin final les prolonge. Avec des joints de 2,5 %, ce même trajet monte à 644, dont 433 sur le bord bas.
-- **Graduations.** Repeindre les deux traits d’extrémité du couloir porte A2 à 233 pixels en approche, 290 en recul et 2 019 jusqu’au passage de la caméra. La règle commence donc à un mètre de chaque ouverture.
-- **Pavés.** Avec le filtrage retenu, aligner le premier joint sur le bord donne 4 pixels isolés devant P1 et 44 au retour par P2. Le décalage d’un demi-carreau donne respectivement 0 et 41.
-
-Dans le pavillon à profondeur 4, le test compare le voile de chaque sous-arbre commun à deux images consécutives aux distances 4, 8, 12, 16, 20, 24, 28, 32 et 40 m. Il calcule `clamp((d − start) / (end − start), 0, 1)`, avec zéro pour un voile désactivé. La variation doit rester strictement inférieure à 0,05, y compris quand la caméra franchit un portail pendant la rotation. Les pires sauts sont de 0,024857 en avance, 0,027778 en rotation et 0 en diagonale.
-
-Un dernier test charge une page neuve et compte les effets compilés lors du premier passage du joueur par A puis d’une caisse par A2. Il attend zéro compilation supplémentaire pendant ces traversées. Sur la build de production, deux exécutions de `portalFlicker.spec.js` ont donné des rapports identiques, y compris les séries par image, les comptes par bord et les variations du voile.
-
-`tests/portalShadows.spec.js` vérifie le prolongement des ombres à l’horloge manuelle :
-
-- **Arche A → esplanade devant B.** La caisse de l’arche posée devant A sans chevaucher le plan (`z = 30,45`, au sol puis élevée en `y = 1,6` pour que le rayon issu de son centre transporté touche la face avant de B) assombrit le sable devant B de `[223, 185, 131]` à `[140, 119, 87]` (−68,0 de luminance ; écart nul avant la tâche D), alors qu’un point voisin et le même point lorsque la caisse est éloignée restent à `[223, 185, 131]`.
-- **Aucune ombre parasite.** Le point du sable derrière B où tomberait l’ombre d’un clone non découpé (`(−29,94, 0, −32,31)`) et un point à l’ouest de l’ouverture hors du prisme lumineux (`(−32,35, 0, −31,95)`) restent inchangés à `[223, 185, 131]` (écart nul sur les trois canaux).
-- **Double face arrière B → arrière A.** Une caisse derrière B projette son ombre sur le quadrillage ensoleillé derrière A (`[67, 104, 102]` → `[57, 87, 84]`, −15,6 de luminance).
-- **Portails à sens unique, abris à l’ombre, compteur et effets.** `state().shadowCasters` vaut `0` loin des portails, `1` devant A (caisse seule ou à cheval avec `ghosts = 1`), `2` avec le joueur visible devant A, puis `1` quand le joueur est masqué. Sur une paire à sens unique en plein soleil, il vaut `0` sur la face sortante et sur les deux faces arrière, et `1` devant la face avant où le soleil entre. Sur les portails abrités (`Q` sous le plafond de la grande salle, joueur visible à 1 m de `B2` dans le couloir souterrain et à 0,8 m de `W` dans le pavillon), `isLightBlocked` maintient `shadowCasters` à `0`. Aucun effet n’est compilé pendant ces scénarios (`effects = 14` constant).
-- **Suivi d’ombre du joueur à l’image près.** Sur l’esplanade de sable ensoleillée à l’horloge manuelle (`manualClock`), la lecture des pixels avant puis dès l’unique première image (`clock.step(0)`) suivant un déplacement direct vérifie que l’ombre du crâne quitte l’ancienne position (`[140, 119, 87] → [223, 185, 131]`) et apparaît immédiatement sur la nouvelle (`[223, 185, 131] → [140, 119, 87]`), sans retard d’une image malgré l’exclusion des maillages `late` de `scene.getActiveMeshCandidates`.
-
-`tests/portalGhosts.spec.js` vérifie les fantômes simultanés sur deux portails créés loin des démos (`x ≈ 40, z = −45`) via `gowDev.portalSystem` puis détruits avec `removePortal` :
-
-- **Deux portails côte à côte dans un même plan (`sides: "both"`).** À cheval sur la jonction et le plan, la caisse affiche deux fantômes (`state().ghosts === 2`, `crate.visual().ghosts === 2`) aux poses exactes `W_1(pose)` et `W_2(pose)` ; les `clipPlane` et `clipPlane2` de l’original et des deux fantômes sont vérifiés analytiquement et par lecture de pixels aux deux destinations (moitié engagée visible, moitié passée par l’autre portail et face arrière rejetées). En ne chevauchant plus qu’un portail, le compte redescend à `1` et `clipPlane2` revient au plan neutre ; loin des ouvertures, à `0`.
-- **Deux portails en angle droit (90°) avec rotation et demi-échelle.** Les deux fantômes prennent la rotation et l’échelle de leur destination et reçoivent le plan transporté `warpPlane(W_i, discardPlane(P_j, −σ_j))`. Le test vérifie aussi deux fantômes simultanés sur le joueur, `isGhostActive`, `ghostCount`, `syncGhostAppearance` (synchronisation de `alpha` et `visibility` sur les deux fantômes), la restauration des plans au désenregistrement et zéro compilation d’effet pendant tout le scénario (`effects = 14` constant).
-
-`tests/portals.spec.js` vérifie également le ciel voilable (`src/portals/sky.js`) :
-
-- **Départ (passe racine)** : zéro pixel transparent (`alpha = 255` sur tout le framebuffer), couleur en haut d’écran conforme au dégradé attendu (`#e1dfbd` vers 70 % de la largeur, plus fraîche à gauche), et relief lointain visible devant le ciel.
-- **Passe voilée vs non voilée (arche A)** : avec `setMaxDepth(1)` le long de la droite B–A (`passes = 2, fallbacks = 1`), le ciel vu à travers l’arche A prend exactement `fallbackColor` (`[159, 184, 173, 255]`) alors que le ciel de la passe racine reste sur le dégradé lumineux (`[222, 221, 188, 255]`). À profondeur 4 face à l’arche A (`fallbacks = 0`), le ciel vu à travers A retrouve le dégradé, sans aucune compilation d’effet supplémentaire (`effects = 14` constant). Les dix trajets de `tests/portalFlicker.spec.js` restent verts sans ajustement de tolérance (`21` pixels sur B, `32` sur A, résultats identiques sur les huit autres trajets).
-- **Caméra passée derrière un portail (zone 2)** : joueur sur le panneau, dos au tunnel ; la caméra franchit A2 et se retrouve derrière B2, avec un repli au bout de la chaîne des arches. Le haut du ciel et le relief de l’horizon ne doivent pas prendre la couleur de repli (§ 6.6, `hazeLevels`). Ce test échouait avec un voile appliqué à tout le sous-arbre.
-- **Avertissement sur les liens avec rotation (`portals.link`)** : zéro avertissement au chargement des démos et sur les liens translatifs (y compris avec échelle et dans la tolérance `1e-6`) ; un seul `console.warn` (hors `Logger.Warn` Babylon) sur un lien tourné au soleil même relié deux fois de suite, inversé ou délié puis relié ; zéro avertissement avec `{ allowRotation: true }` ou sans lumière directionnelle à ombres ; nettoyage par `unlink` et `removePortal`.
+Les tests calés sur les démos ont été retirés le 22 novembre 2026, avant le remaniement de la carte et de l’emplacement des portails : scintillement des contours, poussée des caisses au seuil, ombres traversantes, fantômes simultanés, ciel voilé, réglages du repli. Ils figurent, avec leurs calibrages et leurs mesures, dans le commit `f5ac383`.
 
 ### 13.3 Mesure des performances
 
@@ -705,10 +639,10 @@ Sans bridage, le pire cas (pavillon) prend environ 2 ms par image. Le coût GPU 
 - La passe racine des maillages regroupés (§ 6.7) ne peut plus être cullée objet par objet à l’intérieur d’un lot. C’est volontaire : moins d’appels de dessin valent mieux qu’un culling fin pour ce décor.
 - Performances GPU non mesurées sur un portable réel (§ 13.3). Le coût CPU est mesuré avec un bridage ×3 : 5,95 ms dans le pire cas (pavillon, profondeur 4), soit +7 % par rapport à la version de départ mesurée dans les mêmes conditions.
 
-Limites résiduelles de rendu, mesurées image par image (§ 13.2) :
+Limites résiduelles de rendu, mesurées image par image avec `gowDev.flickerProbe` (§ 10.3) :
 
 - Les sections internes referment les piliers et le linteau des arches. À la jonction, les deux moitiés reçoivent les ombres de leurs mondes respectifs. Une couture d’éclairage d’un pixel peut rester visible.
-- Dans la récursion du pavillon, un montant lointain se projette sur moins d’un pixel. Devant E, les captures 43 à 45 montrent le même pixel occupé successivement par le calcaire du deuxième niveau, le mur bleu du troisième et le montant de la racine. Devant P, aux images 61 à 63, la fente entre une colonne et le montant laisse entrevoir la mosaïque. Ces occultations d’une image expliquent les deux exceptions au plafond de `frames / 2` (§ 13.2).
+- Dans la récursion du pavillon, un montant lointain se projette sur moins d’un pixel. Devant E, les captures 43 à 45 montrent le même pixel occupé successivement par le calcaire du deuxième niveau, le mur bleu du troisième et le montant de la racine. Devant P, aux images 61 à 63, la fente entre une colonne et le montant laisse entrevoir la mosaïque. Ce sont des occultations d’une seule image.
 
 Corrections du 21/11/2026 : le débord des cadres, le décalage constant des sols et le recouvrement de la coupe oblique corrigent les conflits de profondeur signalés le 21/11/2026. Les plans de coupe permanents corrigent les compilations tardives pendant les traversées et les approches d’ombre : les variantes de l’original avec et sans plans de coupe (`CLIPPLANE` et `CLIPPLANE2`) sont compilées au préchauffage, les fantômes portent leurs plans en permanence, le projecteur d’ombre porte cinq plans (`CLIPPLANE`…`CLIPPLANE5`), le quad de fond fige son shader (`useClipPlane: false`, mode `useSky` par uniforme), et sur SwiftShader `warmUp` compile 14 effets au chargement sans aucune compilation supplémentaire pendant le jeu.
 
@@ -738,7 +672,7 @@ Chaque tâche est générée par Codex (`gpt-6.2-astra`, effort `max`) puis relu
 
 Suite du 21 novembre 2026 (branche `experiment/portals-polish`), mêmes règles de relecture :
 
-7. **Outil de détection** : horloge manuelle, sonde de contour, statistiques du voile, compteur d’effets, tests de scintillement (§ 10.3, 13.2).
+7. **Outil de détection** : horloge manuelle, sonde de contour, statistiques du voile, compteur d’effets, tests de scintillement (§ 10.3).
 8. **Correctifs de rendu** : cadres avancés de 1 cm, sols à `zOffsetUnits`, `clipBias` plafonné, voile lissé, variantes de plans de coupe préparées (§ 6.4 à 6.6, 7.5, 11).
 9. **Physique à travers les portails** : doublure physique, calques `portalBack` et `portalFrame`, appui lu par `shapeCast` à l’arrivée (§ 7).
 10. **Ombres traversantes** : projecteurs d’ombre au calque 0 coupés par le prisme de lumière (§ 7.5).

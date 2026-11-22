@@ -16,19 +16,3 @@ export async function expectCleanPage(page) {
   expect(messages.filter((m) => m.type() === "error" || (m.type() === "warning" && /BJS|Babylon/i.test(m.text())))
     .map((m) => m.text())).toEqual([]);
 }
-
-// Pilote le rendu image par image avec `gowDev.manualClock()`, puis rend la main à la boucle
-// du moteur en rétablissant les commandes et la visibilité du joueur.
-export async function withClock(page, run) {
-  const clock = await page.evaluateHandle(() => window.gowDev.manualClock());
-  try {
-    return await run(clock);
-  } finally {
-    await clock.evaluate((clock) => {
-      clock.release();
-      window.gowDev.setControls(null);
-      window.gowDev.setPlayerVisible(true);
-    });
-    await clock.dispose();
-  }
-}
