@@ -65,7 +65,15 @@ for (const scale of [1, 0.5]) {
     const lateral = (player.x - exit.origin.x) * Math.cos(exit.yaw) - (player.z - exit.origin.z) * Math.sin(exit.yaw);
     expect(Math.abs(lateral - offset * scale)).toBeLessThan(0.1 * scale);
     expect(Math.cos(player.yaw - exit.yaw)).toBeGreaterThan(0.998);
-    expect(player).toMatchObject({ scale, grounded: true });
+    expect(player.scale).toBe(scale);
     expect(player.capsuleHeight).toBeCloseTo(capsuleHeight * scale, 3);
+
+    // Sur une machine lente, l’image du franchissement peut précéder le contact avec le sol :
+    // on attend que le joueur reprenne appui, sans être tombé ni réapparu au départ.
+    await page.waitForFunction(() => window.gowDev.state().player.grounded);
+    const settled = await page.evaluate(() => window.gowDev.state().player);
+    expect(settled.scale).toBe(scale);
+    expect(Math.abs(settled.y - exit.origin.y)).toBeLessThan(0.05 * scale);
+    expect(signedDistance(exit, settled)).toBeGreaterThan(0);
   });
 }
