@@ -16,6 +16,10 @@ Le terrain de 100 m × 100 m entoure la zone d’entraînement de cinq démonstr
 
 Le système est un module générique (`src/portals/`). Son architecture, son API et ses limites sont décrites dans [docs/PORTALS.md](docs/PORTALS.md). Les limites de Babylon.js rencontrées, avec les correctifs proposés, sont dans [docs/BABYLON_PATCHES.md](docs/BABYLON_PATCHES.md). Ajouter `?dev` à l’URL expose `window.gowDev`, un hook de pilotage utilisé par les tests Playwright, qui permet aussi de mesurer les performances.
 
+## Maps
+
+Le terrain d’entraînement est la map par défaut. D’autres maps glTF/GLB se chargent par lien : http://localhost:5173/?map=arcade ouvre la salle d’arcade et sa façade. Conventions et ajout d’une map : [docs/MAPS.md](docs/MAPS.md).
+
 ## Personnage
 
 Le squelette procédural peut être remplacé par un modèle glTF/GLB animé, déposé dans `public/models/` : voir [docs/PERSONNAGE.md](docs/PERSONNAGE.md).

@@ -94,7 +94,7 @@ export function createDebugMenu(canvas, game) {
     min: 0.1, max: 2, step: 0.05, value: game.timeScale, format: (v) => "×" + number(v),
   }, (value) => { game.timeScale = value; });
 
-  const destinations = debugDestinations.map(({ label, feet, yaw }) => {
+  const destinations = (game.destinations ?? debugDestinations).map(({ label, feet, yaw }) => {
     const button = element("button", { type: "button", textContent: label });
     button.addEventListener("click", () => game.teleport(feet, yaw), options);
     return element("li", {}, [button]);

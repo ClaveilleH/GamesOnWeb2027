@@ -3,7 +3,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { Color4 } from "@babylonjs/core/Maths/math.color";
 import { Clamp, InverseLerp, NormalizeRadians, SmoothStep } from "@babylonjs/core/Maths/math.scalar.functions";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { CAMERA, CHARACTERS, DEFAULT_CHARACTER, FIXED_STEP, MAX_ACCUMULATED_TIME, PLAYER, PROPS, SPAWN_YAW, characterByKey } from "./config.js";
+import { CAMERA, CHARACTERS, DEFAULT_CHARACTER, FIXED_STEP, MAPS, MAX_ACCUMULATED_TIME, PLAYER, PROPS, SPAWN_YAW, characterByKey } from "./config.js";
 import { createSightTest, initPhysics } from "./core/physics.js";
 import { createBindings } from "./input/bindings.js";
 import { createInput } from "./input/input.js";
@@ -22,6 +22,7 @@ import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
 import { createSlowFrameMonitor, graphicsHelp, hasMajorPerformanceCaveat, isSoftwareRenderer } from "./platform/graphics.js";
 import { createLighting, skyPalette } from "./world/lighting.js";
+import { loadMap } from "./world/map.js";
 import { createPortalDemos } from "./world/portalDemos.js";
 import { loadDecorProp } from "./world/props.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
@@ -56,6 +57,25 @@ function resolveCharacter() {
     || readPreference(CHARACTER_PREFERENCE)
     || (navigator.webdriver ? "squelette" : DEFAULT_CHARACTER);
   return characterByKey(key) ?? characterByKey("squelette");
+}
+
+// Map demandée par `?map=<clé de MAPS>` ou `?map=<url>`, sinon null : terrain d'entraînement.
+function resolveMap() {
+  const value = new URLSearchParams(location.search).get("map");
+  if (!value) return null;
+  return MAPS.find((map) => map.key === value) ?? { key: "custom", label: "Map imposée", url: value };
+}
+
+// Une map introuvable ou illisible n'empêche pas de jouer : on revient au terrain d'entraînement.
+async function loadRequestedMap(scene) {
+  const spec = resolveMap();
+  if (!spec) return null;
+  try {
+    return await loadMap(scene, spec.url);
+  } catch (error) {
+    console.warn(`Map ${spec.url} non chargée, retour au terrain d'entraînement.`, error);
+    return null;
+  }
 }
 
 // Modèle choisi, sinon squelette procédural. Un modèle introuvable ou illisible n'empêche
@@ -109,7 +129,9 @@ async function start() {
     const plugin = physics.getPhysicsPlugin();
     const { shadows } = createLighting(scene);
 
-    const casters = createTestTerrain(scene);
+    const map = await loadRequestedMap(scene);
+    const casters = map ? map.casters : createTestTerrain(scene);
+    const spawn = map?.spawn ?? { position: spawnPoint, yaw: SPAWN_YAW };
     const character = resolveCharacter();
     const visual = await createPlayerVisual(scene, character);
     scene.onDisposeObservable.addOnce(visual.dispose);
@@ -122,8 +144,9 @@ async function start() {
     }
     const portals = createPortalSystem(scene, { camera: camera.camera, isLightBlocked });
     scene.onDisposeObservable.addOnce(portals.dispose);
-    const demos = createPortalDemos(scene, portals);
-    const props = await loadProps(scene);
+    // Démos de portails et décors sont placés pour le terrain d'entraînement.
+    const demos = map ? { crates: [], casters: [], interiors: [] } : createPortalDemos(scene, portals);
+    const props = map ? [] : await loadProps(scene);
     for (const prop of props) scene.onDisposeObservable.addOnce(prop.dispose);
     // Le ciel est peint par le quad de fond du renderer, après le décor, là où la profondeur vaut encore 1.
     portals.createSky(skyPalette);
@@ -135,7 +158,7 @@ async function start() {
       }
       return true;
     }
-    const player = createPlayerController(scene, spawnPoint, gravity, shouldRespawn);
+    const player = createPlayerController(scene, spawn.position, gravity, shouldRespawn, spawn.yaw);
     scene.onDisposeObservable.addOnce(player.dispose);
     const crates = demos.crates;
     for (const crate of crates) scene.onDisposeObservable.addOnce(crate.dispose);
@@ -187,6 +210,8 @@ async function start() {
     let accumulatedTime = 0;
     const debugGame = {
       player, portals, timeScale: 1,
+      // Destinations du menu debug : celles du terrain d'entraînement n'existent pas dans une map.
+      destinations: map ? [{ label: "Départ", feet: spawn.feet, yaw: spawn.yaw }] : null,
       characters: CHARACTERS.map(({ key, label }) => ({ key, label })),
       currentCharacter: character.key,
       // Le personnage est choisi au chargement : on mémorise et on recharge la page.
@@ -277,7 +302,7 @@ async function start() {
       hud.showInteraction(activeInteractable?.spec.interact.prompt ?? null);
       debugMenu.update();
     }
-    camera.reset(SPAWN_YAW);
+    camera.reset(spawn.yaw);
     present(0, 0);
     dev?.installDevHook({
       scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, firstPersonFit,
@@ -321,7 +346,7 @@ async function start() {
         if (controls.interact && activeInteractable) onPropInteraction(activeInteractable);
         camera.look(controls.lookX, controls.lookY);
         for (let i = 0; i < steps; i++) {
-          if (player.update(FIXED_STEP, controls, camera.yaw).respawned) resetPlayerView(SPAWN_YAW);
+          if (player.update(FIXED_STEP, controls, camera.yaw).respawned) resetPlayerView(spawn.yaw);
           for (const crate of crates) crate.capturePose();
           plugin.executeStep(FIXED_STEP, physics.getBodies());
           for (const crate of crates) crate.afterStep();

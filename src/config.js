@@ -95,6 +95,13 @@ export function characterByKey(key) {
   return CHARACTERS.find((character) => character.key === key) ?? null;
 }
 
+// Maps glTF/GLB (docs/MAPS.md). Le terrain d'entraînement reste la map par défaut : une map ne se
+// charge que par lien, `?map=<clé>` ou `?map=<url d'un .glb>`, et remplace alors terrain, démos de
+// portails et décors `PROPS`. Si elle ne se charge pas, le jeu reprend le terrain d'entraînement.
+export const MAPS = Object.freeze([
+  Object.freeze({ key: "arcade", label: "Salle d’arcade", url: "/models/maps/arcade.glb" }),
+]);
+
 // Décors fixes chargés depuis des fichiers glTF/GLB/OBJ déposés dans `public/models/`
 // (voir `src/world/props.js`). Un fichier absent ou illisible est ignoré sans empêcher
 // de jouer. `yaw`/`pitch` orientent le modèle (radians ; +Z du fichier vers +Z du monde
