@@ -69,7 +69,7 @@ function createMeshCollider(scene, meshes) {
 // Départ : nœud `spawn: true`, pieds à sa position, regard selon son axe +Z glTF (−Y d'un objet Blender).
 // Sans départ, le joueur tombe sur l'origine depuis le haut de la map (`top`).
 function findSpawn(container, top) {
-  const node = [...container.transformNodes, ...container.meshes].find((candidate) => extrasOf(candidate).spawn);
+  const node = container.getNodes().find((candidate) => extrasOf(candidate).spawn);
   if (!node) console.warn("Map sans nœud `spawn` : départ au-dessus de l'origine.");
   const world = node?.computeWorldMatrix(true);
   const feet = node ? node.getAbsolutePosition().clone() : new Vector3(0, top, 0);
