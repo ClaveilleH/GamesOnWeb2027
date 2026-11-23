@@ -20,6 +20,7 @@ import { createFpsMeter } from "./ui/fpsMeter.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
+import { createSlowFrameMonitor, graphicsHelp, hasMajorPerformanceCaveat, isSoftwareRenderer } from "./platform/graphics.js";
 import { createLighting, skyPalette } from "./world/lighting.js";
 import { createPortalDemos } from "./world/portalDemos.js";
 import { loadDecorProp } from "./world/props.js";
@@ -27,6 +28,15 @@ import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
 const canvas = document.querySelector("#scene");
 const status = document.querySelector("#status");
+const graphicsWarning = document.querySelector("#graphics-warning");
+const graphicsNotice = document.querySelector("#graphics-notice");
+
+function showGraphicsWarning(title, open = false) {
+  graphicsWarning.querySelector("summary").textContent = title;
+  graphicsWarning.querySelector("p").textContent = graphicsHelp(navigator.userAgent, navigator.maxTouchPoints);
+  graphicsWarning.open = open;
+  graphicsWarning.hidden = false;
+}
 // `npm run dev` ou `?dev` : hook de pilotage des tests (docs/PORTALS.md § 10.3), chargé à part du bundle principal.
 const devMode = import.meta.env.DEV || new URLSearchParams(location.search).has("dev");
 
@@ -86,6 +96,9 @@ async function start() {
   // Chargé avant le moteur : le compteur de compilations doit voir les tout premiers effets.
   const dev = devMode ? await import("./dev/devHook.js") : null;
   const engine = new Engine(canvas, true, { alpha: true, stencil: true });
+  if (isSoftwareRenderer(engine.getGlInfo().renderer) || hasMajorPerformanceCaveat()) {
+    showGraphicsWarning("Le jeu utilise le rendu logiciel et risque de ralentir. Comment activer l’accélération graphique ?");
+  }
   const getEffects = dev?.observeDevEffects(engine);
   const scene = new Scene(engine);
   try {
@@ -265,10 +278,22 @@ async function start() {
         if (restart) accumulatedTime = 0;
       },
     });
+    // Sans rendu logiciel détecté, l’aide n’apparaît que si le jeu rame vraiment (Firefox peut rendre
+    // l’affichage sans accélération en annonçant quand même le GPU).
+    const slowFrames = graphicsWarning.hidden ? createSlowFrameMonitor() : null;
+    let noticeTimer = 0;
+    scene.onDisposeObservable.addOnce(() => clearTimeout(noticeTimer));
     scene.onAfterRenderObservable.add(() => {
       const fps = engine.getFps();
       hud.updatePortals(fps);
       fpsMeter.update(fps);
+      if (!slowFrames) return;
+      if (menu.isOpen) slowFrames.reset();
+      else if (slowFrames.sample(fps, engine.getDeltaTime() / 1000)) {
+        showGraphicsWarning("Le jeu ralentit. Vérifier l’accélération graphique");
+        graphicsNotice.hidden = false;
+        noticeTimer = setTimeout(() => { graphicsNotice.hidden = true; }, 8000);
+      }
     });
     scene.onBeforeRenderObservable.add(() => {
       if (menu.isOpen) return;
@@ -315,6 +340,8 @@ async function start() {
     scene.onDisposeObservable.addOnce(() => window.removeEventListener("pagehide", onPageHide));
     if (import.meta.hot) import.meta.hot.dispose(() => engine.dispose());
     await portals.warmUp();
+    // Toujours placée dans le menu : un ralentissement détecté en jeu n’aura qu’à l’afficher.
+    document.querySelector("#pause-menu .commands").before(graphicsWarning);
     menu.open();
     engine.runRenderLoop(() => scene.render());
     status.hidden = true;
@@ -326,6 +353,12 @@ async function start() {
 
 start().catch((error) => {
   console.error(error);
-  status.textContent = "Impossible de charger la scène 3D. Vérifiez que WebGL est activé et rechargez la page.";
+  const message = document.querySelector("#status-message");
+  if (error.message === "WebGL not supported") {
+    message.textContent = "WebGL est indisponible. Le jeu ne peut pas afficher la scène 3D.";
+    showGraphicsWarning("Vérifier l’accélération graphique", true);
+  } else {
+    message.textContent = "Impossible de charger la scène 3D. Rechargez la page pour réessayer.";
+  }
   status.hidden = false;
 });

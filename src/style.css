@@ -27,7 +27,7 @@ h1, h2, p { margin: 0; }
 button, select { font: inherit; cursor: pointer; }
 button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-#status, noscript, #capture-hint, #player-state, #interaction-prompt {
+#status, noscript, #capture-hint, #player-state, #interaction-prompt, #graphics-notice {
   position: absolute;
   border: 1px solid var(--line);
   border-radius: .45rem;
@@ -48,6 +48,31 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); o
   margin: 0 .1rem;
 }
 #status, noscript { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(90%, 28rem); padding: 1rem; text-align: center; }
+#status { pointer-events: auto; max-height: 90%; overflow: auto; }
+#graphics-warning {
+  padding: .65rem .85rem;
+  border-left: .2rem solid var(--accent);
+  background: #3b302a;
+  color: #ffcfaa;
+  font-size: .85rem;
+  line-height: 1.45;
+  text-align: left;
+}
+#graphics-warning summary { cursor: pointer; font-weight: 650; }
+#graphics-warning p { margin-top: .45rem; color: #f5e7dc; }
+#status #graphics-warning { margin-top: .75rem; }
+#pause-menu #graphics-warning { margin: .75rem var(--pad) 0; }
+#graphics-notice {
+  top: max(.8rem, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(24rem, calc(100% - 2rem));
+  padding: .55rem .95rem;
+  border-left: .2rem solid var(--accent);
+  font-size: .85rem;
+  text-align: center;
+}
 #capture-hint {
   bottom: max(1rem, env(safe-area-inset-bottom));
   left: 50%;
