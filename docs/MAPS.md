@@ -9,7 +9,7 @@ Si la map est introuvable ou illisible, la console l'indique et le jeu reprend l
 
 ## Conventions
 
-**Retouches** : un modèle se corrige dans Blender, sur son fichier source, puis se réexporte en `.glb`. Un script de build assemble une map (placement, ajouts, fusion), il ne corrige pas la géométrie d'un modèle.
+**Retouches** — La géométrie se crée et se corrige dans Blender, sur les fichiers sources. Les marqueurs de map se placent aussi dans ces sources. Le build se limite à assembler et à optimiser les sources.
 
 Les réglages d'un objet sont ses propriétés personnalisées. Dans Blender : panneau Objet ▸ Custom Properties, puis cocher **Include ▸ Custom Properties** à l'export glTF. Elles arrivent dans les `extras` glTF.
 
@@ -34,18 +34,16 @@ Pas de compression Draco, Meshopt ni KTX2 : Babylon irait chercher leurs décode
 
 ## Salle d'arcade (`?map=arcade`)
 
-`public/models/maps/arcade.glb` est généré : ne pas le modifier à la main. Ses sources sont dans `maps/arcade/source/` (`salle.glb` et `facade.glb`, issus d'exports three.js). Dans la façade source, les deux battants sont déjà ouverts à 90° vers l'intérieur (les barres de poussée sont côté rue) et l'imposte est remontée pour laisser passer le joueur. `npm run maps` le reconstruit avec `maps/arcade/build.mjs`, qui :
+Pour modifier l'arcade, éditer ses sources dans `maps/arcade/source/`, puis régénérer `public/models/maps/arcade.glb` avec `npm run maps`. La salle et la façade proviennent d'exports three.js.
 
-- colle la façade contre le mur +X de la salle, porte dans l'axe de l'ouverture de la salle, et la surélève de 2 cm pour que sa marche affleure le seuil ;
-- ferme la salle, livrée ouverte comme une maquette, avec un mur sur le côté +Z et un toit ;
-- ajoute la chaussée et le trottoir ;
-- relève de 3 mm les confettis du sol, qui affleuraient la dalle et scintillaient ;
-- indexe la géométrie, déduplique les matériaux et aplatit la hiérarchie.
+- `salle.glb` contient la salle fermée par le mur +Z et le toit. Les confettis du sol sont relevés de 3 mm pour éviter le scintillement.
+- `facade.glb` contient les deux battants ouverts à 90° vers l'intérieur, barres de poussée côté rue. L'imposte est remontée pour laisser passer le joueur.
+- `abords.glb` contient la chaussée, le trottoir et le nœud vide `spawn` dans le repère de la salle. Le départ est sur la chaussée, face à la porte.
 
-La fermeture de la salle et le relèvement des confettis sont des retouches de `salle.glb` antérieures à la règle des retouches dans Blender : elles ont vocation à passer dans le fichier source.
+`maps/arcade/build.mjs` place la façade contre le mur +X de la salle, dans l'axe de l'ouverture. Il la surélève de 2 cm pour que la marche affleure le seuil. Il fusionne les trois documents, indexe la géométrie, déduplique les ressources et aplatit la hiérarchie.
 
 Le script regroupe ensuite les accents de la salle et de la façade (confettis, néons, boutons et ampoules) sous le parent `decors`. Son `collider: "none"` les exclut des triangles envoyés à Havok. La fusion par matériau se fait entre nœuds frères de même statut de collision. Elle donne 19 lots, dont 10 de décor.
 
-Les positions sont quantifiées sur 14 bits et les normales sur 8 bits avec `KHR_mesh_quantization`, que Babylon lit sans décodeur externe. Le script ajoute le nœud vide `spawn` après la fusion pour préserver le départ sur la chaussée, face à la porte.
+Les positions sont quantifiées sur 14 bits et les normales sur 8 bits avec `KHR_mesh_quantization`, que Babylon lit sans décodeur externe. Les optimisations suppriment les nœuds vides. Le script conserve donc le nom, la matrice monde et les `extras` du départ avant l'aplatissement, puis le rétablit à la racine de la scène après la fusion.
 
 `tests/map.spec.js` vérifie le départ, l'entrée dans la salle et le retour au terrain d'entraînement si la map manque.

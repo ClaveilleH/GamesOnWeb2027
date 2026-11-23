@@ -1,6 +1,5 @@
-// Assemble source/salle.glb et source/facade.glb en public/models/maps/arcade.glb (npm run maps).
-// Les retouches des modèles se font dans Blender sur les sources (voir docs/MAPS.md).
-// Repère glTF en mètres, Y vers le haut, faces avant vers +Z.
+// Assemble la salle, la façade et les abords de source/ en public/models/maps/arcade.glb (npm run maps).
+// La géométrie et le départ sont définis dans les sources (voir docs/MAPS.md).
 import { fileURLToPath } from "node:url";
 import { NodeIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
@@ -9,60 +8,36 @@ import { dedup, flatten, join, mergeDocuments, quantize, unpartition, weld } fro
 const here = (path) => fileURLToPath(new URL(path, import.meta.url));
 const OUTPUT = here("../../public/models/maps/arcade.glb");
 
-// Mesures relevées sur les sources (coordonnées glTF de chaque fichier).
-const HALL_DOOR_Z = 1.4; // milieu de l'ouverture du mur +X de la salle (z de 0,54 à 2,26)
+// Mesures des sources en mètres, dans le repère glTF (+Y vers le haut).
+const HALL_DOOR_Z = 1.4; // milieu de l'ouverture du mur +X de la salle
 const HALL_WALL_OUTSIDE_X = 5.56; // face extérieure du mur +X, moulures comprises
 const FACADE_BACK_Z = -0.72; // dos de la façade
-// Marche de la façade (0,14 m) au niveau du seuil de la salle (0,16 m) : sans rebord, le joueur passe
-// sans avoir à monter une marche (le contrôleur demande de la hauteur libre au-dessus de la tête).
-const FACADE_LIFT = 0.02;
-const WALL = { inside: 3.75, outside: 4, height: 3.75 }; // murs de la salle : épaisseur 0,25 m
+const FACADE_LIFT = 0.02; // la marche de 0,14 m doit affleurer le seuil de 0,16 m
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 const hall = await io.read(here("source/salle.glb"));
 const facade = await io.read(here("source/facade.glb"));
+const outside = await io.read(here("source/abords.glb"));
 
-const hallRoot = sceneRoot(hall).setName("salle");
-const facadeSource = sceneRoot(facade);
-const merged = mergeDocuments(hall, facade);
+// Un quart de tour autour de +Y aligne la porte de la façade sur l'ouverture du mur +X.
+sceneRoot(facade)
+  .setRotation([0, Math.sin(Math.PI / 4), 0, Math.cos(Math.PI / 4)])
+  .setTranslation([HALL_WALL_OUTSIDE_X - FACADE_BACK_Z, FACADE_LIFT, HALL_DOOR_Z]);
+
 const scene = hall.getRoot().getDefaultScene();
+for (const source of [facade, outside]) {
+  const merged = mergeDocuments(hall, source);
+  scene.addChild(merged.get(sceneRoot(source)));
+}
 for (const other of hall.getRoot().listScenes()) if (other !== scene) other.dispose();
 
-// Façade contre le mur +X, tournée vers +X, porte dans l'axe de celle de la salle.
-const facadeRoot = merged.get(facadeSource).setName("facade")
-  .setRotation(yawQuaternion(90))
-  .setTranslation([HALL_WALL_OUTSIDE_X - FACADE_BACK_Z, FACADE_LIFT, HALL_DOOR_Z]);
-scene.addChild(facadeRoot);
-
-// Les confettis du sol affleurent le dessus de la dalle (y = 0,15) : sans écart, ils scintillent.
-for (const node of hallRoot.listChildren().flatMap(descendants)) {
-  if (node.getName().startsWith("floor_") && node.getExtras().role === "accent") {
-    const [x, y, z] = node.getTranslation();
-    node.setTranslation([x, y + 0.003, z]);
+// flatten et join suppriment les nœuds vides. Le départ peut hériter du placement de ses parents.
+const spawns = [];
+scene.traverse((node) => {
+  if (node.getExtras().spawn) {
+    spawns.push({ name: node.getName(), matrix: node.getWorldMatrix(), extras: node.getExtras() });
   }
-}
-
-// La salle est livrée ouverte comme une maquette (pas de mur +Z, pas de toit) : on la ferme.
-const material = (name) => hall.getRoot().listMaterials().find((m) => m.getName() === name);
-const sootBlack = material("soot black");
-const neonPurpleDark = material("neon purple dark");
-const closure = hall.createNode("salle_fermeture");
-hallRoot.addChild(closure);
-addBox(closure, "mur_avant", [-5.5, 0, WALL.inside], [5.5, WALL.height, WALL.outside], sootBlack);
-// Mêmes filets que le mur du fond : à 1,14 m dedans, en haut dehors.
-addBox(closure, "mur_avant_filet", [-5.25, 1.14, WALL.inside - 0.04], [5.25, 1.2, WALL.inside], neonPurpleDark);
-addBox(closure, "mur_avant_corniche", [-5.53, 3.45, WALL.outside], [5.53, 3.63, WALL.outside + 0.04], neonPurpleDark);
-addBox(closure, "toit", [-5.56, WALL.height, -4.06], [5.56, WALL.height + 0.15, WALL.outside + 0.06], sootBlack);
-
-// Abords : chaussée et trottoir devant la façade.
-const outside = hall.createNode("abords");
-scene.addChild(outside);
-const asphalt = hall.createMaterial("asphalte").setBaseColorFactor([0.028, 0.03, 0.034, 1])
-  .setRoughnessFactor(0.95).setMetallicFactor(0);
-const pavement = hall.createMaterial("trottoir").setBaseColorFactor([0.16, 0.165, 0.18, 1])
-  .setRoughnessFactor(0.9).setMetallicFactor(0);
-addBox(outside, "chaussee", [-20, -0.2, -20], [25, 0, 20], asphalt);
-addBox(outside, "trottoir", [HALL_WALL_OUTSIDE_X, 0, -5], [9.5, 0.1, 6], pavement);
+});
 
 // Babylon a besoin d'indices pour retourner les faces en miroir.
 await hall.transform(weld(), dedup(), flatten());
@@ -75,10 +50,9 @@ for (const node of scene.listChildren()) {
 scene.addChild(decorations);
 await hall.transform(join(), quantize({ quantizeNormal: 8 }), unpartition());
 
-// Après la fusion pour conserver ce nœud vide, sur la chaussée face à la porte (+Z local vers −X).
-const spawn = hall.createNode("spawn").setTranslation([11.5, 0, HALL_DOOR_Z]).setRotation(yawQuaternion(-90))
-  .setExtras({ spawn: true });
-scene.addChild(spawn);
+for (const { name, matrix, extras } of spawns) {
+  scene.addChild(hall.createNode(name).setMatrix(matrix).setExtras(extras));
+}
 await io.write(OUTPUT, hall);
 console.log(`Map écrite : ${OUTPUT}`);
 
@@ -86,49 +60,4 @@ function sceneRoot(document) {
   const roots = document.getRoot().getDefaultScene().listChildren();
   if (roots.length !== 1) throw new Error(`Une seule racine attendue, ${roots.length} trouvées.`);
   return roots[0];
-}
-
-function descendants(node) {
-  return [node, ...node.listChildren().flatMap(descendants)];
-}
-
-// Quaternion d'une rotation de `degrees` autour de +Y (glTF, sens direct vu d'en haut : +Z vers +X).
-function yawQuaternion(degrees) {
-  const half = degrees * Math.PI / 360;
-  return [0, Math.sin(half), 0, Math.cos(half)];
-}
-
-// Boîte indexée de `min` à `max` (coordonnées du parent), centrée sur son nœud.
-function addBox(parent, name, min, max, mat) {
-  const document = hall;
-  const center = min.map((v, i) => (v + max[i]) / 2);
-  const half = max.map((v, i) => (v - min[i]) / 2);
-  const positions = [];
-  const normals = [];
-  const indices = [];
-  for (let axis = 0; axis < 3; axis++) {
-    for (const sign of [-1, 1]) {
-      const [u, v] = [(axis + 1) % 3, (axis + 2) % 3];
-      const base = positions.length / 3;
-      for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-        const p = [0, 0, 0];
-        p[axis] = sign * half[axis];
-        p[u] = a * half[u];
-        p[v] = b * half[v];
-        positions.push(...p);
-        normals.push(...[0, 1, 2].map((i) => (i === axis ? sign : 0)));
-      }
-      // Sens direct vu de l'extérieur.
-      indices.push(...(sign > 0 ? [0, 1, 2, 0, 2, 3] : [0, 2, 1, 0, 3, 2]).map((i) => base + i));
-    }
-  }
-  const buffer = document.getRoot().listBuffers()[0];
-  const accessor = (type, array) => document.createAccessor().setType(type).setArray(array).setBuffer(buffer);
-  const primitive = document.createPrimitive().setMaterial(mat)
-    .setAttribute("POSITION", accessor("VEC3", new Float32Array(positions)))
-    .setAttribute("NORMAL", accessor("VEC3", new Float32Array(normals)))
-    .setIndices(accessor("SCALAR", new Uint16Array(indices)));
-  const node = document.createNode(name).setTranslation(center).setMesh(document.createMesh(name).addPrimitive(primitive));
-  parent.addChild(node);
-  return node;
 }

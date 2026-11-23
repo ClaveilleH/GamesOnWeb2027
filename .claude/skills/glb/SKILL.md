@@ -44,8 +44,9 @@ blender -b -P .claude/skills/glb/render.py -- <fichier.glb> <sortie> [px]   # é
   `webp` (WebP est pris en charge par Babylon sans décodeur externe).
 - Une map statique peut fusionner ses maillages au build par matériau et par statut de collision.
   Dans `maps/arcade/build.mjs`, les décors sont regroupés après `flatten` sous un parent `collider: "none"`
-  pour que `join` fusionne uniquement des maillages de même `collider`. Le départ vide est ajouté après
-  la fusion. Les positions et normales quantifiées (`KHR_mesh_quantization`) sont lues directement par Babylon.
+  pour que `join` fusionne uniquement des maillages de même `collider`. Le build relève le nom, la matrice
+  monde et les `extras` du départ avant `flatten` et rétablit ce nœud vide après la fusion.
+  Les positions et normales quantifiées (`KHR_mesh_quantization`) sont lues directement par Babylon.
 - Vérifier avec `tree.py` les emprises monde, le marqueur `spawn` et le `collider` hérité de chaque lot,
   puis lancer `validate` et vérifier le départ et son orientation dans le jeu.
 
@@ -53,9 +54,11 @@ blender -b -P .claude/skills/glb/render.py -- <fichier.glb> <sortie> [px]   # é
 
 Conventions (`collider`, `spawn`), mesures du joueur et ajout d'une map : `docs/MAPS.md`. Chargeur :
 `src/world/map.js`, liste `MAPS` dans `src/config.js`, chargement par `?map=<clé|url>` uniquement.
-Retouches d'un modèle : dans Blender, sur sa source, puis réexport en `.glb` avec « Include › Custom Properties » ;
-jamais par du code dans un script de build, qui ne fait qu'assembler la map. `public/models/maps/arcade.glb` est
-généré par `npm run maps` (`maps/arcade/build.mjs`) : ne pas le modifier à la main.
+
+**Retouches** — La géométrie se crée et se corrige dans Blender, sur les fichiers sources. Les marqueurs de map se placent aussi dans ces sources. Le build se limite à assembler et à optimiser les sources.
+
+Réexporter les sources en `.glb` avec « Include › Custom Properties ». Régénérer `public/models/maps/arcade.glb`
+avec `npm run maps` (`maps/arcade/build.mjs`).
 
 - Dans Babylon, la racine glTF est en miroir : x glTF = −x Babylon (y et z inchangés).
 - Si le joueur bloque alors que la géométrie est libre (rayons Blender), chercher un rebord au sol de quelques
