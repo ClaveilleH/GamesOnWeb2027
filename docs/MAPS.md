@@ -46,4 +46,4 @@ Le script regroupe ensuite les accents de la salle et de la façade (confettis, 
 
 Les positions sont quantifiées sur 14 bits et les normales sur 8 bits avec `KHR_mesh_quantization`, que Babylon lit sans décodeur externe. Les optimisations suppriment les nœuds vides. Le script conserve donc le nom, la matrice monde et les `extras` du départ avant l'aplatissement, puis le rétablit à la racine de la scène après la fusion.
 
-`tests/map.spec.js` vérifie le départ, l'entrée dans la salle et le retour au terrain d'entraînement si la map manque.
+`tests/map.spec.js` vérifie le départ et le retour au terrain d'entraînement si la map manque.
