@@ -70,7 +70,8 @@ test("un GPU annoncé n’affiche l’aide que si le jeu rame, avec le réglage 
   await menu.getByRole("button", { name: "Jouer" }).click();
   await expect(menu).toBeHidden();
   // Images de 250 ms (4 i/s, sous le seuil de 30) sur l’horloge manuelle : le compte ne dépend pas de la
-  // vitesse du rendu. Chaque image vaut au plus 0,25 s, l’aide attend donc au moins 20 images.
+  // vitesse du rendu. Chacune vaut 0,25 s : l’aide arrive au plus tard à la 20e. Plus tôt si les vraies
+  // images, déjà lentes sur un runner lent, ont commencé le compte (la durée est testée plus haut).
   const slowFrames = await page.evaluate(() => {
     const clock = window.gowDev.manualClock();
     try {
@@ -83,7 +84,8 @@ test("un GPU annoncé n’affiche l’aide que si le jeu rame, avec le réglage 
       clock.release();
     }
   });
-  expect(slowFrames).toBeGreaterThanOrEqual(20);
+  expect(slowFrames).toBeGreaterThan(0);
+  expect(slowFrames).toBeLessThanOrEqual(20);
   await expect(page.locator("#graphics-notice")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(menu).toBeVisible();
