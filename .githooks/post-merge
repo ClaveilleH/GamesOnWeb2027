@@ -1,0 +1,4 @@
+#!/bin/sh
+# Réindexation incrémentale code-graph (en arrière-plan pour ne pas bloquer git)
+command -v code-graph >/dev/null 2>&1 || exit 0
+code-graph index . >/dev/null 2>&1 &
