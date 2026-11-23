@@ -65,6 +65,10 @@ def mesh_info(doc, index, world):
         if "min" not in acc:
             continue
         a, b = acc["min"], acc["max"]
+        if acc.get("normalized"):
+            # Les bornes glTF sont des entiers bruts, avec un minimum signé à ramener à −1.
+            limit = {5120: 127, 5121: 255, 5122: 32767, 5123: 65535}[acc["componentType"]]
+            a, b = ([max(-1.0, v / limit) for v in bound] for bound in (a, b))
         for corner in [(x, y, z) for x in (a[0], b[0]) for y in (a[1], b[1]) for z in (a[2], b[2])]:
             p = transform(world, corner)
             lo = [min(lo[i], p[i]) for i in range(3)]
