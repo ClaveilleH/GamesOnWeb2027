@@ -54,6 +54,8 @@ test("Ctrl+D ouvre et ferme le menu debug sans ouvrir la pause", async ({ page }
   await expect(panel(page)).toBeVisible();
   await expect(page.locator("#pause-menu")).not.toHaveAttribute("open");
   // « Déplacement » est replié par défaut : on l'ouvre pour lire l'état du mode.
+  // Tab libère d’abord la souris : capturée, elle enverrait le clic à la scène.
+  await page.keyboard.press("Tab");
   await panel(page).getByText("Déplacement", { exact: true }).click();
   await expect(panel(page).getByRole("button", { name: "Marche" })).toHaveAttribute("aria-pressed", "true");
   await expect(panel(page).locator(".debug-position")).toContainText("z -10");

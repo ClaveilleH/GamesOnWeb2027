@@ -113,24 +113,28 @@ async function firstPersonBeforePair(page) {
 test("à la 1re personne, l’œil traverse une paire de portails sans entrer dans la garde du plan proche", async ({ page }) => {
   const { entry, exit, fit } = await firstPersonBeforePair(page);
 
-  // Relevé de la caméra à chaque image, jusqu’à 20 images après la traversée.
-  const frames = await page.evaluate(() => new Promise((resolve) => {
+  // Relevé de la caméra à chaque image, jusqu’à 20 images après la traversée. L’horloge manuelle
+  // impose des images de 1/60 s : un rendu lent (SwiftShader) n’espace pas les relevés.
+  const frames = await page.evaluate(() => {
     const dev = window.gowDev;
-    const frames = [];
-    let after = -1;
-    dev.setControls({ forward: 1 });
-    (function sample() {
-      const { camera, traversals } = dev.state();
-      frames.push({ x: camera.x, y: camera.y, z: camera.z, firstPerson: camera.firstPerson });
-      if (after < 0 && traversals.length) after = 0;
-      if (after >= 0 && ++after > 20) {
-        dev.setControls(null);
-        resolve(frames);
-      } else {
-        requestAnimationFrame(sample);
+    const clock = dev.manualClock();
+    try {
+      const frames = [];
+      let after = -1;
+      dev.setControls({ forward: 1 });
+      for (let i = 0; i < 600; i++) {
+        const { camera, traversals } = dev.state();
+        frames.push({ x: camera.x, y: camera.y, z: camera.z, firstPerson: camera.firstPerson });
+        if (after < 0 && traversals.length) after = 0;
+        if (after >= 0 && ++after > 20) break;
+        clock.step(1000 / 60);
       }
-    })();
-  }));
+      dev.setControls(null);
+      return frames;
+    } finally {
+      clock.release();
+    }
+  });
   expect(frames.every(({ firstPerson }) => firstPerson)).toBe(true);
   // Garde ε = 2 × MIN_NEAR : en face d’une ouverture, l’œil ne s’approche jamais assez de son plan pour
   // que le plan proche la coupe, et ne passe jamais derrière.
