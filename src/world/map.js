@@ -61,6 +61,9 @@ function createMeshCollider(scene, meshes) {
   collider.isPickable = false;
   const aggregate = new PhysicsAggregate(collider, PhysicsShapeType.MESH, { mass: 0, friction: 0.8 }, scene);
   aggregate.shape.filterMembershipMask = collisionLayer.terrain;
+  // Havok a copié les triangles. Seul le nœud doit rester en scène pour porter le corps.
+  collider.releaseSubMeshes();
+  collider.geometry.releaseForMesh(collider, true);
 }
 
 // Départ : nœud `spawn: true`, pieds à sa position, regard selon son axe +Z glTF (−Y d'un objet Blender).
