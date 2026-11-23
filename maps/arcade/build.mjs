@@ -1,6 +1,6 @@
-// Assemble la salle d'arcade et sa façade en une seule map jouable : public/models/maps/arcade.glb.
-// Lancer : npm run maps. Sources : source/salle.glb et source/facade.glb, exports three.js
-// (glTF : Y vers le haut, mètres, faces avant vers +Z). Conventions de map : docs/MAPS.md.
+// Assemble source/salle.glb et source/facade.glb en public/models/maps/arcade.glb (npm run maps).
+// Les retouches des modèles se font dans Blender sur les sources (voir docs/MAPS.md).
+// Repère glTF en mètres, Y vers le haut, faces avant vers +Z.
 import { fileURLToPath } from "node:url";
 import { NodeIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
@@ -16,20 +16,12 @@ const FACADE_BACK_Z = -0.72; // dos de la façade
 // Marche de la façade (0,14 m) au niveau du seuil de la salle (0,16 m) : sans rebord, le joueur passe
 // sans avoir à monter une marche (le contrôleur demande de la hauteur libre au-dessus de la tête).
 const FACADE_LIFT = 0.02;
-const DOOR_HINGE = { x: 0.85, z: -0.54 }; // gonds des battants : bords extérieurs, face arrière
-// Le joueur (1,92 m) ne passe pas sous l'imposte d'origine (1,95 m, marche à 0,14 m) : on la remonte
-// sous le linteau (2,37 m), avec de la marge pour la tête. Hauteurs [bas, haut] de chaque boîte, avant → après.
-const TRANSOM = [
-  { from: [1.95, 2.03], to: [2.18, 2.23] }, // traverse
-  { from: [2.01, 2.39], to: [2.22, 2.39] }, // vitrage
-];
 const WALL = { inside: 3.75, outside: 4, height: 3.75 }; // murs de la salle : épaisseur 0,25 m
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
 const hall = await io.read(here("source/salle.glb"));
 const facade = await io.read(here("source/facade.glb"));
 
-openDoors(facade);
 const hallRoot = sceneRoot(hall).setName("salle");
 const facadeSource = sceneRoot(facade);
 const merged = mergeDocuments(hall, facade);
@@ -139,85 +131,4 @@ function addBox(parent, name, min, max, mat) {
   const node = document.createNode(name).setTranslation(center).setMesh(document.createMesh(name).addPrimitive(primitive));
   parent.addChild(node);
   return node;
-}
-
-// Les battants sont livrés fermés. Chaque maillage `doors_*` est fait de boîtes de 36 sommets :
-// celles d'un battant (sous la traverse, entre les montants) passent dans un nœud par battant, articulé
-// sur son gond et ouvert à 90° vers l'intérieur, comme le veulent les barres de poussée côté rue.
-// Le montant central suit le battant droit.
-function openDoors(document) {
-  const sides = {
-    gauche: { hinge: [-DOOR_HINGE.x, 0, DOOR_HINGE.z], yaw: 90, primitives: [] },
-    droite: { hinge: [DOOR_HINGE.x, 0, DOOR_HINGE.z], yaw: -90, primitives: [] },
-  };
-  let doorsParent = null;
-  let transoms = 0;
-  for (const node of document.getRoot().listNodes()) {
-    if (!node.getName().startsWith("doors_") || !node.getMesh()) continue;
-    const world = node.getWorldMatrix();
-    if (world.some((value, i) => i < 12 && value !== (i % 5 === 0 ? 1 : 0))) {
-      throw new Error(`${node.getName()} : seule une translation est attendue.`);
-    }
-    const offset = world.slice(12, 15);
-    doorsParent = node.getParentNode();
-    for (const primitive of node.getMesh().listPrimitives()) {
-      const position = primitive.getAttribute("POSITION");
-      const normal = primitive.getAttribute("NORMAL");
-      if (primitive.getIndices() || position.getCount() % 36) throw new Error(`${node.getName()} : boîtes de 36 sommets attendues.`);
-      const kept = { positions: [], normals: [] };
-      const leaves = { gauche: { positions: [], normals: [] }, droite: { positions: [], normals: [] } };
-      const p = [0, 0, 0];
-      const n = [0, 0, 0];
-      for (let box = 0; box < position.getCount(); box += 36) {
-        const center = [0, 0, 0];
-        let [bottom, top] = [Infinity, -Infinity];
-        for (let i = box; i < box + 36; i++) {
-          position.getElement(i, p);
-          for (let k = 0; k < 3; k++) center[k] += (p[k] + offset[k]) / 36;
-          bottom = Math.min(bottom, p[1] + offset[1]);
-          top = Math.max(top, p[1] + offset[1]);
-        }
-        const [x, y, z] = center;
-        const inLeaf = Math.abs(x) < DOOR_HINGE.x + 0.01 && y > 0.13 && y < 1.95 && z > -0.6 && z < -0.38;
-        const side = inLeaf ? (x < -0.01 ? "gauche" : "droite") : null;
-        const transom = TRANSOM.find(({ from }) => Math.abs(bottom - from[0]) < 0.005 && Math.abs(top - from[1]) < 0.005);
-        if (transom) transoms++;
-        const target = side ? leaves[side] : kept;
-        for (let i = box; i < box + 36; i++) {
-          position.getElement(i, p);
-          normal.getElement(i, n);
-          if (transom) {
-            const { from, to } = transom;
-            p[1] = to[0] + (p[1] + offset[1] - from[0]) * (to[1] - to[0]) / (from[1] - from[0]) - offset[1];
-          }
-          const shift = side ? sides[side].hinge : [0, 0, 0];
-          target.positions.push(...p.map((v, k) => (side ? v + offset[k] - shift[k] : v)));
-          target.normals.push(...n);
-        }
-      }
-      for (const [side, data] of Object.entries(leaves)) {
-        if (data.positions.length === 0) continue;
-        sides[side].primitives.push(document.createPrimitive().setMaterial(primitive.getMaterial())
-          .setAttribute("POSITION", document.createAccessor().setType("VEC3").setArray(new Float32Array(data.positions)))
-          .setAttribute("NORMAL", document.createAccessor().setType("VEC3").setArray(new Float32Array(data.normals))));
-      }
-      if (kept.positions.length === 0) {
-        node.getMesh().removePrimitive(primitive);
-      } else {
-        position.setArray(new Float32Array(kept.positions));
-        normal.setArray(new Float32Array(kept.normals));
-      }
-    }
-  }
-  if (!doorsParent) throw new Error("Battants introuvables dans la façade.");
-  if (transoms !== TRANSOM.length) throw new Error(`Imposte : ${transoms} boîte(s) trouvée(s) sur ${TRANSOM.length}.`);
-  const parentOffset = doorsParent.getWorldMatrix().slice(12, 15);
-  for (const [side, { hinge, yaw, primitives }] of Object.entries(sides)) {
-    if (primitives.length === 0) throw new Error(`Battant ${side} vide.`);
-    const mesh = document.createMesh(`battant_${side}`);
-    for (const primitive of primitives) mesh.addPrimitive(primitive);
-    doorsParent.addChild(document.createNode(`battant_${side}`).setMesh(mesh)
-      .setTranslation(hinge.map((v, k) => v - parentOffset[k])).setRotation(yawQuaternion(yaw))
-      .setExtras({ role: "door", side }));
-  }
 }

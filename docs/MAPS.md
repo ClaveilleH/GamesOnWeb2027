@@ -9,6 +9,8 @@ Si la map est introuvable ou illisible, la console l'indique et le jeu reprend l
 
 ## Conventions
 
+**Retouches** : un modèle se corrige dans Blender, sur son fichier source, puis se réexporte en `.glb`. Un script de build assemble une map (placement, ajouts, fusion), il ne corrige pas la géométrie d'un modèle.
+
 Les réglages d'un objet sont ses propriétés personnalisées. Dans Blender : panneau Objet ▸ Custom Properties, puis cocher **Include ▸ Custom Properties** à l'export glTF. Elles arrivent dans les `extras` glTF.
 
 | Propriété | Valeurs | Effet |
@@ -32,14 +34,15 @@ Pas de compression Draco, Meshopt ni KTX2 : Babylon irait chercher leurs décode
 
 ## Salle d'arcade (`?map=arcade`)
 
-`public/models/maps/arcade.glb` est généré : ne pas le modifier à la main. Ses sources sont dans `maps/arcade/source/` (`salle.glb` et `facade.glb`, exports three.js). `npm run maps` le reconstruit avec `maps/arcade/build.mjs`, qui :
+`public/models/maps/arcade.glb` est généré : ne pas le modifier à la main. Ses sources sont dans `maps/arcade/source/` (`salle.glb` et `facade.glb`, issus d'exports three.js). Dans la façade source, les deux battants sont déjà ouverts à 90° vers l'intérieur (les barres de poussée sont côté rue) et l'imposte est remontée pour laisser passer le joueur. `npm run maps` le reconstruit avec `maps/arcade/build.mjs`, qui :
 
 - colle la façade contre le mur +X de la salle, porte dans l'axe de l'ouverture de la salle, et la surélève de 2 cm pour que sa marche affleure le seuil ;
-- ouvre les deux battants à 90° vers l'intérieur (les barres de poussée sont côté rue) et remonte l'imposte, trop basse pour le joueur ;
 - ferme la salle, livrée ouverte comme une maquette, avec un mur sur le côté +Z et un toit ;
 - ajoute la chaussée et le trottoir ;
 - relève de 3 mm les confettis du sol, qui affleuraient la dalle et scintillaient ;
 - indexe la géométrie, déduplique les matériaux et aplatit la hiérarchie.
+
+La fermeture de la salle et le relèvement des confettis sont des retouches de `salle.glb` antérieures à la règle des retouches dans Blender : elles ont vocation à passer dans le fichier source.
 
 Le script regroupe ensuite les accents de la salle et de la façade (confettis, néons, boutons et ampoules) sous le parent `decors`. Son `collider: "none"` les exclut des triangles envoyés à Havok. La fusion par matériau se fait entre nœuds frères de même statut de collision. Elle donne 19 lots, dont 10 de décor.
 

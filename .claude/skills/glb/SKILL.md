@@ -53,9 +53,9 @@ blender -b -P .claude/skills/glb/render.py -- <fichier.glb> <sortie> [px]   # é
 
 Conventions (`collider`, `spawn`), mesures du joueur et ajout d'une map : `docs/MAPS.md`. Chargeur :
 `src/world/map.js`, liste `MAPS` dans `src/config.js`, chargement par `?map=<clé|url>` uniquement.
-`public/models/maps/arcade.glb` est généré (`npm run maps`, script `maps/arcade/build.mjs`) : modifier le script,
-pas le fichier. Les exports three.js livrent des boîtes de 36 sommets non indexées, qu'on peut découper boîte
-par boîte (voir `openDoors` dans ce script).
+Retouches d'un modèle : dans Blender, sur sa source, puis réexport en `.glb` avec « Include › Custom Properties » ;
+jamais par du code dans un script de build, qui ne fait qu'assembler la map. `public/models/maps/arcade.glb` est
+généré par `npm run maps` (`maps/arcade/build.mjs`) : ne pas le modifier à la main.
 
 - Dans Babylon, la racine glTF est en miroir : x glTF = −x Babylon (y et z inchangés).
 - Si le joueur bloque alors que la géométrie est libre (rayons Blender), chercher un rebord au sol de quelques
