@@ -69,8 +69,8 @@ avec `npm run maps` (`maps/arcade/build.mjs`).
 `npm run dev`, puis le MCP `chromium` sur `http://localhost:5173/?dev` (Jouer, capture d'écran, console).
 `?model=/models/x.glb` essaie un personnage sans toucher au code.
 `?map=arcade` ou `?map=/models/maps/x.glb` charge une map. Pour un trajet reproductible : `gowDev.manualClock()`,
-`gowDev.setControls({ forward: 1 })`, puis `clock.step(1000 / 60)` en boucle et `gowDev.state().player` (voir
-`tests/map.spec.js`). Pour lancer des rayons Havok dans la page, récupérer la scène par le module Vite déjà
+`gowDev.setControls({ forward: 1 })`, puis `clock.step(1000 / 60)` en boucle et `gowDev.state().player`, puis
+`clock.release()`. Pour lancer des rayons Havok dans la page, récupérer la scène par le module Vite déjà
 chargé : l'URL `…/deps/@babylonjs_core_Engines_engine.js?v=…` de `performance.getEntriesByType("resource")`,
 puis `Engine.Instances[0].scenes[0].getPhysicsEngine().raycast(from, to, { collideWith: 1 })`.
 
