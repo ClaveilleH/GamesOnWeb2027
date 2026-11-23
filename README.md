@@ -16,6 +16,10 @@ Le terrain de 100 m × 100 m entoure la zone d’entraînement de cinq démonstr
 
 Le système est un module générique (`src/portals/`). Son architecture, son API et ses limites sont décrites dans [docs/PORTALS.md](docs/PORTALS.md). Les limites de Babylon.js rencontrées, avec les correctifs proposés, sont dans [docs/BABYLON_PATCHES.md](docs/BABYLON_PATCHES.md). Ajouter `?dev` à l’URL expose `window.gowDev`, un hook de pilotage utilisé par les tests Playwright, qui permet aussi de mesurer les performances.
 
+## Maps
+
+Le terrain d’entraînement est la map par défaut. D’autres maps glTF/GLB se chargent par lien : http://localhost:5173/?map=arcade ouvre la salle d’arcade et sa façade. Conventions et ajout d’une map : [docs/MAPS.md](docs/MAPS.md).
+
 ## Personnage
 
 Le squelette procédural peut être remplacé par un modèle glTF/GLB animé, déposé dans `public/models/` : voir [docs/PERSONNAGE.md](docs/PERSONNAGE.md).
@@ -40,19 +44,33 @@ npm test
 
 `npm test` reconstruit d’abord `dist/`, puis lance Playwright sur `vite preview`. `npm run lint` vérifie le code avec ESLint.
 
+### Index code-graph (facultatif)
+
+Si l’outil `code-graph` est installé, les hooks Git de `.githooks/` mettent à jour son index (`.code_graph.sqlite`, non versionné) en arrière-plan après chaque `git merge`, `git pull` et `git checkout`. Pour les activer, lancer une fois dans le clone
+
+```sh
+git config core.hooksPath .githooks
+```
+
+Sans `code-graph`, les hooks ne font rien. Ils n’existent que sur les branches qui contiennent `.githooks/` : un checkout vers une branche plus ancienne ne réindexe pas, le retour sur `dev` le fait.
+
 ## Production
 
 GitHub Actions vérifie le code avec ESLint, compile le site et teste le chargement de Havok, l’atterrissage, la marche et le saut du personnage, ainsi que le rendu et la traversée des portails sur les pull requests vers `main` et sur les pushs vers `main`. Après un push validé, le workflow publie le contenu de `dist/` dans une release GitHub. L’archive embarque Babylon.js et le module WebAssembly de Havok.
 
 Le VPS vérifie la dernière release toutes les trois minutes. Il en vérifie la somme SHA-256 et le numéro de commit, puis bascule Nginx sur cette version. En cas d’échec, la version en ligne continue d’être servie. Le commit déployé est consultable sur [gow.bertho.tech/version.txt](https://gow.bertho.tech/version.txt).
 
-Sur le VPS Debian avec Nginx, Certbot et son plugin Nginx, exécuter une fois depuis ce dépôt avec le DNS du sous-domaine en place.
+Sur le VPS Debian avec Nginx, Certbot et son plugin Nginx, exécuter depuis ce dépôt avec le DNS du sous-domaine en place.
 
 ```sh
 sudo bash ops/install.sh
 ```
 
-Le script active le site HTTPS et le minuteur systemd. Pour lancer une synchronisation immédiate ou consulter son journal, utiliser
+Le script active le site HTTPS et le minuteur systemd. Il installe `ops/nginx.conf` une seule fois pour que Certbot puisse y gérer le certificat et la redirection HTTPS du domaine. La configuration du site se trouve dans `ops/nginx-site.conf`. Après l’avoir modifiée, relancer `sudo bash ops/install.sh` sur le VPS.
+
+Sur le VPS déjà en service, le script s’arrête avant toute modification pour demander une migration unique. Dans le bloc qui sert le site dans `/etc/nginx/sites-available/gow.bertho.tech`, remplacer `root`, `index`, les directives `gzip*` et `add_header` et tous les blocs `location` par `include snippets/gow-site.conf;`. Conserver le certificat et la redirection HTTPS de Certbot, puis relancer le script.
+
+Pour lancer une synchronisation immédiate ou consulter son journal, utiliser
 
 ```sh
 sudo systemctl start gow-site.service

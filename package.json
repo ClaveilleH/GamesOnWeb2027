@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "playwright test"
+    "test": "playwright test",
+    "maps": "node maps/arcade/build.mjs"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
@@ -20,6 +21,10 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@gltf-transform/cli": "4.5.1",
+    "@gltf-transform/core": "4.5.1",
+    "@gltf-transform/extensions": "4.5.1",
+    "@gltf-transform/functions": "4.5.1",
     "@playwright/test": "1.65.1",
     "eslint": "10.15.0",
     "globals": "17.14.0",

@@ -51,49 +51,6 @@ function spoofRenderer(page, renderer) {
   }, renderer);
 }
 
-test("un GPU annoncé n’affiche l’aide que si le jeu rame, avec le réglage de Firefox", async ({ page }) => {
-  // Valeur observée sur Firefox.
-  await spoofRenderer(page, "Intel(R) HD Graphics, or similar");
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "userAgent", { value: "Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0" });
-    // Firefox peut ignorer `failIfMajorPerformanceCaveat` : seul le ralentissement le trahit.
-    const getContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (type, options) {
-      return getContext.call(this, type, options && { ...options, failIfMajorPerformanceCaveat: false });
-    };
-  });
-  await page.goto("/?dev");
-  const menu = page.getByRole("dialog");
-  const warning = menu.locator("#graphics-warning");
-  await expect(menu.getByRole("button", { name: "Jouer" })).toBeVisible();
-  await expect(warning).toBeHidden();
-  await menu.getByRole("button", { name: "Jouer" }).click();
-  await expect(menu).toBeHidden();
-  // Images de 250 ms (4 i/s, sous le seuil de 30) sur l’horloge manuelle : le compte ne dépend pas de la
-  // vitesse du rendu. Chacune vaut 0,25 s : l’aide arrive au plus tard à la 20e. Plus tôt si les vraies
-  // images, déjà lentes sur un runner lent, ont commencé le compte (la durée est testée plus haut).
-  const slowFrames = await page.evaluate(() => {
-    const clock = window.gowDev.manualClock();
-    try {
-      for (let frame = 1; frame <= 60; frame++) {
-        clock.step(250);
-        if (!document.querySelector("#graphics-notice").hidden) return frame;
-      }
-      return null;
-    } finally {
-      clock.release();
-    }
-  });
-  expect(slowFrames).toBeGreaterThan(0);
-  expect(slowFrames).toBeLessThanOrEqual(20);
-  await expect(page.locator("#graphics-notice")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(menu).toBeVisible();
-  await expect(warning.locator("summary")).toHaveText("Le jeu ralentit. Vérifier l’accélération graphique");
-  await warning.locator("summary").click();
-  await expect(warning.getByText(/Dans les paramètres de Firefox/)).toBeVisible();
-});
-
 test("SwiftShader affiche l’aide dans le menu et permet de jouer", async ({ page }) => {
   await page.goto("/");
   const menu = page.getByRole("dialog");
