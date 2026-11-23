@@ -13,7 +13,9 @@ export const movementModes = Object.freeze(["walk", "fly", "noclip"]);
 const FLY_SPRINT = 2.5;
 const FLY_RESPONSE = 10;
 
-export function createPlayerController(scene, spawn, gravity, shouldRespawn = (position) => position.y < PLAYER.respawnBelow) {
+// `spawn` : centre de la capsule au départ ; `spawnYaw` : orientation au départ et à chaque réapparition.
+export function createPlayerController(scene, spawn, gravity, shouldRespawn = (position) => position.y < PLAYER.respawnBelow,
+  spawnYaw = SPAWN_YAW) {
   const capsule = new PhysicsCharacterController(spawn, {
     capsuleHeight: PLAYER.height,
     capsuleRadius: PLAYER.radius,
@@ -42,7 +44,7 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
   const capsuleHit = new ShapeCastResult();
   const supportHit = new ShapeCastResult();
   const state = {
-    position: Vector3.Zero(), yaw: SPAWN_YAW, speed: 0, scale: 1,
+    position: Vector3.Zero(), yaw: spawnYaw, speed: 0, scale: 1,
     grounded: false, verticalSpeed: 0, respawned: true,
     mode: "walk", flySpeed: 8,
     // Première personne : le corps regarde où regarde la caméra au lieu de se tourner vers sa course.
@@ -50,7 +52,7 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
   };
   const noGravity = Vector3.Zero();
   const flyStart = Vector3.Zero();
-  const previousPose = { position: Vector3.Zero(), yaw: SPAWN_YAW };
+  const previousPose = { position: Vector3.Zero(), yaw: spawnYaw };
   let coyote = 0;
   let jumpBuffer = 0;
   let risingFromJump = false;
@@ -214,7 +216,7 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     state.respawned = input.respawn || falling;
     if (state.respawned) {
       setScale(1);
-      place(spawn, SPAWN_YAW);
+      place(spawn, spawnYaw);
     }
     if (state.mode !== "walk" && !state.respawned) {
       fly(dt, input, cameraYaw);

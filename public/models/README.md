@@ -21,3 +21,8 @@ Depuis Blender : `Fichier ▸ Importer ▸ Wavefront (.obj)`, puis
 
 > Ce dossier est versionné : en committant le `.glb`, la CI et tes coéquipiers
 > ont le modèle. Pense au poids du fichier (allège le maillage si besoin).
+
+## Maps
+
+Les maps sont dans `maps/` et se chargent par lien (`?map=…`) : voir `docs/MAPS.md`.
+`maps/arcade.glb` est généré par `npm run maps` à partir de `maps/arcade/source/` (à la racine du dépôt).
