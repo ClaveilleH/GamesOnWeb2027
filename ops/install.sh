@@ -10,6 +10,16 @@ ops_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 domain=gow.bertho.tech
 site=/etc/nginx/sites-available/$domain
 
+if [[ -e "$site" ]] && ! grep -Eq '^[[:space:]]*include[[:space:]]+snippets/gow-site\.conf[[:space:]]*;' "$site"; then
+    cat >&2 <<EOF
+Migration manuelle requise dans $site (une seule fois).
+Dans le bloc qui sert le site, remplacez root, index, gzip*, add_header et tous les blocs location par la ligne suivante.
+    include snippets/gow-site.conf;
+Conservez le certificat et la redirection HTTPS de Certbot, puis relancez sudo bash ops/install.sh.
+EOF
+    exit 1
+fi
+
 if ! id gow-deploy >/dev/null 2>&1; then
     /usr/sbin/useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin gow-deploy
 fi
@@ -18,6 +28,7 @@ install -m 0644 "$ops_dir/gow-site.service" "$ops_dir/gow-site.timer" /etc/syste
 systemctl daemon-reload
 systemctl enable --now gow-site.timer
 
+install -D -m 0644 "$ops_dir/nginx-site.conf" /etc/nginx/snippets/gow-site.conf
 # Lors des exécutions suivantes, conserver le certificat et les directives ajoutées par Certbot.
 if [[ ! -e "$site" ]]; then
     install -m 0644 "$ops_dir/nginx.conf" "$site"

@@ -50,13 +50,17 @@ GitHub Actions vérifie le code avec ESLint, compile le site et teste le chargem
 
 Le VPS vérifie la dernière release toutes les trois minutes. Il en vérifie la somme SHA-256 et le numéro de commit, puis bascule Nginx sur cette version. En cas d’échec, la version en ligne continue d’être servie. Le commit déployé est consultable sur [gow.bertho.tech/version.txt](https://gow.bertho.tech/version.txt).
 
-Sur le VPS Debian avec Nginx, Certbot et son plugin Nginx, exécuter une fois depuis ce dépôt avec le DNS du sous-domaine en place.
+Sur le VPS Debian avec Nginx, Certbot et son plugin Nginx, exécuter depuis ce dépôt avec le DNS du sous-domaine en place.
 
 ```sh
 sudo bash ops/install.sh
 ```
 
-Le script active le site HTTPS et le minuteur systemd. Pour lancer une synchronisation immédiate ou consulter son journal, utiliser
+Le script active le site HTTPS et le minuteur systemd. Il installe `ops/nginx.conf` une seule fois pour que Certbot puisse y gérer le certificat et la redirection HTTPS du domaine. La configuration du site se trouve dans `ops/nginx-site.conf`. Après l’avoir modifiée, relancer `sudo bash ops/install.sh` sur le VPS.
+
+Sur le VPS déjà en service, le script s’arrête avant toute modification pour demander une migration unique. Dans le bloc qui sert le site dans `/etc/nginx/sites-available/gow.bertho.tech`, remplacer `root`, `index`, les directives `gzip*` et `add_header` et tous les blocs `location` par `include snippets/gow-site.conf;`. Conserver le certificat et la redirection HTTPS de Certbot, puis relancer le script.
+
+Pour lancer une synchronisation immédiate ou consulter son journal, utiliser
 
 ```sh
 sudo systemctl start gow-site.service
