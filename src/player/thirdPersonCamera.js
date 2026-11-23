@@ -1,9 +1,12 @@
 import { TargetCamera } from "@babylonjs/core/Cameras/targetCamera";
+import { Clamp } from "@babylonjs/core/Maths/math.scalar.functions";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { CAMERA, SPAWN_YAW } from "../config.js";
 import { createSightTest } from "../core/physics.js";
 import { createViewResult, isViewWarped, MIN_NEAR } from "../portals/cameraPath.js";
 
+// Caméra du joueur : à l’épaule (par défaut) ou à la première personne (menu debug).
+// Les deux modes pilotent la même TargetCamera, celle que le rendu des portails suit.
 export function createThirdPersonCamera(scene) {
   const camera = new TargetCamera("caméra épaule", Vector3.Zero(), scene);
   camera.fov = CAMERA.fov;
@@ -20,12 +23,53 @@ export function createThirdPersonCamera(scene) {
   const shoulderOptions = { epsilon: 0 };
   const viewOptions = { epsilon: 0, clearance: 0, collide };
   const placementOptions = { epsilon: 0 };
+  const simulatedEye = Vector3.Zero();
+  const eyeLag = Vector3.Zero();
+  const eyeOptions = { epsilon: 0, clearance: 0, collide };
   let yaw = SPAWN_YAW;
   let pitch = CAMERA.initialPitch;
   let distance = CAMERA.distance;
   let cameraScale = 1;
   let warped = false;
   let snap = false;
+  let firstPerson = false;
+  // Œil du modèle à l’échelle 1 (src/player/firstPersonFit.js).
+  const eye = { height: 0, forward: 0 };
+
+  function clampPitch(value) {
+    return firstPerson
+      ? Clamp(value, CAMERA.firstPersonMinPitch, CAMERA.firstPersonMaxPitch)
+      : Clamp(value, CAMERA.minPitch, CAMERA.maxPitch);
+  }
+
+  function setNear(nearestPortalDistance) {
+    const nearestInCameraUnits = nearestPortalDistance / cameraScale;
+    camera.minZ = Clamp(0.5 * nearestInCameraUnits, MIN_NEAR, CAMERA.minZ) * cameraScale;
+  }
+
+  // L’œil suit les pieds interpolés, qui peuvent être de l’autre côté d’un portail juste après
+  // une traversée, et se tient devant l’axe du corps : il peut donc franchir un portail avant le
+  // corps, ou entrer dans un mur. Le chemin part de l’axe à hauteur d’œil : à l’aplomb du centre et
+  // les portails étant verticaux, ce point est toujours dans l’espace du joueur. Le chemin reste à
+  // l’horizontale (retard d’interpolation et avancée) : si un mur ou la garde ε le raccourcit, l’œil
+  // recule sans changer de hauteur.
+  function followEye(feet, scale, portals, simulatedFeet) {
+    const eyeHeight = eye.height * scale;
+    const forward = eye.forward * scale;
+    simulatedEye.set(simulatedFeet.x, simulatedFeet.y + eyeHeight, simulatedFeet.z);
+    eyeLag.set(feet.x + Math.sin(yaw) * forward, feet.y + eyeHeight, feet.z + Math.cos(yaw) * forward)
+      .subtractInPlace(simulatedEye);
+    eyeOptions.epsilon = 2 * MIN_NEAR * scale;
+    eyeOptions.clearance = CAMERA.eyeWallClearance * scale;
+    portals.traceView(simulatedEye, eyeLag, eyeLag.length(), eyeOptions, eyeView);
+    cameraScale = scale * eyeView.warp.scale;
+    warped = eyeView.crossed > 0;
+    setNear(eyeView.nearestPortalDistance);
+    camera.position.copyFrom(eyeView.position);
+    camera.rotation.set(pitch, eyeView.warp.yaw(yaw), 0);
+    snap = false;
+    return 0;
+  }
 
   function locateShoulder(portals, simulatedFeet, scale) {
     simulatedShoulder.set(simulatedFeet.x, simulatedFeet.y + CAMERA.shoulderHeight * scale, simulatedFeet.z);
@@ -47,12 +91,25 @@ export function createThirdPersonCamera(scene) {
 
   function reset(newYaw) {
     yaw = newYaw;
-    pitch = CAMERA.initialPitch;
+    pitch = firstPerson ? CAMERA.firstPersonPitch : CAMERA.initialPitch;
     snap = true;
   }
 
   return {
     camera, reset,
+    get firstPerson() { return firstPerson; },
+    // Garde le regard ; l’épaule lissée repart de la position du joueur au retour à l’épaule.
+    // `fit` : { eyeHeight, eyeForward } du modèle, à l’échelle 1.
+    setFirstPerson(enabled, fit) {
+      if (fit) {
+        eye.height = fit.eyeHeight;
+        eye.forward = fit.eyeForward;
+      }
+      if (firstPerson === enabled) return;
+      firstPerson = enabled;
+      pitch = clampPitch(pitch);
+      snap = true;
+    },
     applyWarp(warp) {
       yaw = warp.yaw(yaw);
       warp.point(target, target);
@@ -60,13 +117,14 @@ export function createThirdPersonCamera(scene) {
     get yaw() { return yaw; },
     get pitch() { return pitch; },
     get warped() { return warped; },
-    get scale() { return cameraScale; },
     look(dx, dy) {
       yaw = (yaw + dx * CAMERA.sensitivity) % (2 * Math.PI);
-      pitch = Math.max(CAMERA.minPitch, Math.min(CAMERA.maxPitch, pitch + dy * CAMERA.sensitivity));
+      pitch = clampPitch(pitch + dy * CAMERA.sensitivity);
       return yaw;
     },
+    // Renvoie la distance de l’œil à l’épaule (0 à la première personne), qui règle le fondu du joueur.
     follow(dt, feet, scale, portals, simulatedFeet = feet) {
+      if (firstPerson) return followEye(feet, scale, portals, simulatedFeet);
       shoulder.set(feet.x, feet.y + CAMERA.shoulderHeight * scale, feet.z);
       Vector3.LerpToRef(target, shoulder, snap ? 1 : -Math.expm1(-CAMERA.followRate * dt), target);
       const horizontal = Math.cos(pitch);
@@ -83,8 +141,7 @@ export function createThirdPersonCamera(scene) {
       portals.traceView(origin, direction, distance * shoulderScale, placementOptions, eyeView);
       cameraScale = shoulderScale * eyeView.warp.scale;
       warped = isViewWarped(eyeView, anchor);
-      const nearestInCameraUnits = eyeView.nearestPortalDistance / cameraScale;
-      camera.minZ = Math.max(MIN_NEAR, Math.min(CAMERA.minZ, 0.5 * nearestInCameraUnits)) * cameraScale;
+      setNear(eyeView.nearestPortalDistance);
       camera.position.copyFrom(eyeView.position);
       camera.setTarget(eyeView.target);
       if (camera.position.equals(eyeView.target)) {

@@ -11,16 +11,25 @@
   <body>
     <main>
       <canvas id="scene" tabindex="0" aria-label="Terrain d’entraînement du squelette en troisième personne. Échap ouvre le menu des commandes."></canvas>
-      <p id="status" role="status">Chargement de la scène…</p>
+      <div id="status">
+        <p id="status-message" role="status">Chargement de la scène…</p>
+        <details id="graphics-warning" hidden>
+          <summary></summary>
+          <p></p>
+        </details>
+      </div>
       <p id="capture-hint" hidden>
         <span>Cliquez ou appuyez sur une touche pour contrôler la caméra</span>
         <span class="movement-hint">Déplacer <kbd id="movement-keys"></kbd></span>
       </p>
+      <p id="graphics-notice" role="status" hidden>Le jeu ralentit. <kbd>Échap</kbd> ouvre le menu et l’aide sur l’accélération graphique.</p>
+      <p id="interaction-prompt" role="status" hidden>Appuyez sur <kbd id="interaction-key">E</kbd> pour <span id="interaction-verb">jouer</span></p>
       <div id="player-state" aria-label="État du personnage" data-scale="1" hidden>
         <span class="contact"><i aria-hidden="true"></i><span id="ground-state">Chargement</span></span>
         <span class="velocity"><strong id="speed">0,0</strong> m/s</span>
         <span class="portal-stats">Portails : profondeur <span id="portal-depth"></span> · <span id="portal-passes"></span> passes · <span id="fps"></span> i/s</span>
       </div>
+      <aside id="debug-menu" hidden></aside>
       <noscript>Activez JavaScript pour lancer le jeu.</noscript>
     </main>
 
@@ -53,6 +62,8 @@
         <li><kbd>Souris</kbd> Caméra</li>
         <li><kbd>Échap</kbd> Menu</li>
         <li><kbd>F3</kbd> Afficher le HUD</li>
+        <li><kbd>Ctrl D</kbd> Menu debug</li>
+        <li><kbd>Tab</kbd> Libérer la souris</li>
       </ul>
     </dialog>
     <script type="module" src="/src/main.js"></script>

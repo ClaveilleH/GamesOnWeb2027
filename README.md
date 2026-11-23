@@ -1,6 +1,6 @@
 # Games on Web 2027
 
-Un squelette animé en troisième personne explore un terrain d’entraînement en plein écran. Babylon.js construit le personnage en primitives et Havok gère ses déplacements. Cliquez sur **Jouer** pour commencer. Par défaut, utilisez **ZQSD / WASD** ou les **flèches** pour marcher, **Maj** pour courir, **Espace** pour sauter, **R** pour réapparaître et la souris pour orienter la caméra. **Échap** met le jeu en pause et ouvre le menu où vous pouvez réassigner les touches et choisir la disposition du clavier. **F3** affiche ou masque l’état et la vitesse du personnage.
+Un squelette animé en troisième personne explore un terrain d’entraînement en plein écran. Babylon.js construit le personnage en primitives et Havok gère ses déplacements. Cliquez sur **Jouer** pour commencer. Par défaut, utilisez **ZQSD / WASD** ou les **flèches** pour marcher, **Maj** pour courir, **Espace** pour sauter, **R** pour réapparaître et la souris pour orienter la caméra. **Échap** met le jeu en pause et ouvre le menu où vous pouvez réassigner les touches et choisir la disposition du clavier. **F3** affiche ou masque l’état et la vitesse du personnage. **Ctrl + D** ouvre le menu debug (caméra 3e / 1re personne, vol, noclip, échelle, temps, téléportation) et **Tab** libère la souris pour cliquer dedans.
 
 ## Portails non euclidiens
 

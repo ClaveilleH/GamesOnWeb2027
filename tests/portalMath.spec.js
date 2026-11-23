@@ -3,6 +3,7 @@ import { Plane } from "@babylonjs/core/Maths/math.plane.js";
 import { Matrix, Quaternion, Vector3, Vector4 } from "@babylonjs/core/Maths/math.vector.js";
 import { createViewResult, traceView } from "../src/portals/cameraPath.js";
 import { PortalLayers } from "../src/portals/layers.js";
+import { straddlingPortal, straddlingPortals } from "../src/portals/travelers.js";
 import {
   apertureCorners, aperturePyramidPlanes, applyObliqueNearPlane, composeWarps, createWarp,
   discardPlane, distanceToAperture, hasWarpRotation, identityWarp, insideAperture, intersectRects, portalBasis,
@@ -16,8 +17,8 @@ function expectVector(actual, expected, tolerance = 1e-9) {
   expect(Vector3.Distance(actual, expected), `${actual} ≈ ${expected}`).toBeLessThanOrEqual(tolerance);
 }
 
-function opening(x, z, yaw, width = 4) {
-  return { origin: new Vector3(x, 0, z), yaw, width, height: width, sides: "both", ...portalBasis(yaw) };
+function opening(x, z, yaw, width = 4, height = width) {
+  return { origin: new Vector3(x, 0, z), yaw, width, height, sides: "both", ...portalBasis(yaw) };
 }
 
 function link(a, b) {
@@ -431,10 +432,8 @@ test("les quatre plans de culling englobent les rayons passant dans l’ouvertur
 });
 
 test("la détection d’ombre portée respecte la direction du soleil, les faces et la portée au sol", () => {
-  const a = opening(0, 31, Math.PI, 2.4);
-  a.height = 3;
-  const b = opening(-30, -32, 0, 2.4);
-  b.height = 3;
+  const a = opening(0, 31, Math.PI, 2.4, 3);
+  const b = opening(-30, -32, 0, 2.4, 3);
   link(a, b);
   const sun = new Vector3(-0.58, -1, 0.48).normalize();
   const radius = Math.sqrt(3) / 2;
@@ -466,8 +465,7 @@ test("la détection d’ombre portée respecte la direction du soleil, les faces
   expect(shadowPortalCrossing(b, new Vector3(-29.65, 0.5, -32.02), radius, sun, out, 1)).toBeNull();
 
   // Lien qui tourne de 180° (même normale) : le soleil ne sort pas du côté récepteur de la cible.
-  const flipped = opening(-30, -32, Math.PI, 2.4);
-  flipped.height = 3;
+  const flipped = opening(-30, -32, Math.PI, 2.4, 3);
   const rotatedA = { ...a, target: flipped };
   expect(shadowPortalCrossing(rotatedA, new Vector3(0.35, 0.5, 30.45), radius, sun)).toBeNull();
 
@@ -518,10 +516,7 @@ test("warpPlane transporte un plan quelconque avec rotation, translation et éch
   const warp = createWarp(a, b);
   // Plan incliné non unitaire pour vérifier la normalisation et la conservation du signe.
   const source = new Plane(2, -4, 6, -10);
-  const unit = source.clone();
-  const invLen = 1 / unit.normal.length();
-  unit.normal.scaleInPlace(invLen);
-  unit.d *= invLen;
+  const unit = source.clone().normalize();
 
   const out = new Plane(0, 0, 0, 0);
   expect(warpPlane(warp, source, out)).toBe(out);
@@ -603,4 +598,41 @@ test("secondaryGhostClipPlane rejette la partie engagée dans le second portail 
   // 5) Deux portails coplanaires confondus : aucun second plan (null → plan neutre).
   const dup = { origin: new Vector3(0, 0, 0), yaw: 0, width: 2, height: 1, sides: "both" };
   expect(secondaryGhostClipPlane(v1, 1, dup, 1)).toBeNull();
+});
+
+test("un objet ne chevauche un portail que si son centre est en face de l’ouverture, le second peut être voisin", () => {
+  function gate(name, x, z, yaw, width, height) {
+    return { name, origin: new Vector3(x, 0, z), yaw, width, height, sides: "both" };
+  }
+  const names = (list) => list.map((p) => p.name);
+  const adapter = {};
+  const radius = 1.1;
+  // Arche de 2,4 m × 3 m, piliers de 0,46 m ; centre du joueur (capsule de rayon 0,32 m) à 0,9 m du sol.
+  const arch = gate("arche", 0, 0, 0, 2.4, 3);
+  link(arch, gate("sortie", 0, 40, -Math.PI, 2.4, 3));
+  const portals = [arch, arch.target];
+  expect(names(straddlingPortals(portals, adapter, new Vector3(0.88, 0.9, 0.1), radius))).toEqual(["arche"]);
+  // Collé à la face extérieure d’un pilier, à cheval sur le plan, ou debout sur le linteau : pas de coupe.
+  expect(straddlingPortals(portals, adapter, new Vector3(1.2 + 0.46 + 0.32, 0.9, 0), radius)).toEqual([]);
+  expect(straddlingPortals(portals, adapter, new Vector3(0, 3.46 + 0.9, 0), radius)).toEqual([]);
+  expect(straddlingPortal(portals, adapter, new Vector3(-1.98, 0.9, 0.2), radius)).toBeNull();
+  expect(straddlingPortals(portals, adapter, new Vector3(0, 0.9, 1.1), radius)).toEqual([]);
+  expect(straddlingPortals(portals, { canTraverse: (p) => p !== arch }, new Vector3(0, 0.9, 0.1), radius)).toEqual([]);
+
+  // Deux ouvertures jointives dans un même plan, sans meneau : celle du centre, puis sa voisine.
+  const left = gate("gauche", -1, 0, 0, 2, 2);
+  const right = gate("droite", 1, 0, 0, 2, 2);
+  link(left, gate("sortie gauche", -20, 30, Math.PI, 2, 2));
+  link(right, gate("sortie droite", 20, 30, Math.PI, 2, 2));
+  expect(names(straddlingPortals([left, right], adapter, new Vector3(-0.2, 1, 0.1), radius))).toEqual(["gauche", "droite"]);
+  expect(names(straddlingPortals([left, right], adapter, new Vector3(0.2, 1, 0.1), radius))).toEqual(["droite", "gauche"]);
+
+  // Une ouverture voisine plus proche du centre ne passe qu’en second, après celle qui lui fait face.
+  const facing = gate("en face", 0, 0, 0, 2, 2);
+  const beside = gate("voisine", 2.1, 0.45, 0, 2, 2);
+  link(facing, gate("sortie en face", -20, -30, Math.PI, 2, 2));
+  link(beside, gate("sortie voisine", 20, -30, Math.PI, 2, 2));
+  const center = new Vector3(1, 1, 0.5);
+  expect(names(straddlingPortals([beside, facing], adapter, center, radius))).toEqual(["en face", "voisine"]);
+  expect(straddlingPortal([beside, facing], adapter, center, radius)).toBe(facing);
 });

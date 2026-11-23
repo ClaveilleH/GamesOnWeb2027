@@ -77,7 +77,8 @@ export function createMenu(bindings, layout, onResume) {
     if (code === "Escape") return escape();
     const clear = code === "Backspace" || code === "Delete";
     if (!clear && !canBind(code)) {
-      announce(code === "F3" ? "F3 est réservé au HUD. Choisissez une autre touche." : "Touche inconnue. Essayez une autre touche.");
+      const reservedKeys = { F3: "F3 est réservé au HUD", Tab: "Tab est réservé à la souris" };
+      announce(reservedKeys[code] ? reservedKeys[code] + ". Choisissez une autre touche." : "Touche inconnue. Essayez une autre touche.");
       return;
     }
     const { action, index } = recording;

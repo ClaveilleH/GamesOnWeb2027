@@ -1,7 +1,7 @@
-import { Light } from "@babylonjs/core/Lights/light";
-import { Plane } from "@babylonjs/core/Maths/math.plane";
-import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { Observable } from "@babylonjs/core/Misc/observable";
+import { Light } from "@babylonjs/core/Lights/light.js";
+import { Plane } from "@babylonjs/core/Maths/math.plane.js";
+import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector.js";
+import { Observable } from "@babylonjs/core/Misc/observable.js";
 import { PortalLayers } from "./layers.js";
 import {
   discardPlane, insideAperture, secondaryGhostClipPlane, segmentCrossing, shadowPortalCrossing,
@@ -19,6 +19,20 @@ const nearestResult = [];
 function copyPlane(target, source) {
   target.normal.copyFrom(source.normal);
   target.d = source.d;
+}
+
+// Coupe de tête : rejette ce qui dépasse `height` (unités locales du visuel) au-dessus de la racine,
+// seulement si la caméra de la vue est à moins de `radius` de ce point. Sinon, plan inactif.
+const headPoint = new Vector3();
+function placeHeadPlane(node, cut, eye, plane) {
+  const scale = node.scaling.y;
+  headPoint.set(node.position.x, node.position.y + cut.height * scale, node.position.z);
+  if (Vector3.DistanceSquared(eye, headPoint) < (cut.radius * scale) ** 2) {
+    plane.normal.set(0, 1, 0);
+    plane.d = -headPoint.y;
+  } else {
+    copyPlane(plane, idlePlane);
+  }
 }
 
 const filteredShadowMaps = new WeakSet();
@@ -65,48 +79,55 @@ function syncHierarchyPose(root, sources, copies, warp, position) {
   }
 }
 
-export function straddlingPortals(portals, adapter, position, radius, out = []) {
+// Portails liés chevauchés par un objet de centre `center` et de rayon `radius` (au plus deux, le plus
+// proche d’abord) : |d(center)| < radius. Le premier exige que le centre soit en face de l’ouverture
+// elle-même. Collé à l’extérieur d’un montant, l’objet frôle le plan sans passer par l’ouverture : le plan
+// de coupe, infini, le trancherait en deux et le fantôme montrerait l’autre moitié à côté de la sortie.
+// Le second accepte l’ouverture élargie du rayon (jonction de deux ouvertures sans meneau, portails en
+// angle) ; sans premier, pas de second.
+export function straddlingPortals(portals, adapter, center, radius, out = []) {
   let first = null;
-  let second = null;
+  let firstDistance = Infinity;
+  let near = null;
+  let next = null;
   let d0 = Infinity;
   let d1 = Infinity;
   for (let i = 0; i < portals.length; i++) {
     const portal = portals[i];
     if (!portal.warp) continue;
-    toLocal(portal, position, local);
+    toLocal(portal, center, local);
     const z = local.z;
     if (Math.abs(z) >= radius || !insideAperture(portal, local, radius)) continue;
     if (adapter.canTraverse && !adapter.canTraverse(portal)) continue;
     const dx = Math.max(0, Math.abs(local.x) - portal.width / 2);
     const dy = Math.max(0, -local.y, local.y - portal.height);
     const distanceSq = dx * dx + dy * dy + z * z;
+    if (dx === 0 && dy === 0 && distanceSq < firstDistance) {
+      first = portal;
+      firstDistance = distanceSq;
+    }
     if (distanceSq >= d1) continue;
     if (distanceSq < d0) {
-      second = first;
+      next = near;
       d1 = d0;
-      first = portal;
+      near = portal;
       d0 = distanceSq;
     } else {
-      second = portal;
+      next = portal;
       d1 = distanceSq;
     }
   }
+  const second = near === first ? next : near;
+  out.length = first ? (second ? 2 : 1) : 0;
   if (first) {
     out[0] = first;
-    if (second) {
-      out[1] = second;
-      out.length = 2;
-    } else {
-      out.length = 1;
-    }
-  } else {
-    out.length = 0;
+    if (second) out[1] = second;
   }
   return out;
 }
 
-export function straddlingPortal(portals, adapter, position, radius) {
-  return straddlingPortals(portals, adapter, position, radius, nearestResult)[0] ?? null;
+export function straddlingPortal(portals, adapter, center, radius) {
+  return straddlingPortals(portals, adapter, center, radius, nearestResult)[0] ?? null;
 }
 
 function shadowPortal(portals, adapter, center, radius, lightDir, straddling, straddleSide, out) {
@@ -130,6 +151,13 @@ function shadowPortal(portals, adapter, center, radius, lightDir, straddling, st
   out.distance = nearestDistance;
   out.side = nearestSide;
   return out;
+}
+
+// Direction normalisée des ombres d’une lumière directionnelle, ou null si elle est nulle.
+function shadowDirectionOf(light, out) {
+  light.computeTransformedInformation();
+  const raw = light.getShadowDirection();
+  return raw.lengthSquared() > 1e-12 ? Vector3.NormalizeToRef(raw, out) : null;
 }
 
 function sceneShadowGenerators(scene) {
@@ -203,6 +231,11 @@ function createGhostClone(visual, sources, index) {
     clone.setEnabled(false);
   }
 
+  const headPlane = idlePlane.clone();
+  function setHeadCut(on) {
+    for (const material of copy.materials) material.clipPlane3 = on ? headPlane : null;
+  }
+
   function show(portal, side, otherPortal, otherSide, position) {
     discardPlane(portal.target, -side, targetPlane);
     if (!otherPortal || !secondaryGhostClipPlane(portal, side, otherPortal, otherSide, secondaryPlane)) {
@@ -214,7 +247,9 @@ function createGhostClone(visual, sources, index) {
   }
 
   return {
-    show, hide, syncAppearance: copy.syncAppearance,
+    show, hide, syncAppearance: copy.syncAppearance, setHeadCut,
+    placeHeadPlane(cut, eye) { placeHeadPlane(clone, cut, eye, headPlane); },
+    clearHeadPlane() { copyPlane(headPlane, idlePlane); },
     get active() { return clone.isEnabled(); },
     dispose: copy.dispose,
   };
@@ -246,6 +281,8 @@ function createGhostSet(visual) {
     createGhostClone(visual, sources, 1),
     createGhostClone(visual, sources, 2),
   ];
+  const headPlane = idlePlane.clone();
+  let headCut = null;
 
   function update(straddling, sides, position) {
     const count = straddling.length;
@@ -282,6 +319,26 @@ function createGhostSet(visual) {
 
   return {
     update, syncAppearance,
+    // Le troisième plan reste posé tant que la coupe est active : ses variantes se préchauffent par warmUp.
+    setHeadCut(cut) {
+      headCut = cut;
+      for (const material of materials) material.clipPlane3 = cut ? headPlane : null;
+      for (const ghost of ghosts) ghost.setHeadCut(Boolean(cut));
+      copyPlane(headPlane, idlePlane);
+      for (const ghost of ghosts) ghost.clearHeadPlane();
+    },
+    placeHeadPlanes(eye) {
+      if (!headCut) return;
+      placeHeadPlane(root, headCut, eye, headPlane);
+      for (const ghost of ghosts) {
+        if (ghost.active) ghost.placeHeadPlane(headCut, eye);
+      }
+    },
+    clearHeadPlanes() {
+      if (!headCut) return;
+      copyPlane(headPlane, idlePlane);
+      for (const ghost of ghosts) ghost.clearHeadPlane();
+    },
     // false : plans toujours posés (préchauffage de la variante à plans) ; true : plans nuls au repos.
     setRestAtIdle(value) {
       restAtIdle = value;
@@ -292,6 +349,7 @@ function createGhostSet(visual) {
       for (let i = 0; i < materials.length; i++) {
         materials[i].clipPlane = previousPlanes[i].clipPlane;
         materials[i].clipPlane2 = previousPlanes[i].clipPlane2;
+        materials[i].clipPlane3 = null;
       }
       ghosts[0].dispose();
       ghosts[1].dispose();
@@ -319,11 +377,7 @@ function createShadowCaster(visual) {
       if (!renderList) continue;
       if (sources.some((source) => source.subMeshes && renderList.includes(source))) matching.push(generator);
     }
-    if (!matching.length) continue;
-    light.computeTransformedInformation();
-    const raw = light.getShadowDirection();
-    if (raw.lengthSquared() <= 1e-12) continue;
-    Vector3.NormalizeToRef(raw, candidateDirection);
+    if (!matching.length || !shadowDirectionOf(light, candidateDirection)) continue;
     if (!primaryLight) {
       primaryLight = light;
       primaryDirection.copyFrom(candidateDirection);
@@ -362,10 +416,7 @@ function createShadowCaster(visual) {
 
   function getLightDirection(out) {
     if (!primaryLight.isEnabled() || !primaryLight.shadowEnabled) return null;
-    primaryLight.computeTransformedInformation();
-    const raw = primaryLight.getShadowDirection();
-    if (raw.lengthSquared() <= 1e-12) return null;
-    return Vector3.NormalizeToRef(raw, out);
+    return shadowDirectionOf(primaryLight, out);
   }
 
   function show(portal, side, position, lightDir, margin) {
@@ -400,10 +451,6 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
   const hit = { t: 0, side: null, point: new Vector3() };
   const shadowHit = { portal: null, distance: 0, side: 1 };
 
-  function crossingsFor(traveler) {
-    return getPortals().filter((p) => p.warp).map((portal) => ({ traveler, portal, warp: portal.warp }));
-  }
-
   function entryFor(adapter) {
     for (let i = 0; i < entries.length; i++) {
       if (entries[i].adapter === adapter) return entries[i];
@@ -420,7 +467,7 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
 
   function addTraveler(adapter) {
     const entry = {
-      adapter, previous: new Vector3(), current: new Vector3(), crossings: crossingsFor(adapter),
+      adapter, previous: new Vector3(), current: new Vector3(),
       ghosts: adapter.visual ? createGhostSet(adapter.visual) : null,
       shadowCaster: adapter.visual ? createShadowCaster(adapter.visual) : null,
       arrival: null, arrivalSide: 1,
@@ -436,27 +483,29 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
   }
 
   function updateTravelers() {
+    const portals = getPortals();
     const list = entries;
     for (let i = 0; i < list.length; i++) {
       const entry = list[i];
-      const { adapter, previous, current, crossings } = entry;
+      const { adapter, previous, current } = entry;
       adapter.center(current);
       let first = null;
       let firstT = Infinity;
-      for (let j = 0; j < crossings.length; j++) {
-        const { portal } = crossings[j];
-        if (adapter.canTraverse && !adapter.canTraverse(portal)) continue;
+      for (let j = 0; j < portals.length; j++) {
+        const portal = portals[j];
+        if (!portal.warp || (adapter.canTraverse && !adapter.canTraverse(portal))) continue;
         if (segmentCrossing(portal, previous, current, hit) && hit.t < firstT) {
-          first = crossings[j];
+          first = portal;
           firstT = hit.t;
           entry.arrivalSide = hit.side === "front" ? 1 : -1;
         }
       }
       if (first) {
-        entry.arrival = first.portal.target;
-        first.traveler.applyWarp(first.warp, first.portal);
-        onTraverseObservable.notifyObservers(first);
-        first.warp.point(current, previous);
+        const { warp } = first;
+        entry.arrival = first.target;
+        adapter.applyWarp(warp, first);
+        onTraverseObservable.notifyObservers({ traveler: adapter, portal: first, warp });
+        warp.point(current, previous);
       } else {
         previous.copyFrom(current);
       }
@@ -474,7 +523,9 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
       const enabled = root.isEnabled();
       const position = root.parent ? root.computeWorldMatrix(true).getTranslationToRef(worldPosition) : root.position;
       const radius = adapter.visual.radius();
-      if (enabled) straddlingPortals(portals, adapter, position, radius, straddling);
+      // Le centre du visuel, et non sa racine (aux pieds du joueur) : debout sur un linteau, le joueur n’est pas en face de l’ouverture.
+      const center = adapter.visual.center ? adapter.visual.center(visualCenter) : position;
+      if (enabled) straddlingPortals(portals, adapter, center, radius, straddling);
       else straddling.length = 0;
       if (straddling.length > 0) {
         // Juste après le warp, l'interpolation peut encore présenter la pose d'avant le plan.
@@ -495,10 +546,9 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
         shadowCaster.hide();
         continue;
       }
-      // Le projecteur d’ombre continue d’utiliser le portail chevauché le plus proche.
+      // Le projecteur d’ombre continue d’utiliser le premier portail chevauché.
       const nearest = straddling[0] ?? null;
       const straddleSide = straddling.length > 0 ? straddleSides[0] : 0;
-      const center = adapter.visual.center ? adapter.visual.center(visualCenter) : position;
       const crossing = shadowPortal(portals, adapter, center, radius, lightDir, nearest, straddleSide, shadowHit);
       if (crossing && (!isLightBlocked || !isLightBlocked(center, lightDir.scaleToRef(-1, towardLight), lightBlockDistance))) {
         shadowCaster.show(crossing.portal, crossing.side, position, lightDir, margin);
@@ -517,11 +567,20 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
     ghostCount,
     isGhostActive(adapter) { return ghostCount(adapter) > 0; },
     isShadowCasterActive(adapter) { return entryFor(adapter)?.shadowCaster?.active ?? false; },
+    // Coupe de tête d’un voyageur ({ height, radius } en unités locales de son visuel, ou null).
+    setHeadCut(adapter, cut) { entryFor(adapter)?.ghosts?.setHeadCut(cut); },
+    // Avant chaque passe des maillages late, depuis la position de la caméra de cette vue.
+    placeHeadPlanes(eye) {
+      for (const entry of entries) entry.ghosts?.placeHeadPlanes(eye);
+    },
+    // Après les vues : la carte d’ombre de l’image suivante voit le corps entier.
+    clearHeadPlanes() {
+      for (const entry of entries) entry.ghosts?.clearHeadPlanes();
+    },
     get activeGhosts() { return entries.reduce((n, entry) => n + (entry.ghosts?.activeCount ?? 0), 0); },
     get activeShadowCasters() { return entries.reduce((n, entry) => n + (entry.shadowCaster?.active ? 1 : 0), 0); },
     linksChanged() {
       for (const entry of entries) {
-        entry.crossings = crossingsFor(entry.adapter);
         if (entry.arrival && !entry.arrival.warp) entry.arrival = null;
       }
     },

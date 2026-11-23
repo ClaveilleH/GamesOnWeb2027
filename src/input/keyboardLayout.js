@@ -77,10 +77,6 @@ export function createKeyboardLayout() {
     changes,
     get preference() { return preference; },
     get layout() { return preference === "auto" ? automaticLayout() : preference; },
-    get source() {
-      if (preference !== "auto") return "manual";
-      return keyEvidence ? "key" : mapLayout ? "map" : "guess";
-    },
     get automaticLabel() {
       const name = automaticLayout().toUpperCase();
       return keyEvidence || mapLayout ? `Automatique (${name} détecté)` : `Automatique (disposition ${name} supposée)`;

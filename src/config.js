@@ -40,22 +40,79 @@ export const CAMERA = Object.freeze({
   fadeFar: 1.2,
   minPlayerOpacity: 0.03,
   fov: 0.82,
+  // Première personne (menu debug). Œil et cou dépendent du modèle (src/player/firstPersonFit.js,
+  // `CHARACTERS[].firstPerson`). Le corps reste visible : la tête est coupée dans les vues dont la caméra
+  // est à moins de `headCutRadius` (échelle 1) du cou (vue directe, fantôme à cheval sur un portail).
+  headCutRadius: 0.6,
+  // Recul de l'œil devant un mur (le plan proche et ses coins restent hors du mur).
+  eyeWallClearance: 0.08,
+  firstPersonPitch: 0,
+  firstPersonMinPitch: -1.48,
+  firstPersonMaxPitch: 1.48,
   // Plan proche hors portail (réduit près d'une ouverture, docs/PORTALS.md § 9.3) et plan lointain.
   minZ: 0.04,
   maxZ: 500,
 });
 
-// Modèle 3D du personnage. `model` à null garde le squelette procédural. Le paramètre
-// d'URL `?model=/models/fichier.glb` remplace ce réglage pour essayer un modèle.
-export const CHARACTER = Object.freeze({
-  model: null,
-  // Rotation (radians) à ajouter si le modèle ne regarde pas vers +Z.
-  yawOffset: 0,
-  // Noms exacts des animations du fichier. null : détection par mots-clés (idle, walk, run, jump, fall…).
+// Personnages jouables. `model` à null garde le squelette procédural ; sinon un
+// fichier glTF/GLB de `public/models/`. On choisit dans le menu debug (Ctrl+D), le
+// choix est mémorisé. `?character=<clé>` ou `?model=<url>` force un personnage.
+//   yawOffset        : rotation (radians) à ajouter si le modèle ne regarde pas vers +Z.
+//   animation        : "clips" joue les clips du fichier ; "procedural" pilote les os avec la démarche
+//                      du squelette ; "baked" fige cette démarche en clips keyframés. Sans rig reconnu,
+//                      les deux derniers reviennent aux clips du fichier.
+//   animations       : noms exacts des clips du fichier ; null = détection par mots-clés
+//                      (idle, walk, run, jump, fall…). Un modèle à un seul clip le joue partout.
+//   walk/runAnimationSpeed : vitesses (m/s) où marche et course tournent à vitesse normale.
+//   blendRate        : vitesse de fondu entre deux animations (1/s).
+//   firstPerson      : facultatif, { eyeHeight, eyeForward, headCutHeight } en mètres à l'échelle 1,
+//                      pour remplacer la mesure automatique de la première personne (yeux, avancée
+//                      de l'œil devant l'axe du corps, hauteur de coupe de la tête).
+const modelDefaults = Object.freeze({
+  yawOffset: 0, animation: "clips",
   animations: Object.freeze({ idle: null, walk: null, run: null, jump: null, fall: null }),
-  // Vitesses (m/s) auxquelles les animations de marche et de course sont jouées à vitesse normale.
-  walkAnimationSpeed: 1.6,
-  runAnimationSpeed: 4.5,
-  // Vitesse de fondu entre deux animations (1/s).
-  blendRate: 10,
+  walkAnimationSpeed: 1.6, runAnimationSpeed: 4.5, blendRate: 10,
 });
+export const CHARACTERS = Object.freeze([
+  // Le squelette n'utilise pas les réglages de modèle, mais `?model=<url>` les reprend de sa base (main.js).
+  Object.freeze({ ...modelDefaults, key: "squelette", label: "Squelette", model: null }),
+  Object.freeze({
+    ...modelDefaults, key: "shrek", label: "Shrek", model: "/models/shrek_2001_xbox_doing_toothless_dancing.glb",
+    // Pilote les os avec la démarche du squelette (marche/course/idle/saut) au lieu de la danse.
+    animation: "procedural",
+  }),
+  Object.freeze({
+    ...modelDefaults, key: "shrek-clips", label: "Shrek (clips)", model: "/models/shrek_2001_xbox_doing_toothless_dancing.glb",
+    // Même démarche, mais figée en vrais clips keyframés (idle/walk/run/jump/fall) et mélangée.
+    animation: "baked",
+  }),
+]);
+
+// Personnage par défaut en jeu. Les tests automatisés gardent le squelette (léger et stable).
+export const DEFAULT_CHARACTER = "shrek";
+
+export function characterByKey(key) {
+  return CHARACTERS.find((character) => character.key === key) ?? null;
+}
+
+// Décors fixes chargés depuis des fichiers glTF/GLB/OBJ déposés dans `public/models/`
+// (voir `src/world/props.js`). Un fichier absent ou illisible est ignoré sans empêcher
+// de jouer. `yaw`/`pitch` orientent le modèle (radians ; +Z du fichier vers +Z du monde
+// à 0). `height` le met à l'échelle sur une hauteur en mètres (null : échelle du fichier).
+// `color` applique un matériau uni (utile pour un OBJ sans .mtl). `collision: false`
+// retire la boîte de collision statique. `interact` ajoute une zone d'interaction :
+// `prompt` (verbe affiché « Appuyez sur E pour … »), `radius` (mètres) ; l'appui sur
+// « Interagir » à portée déclenche le décor (voir `onPropInteraction` dans main.js).
+export const PROPS = Object.freeze([
+  Object.freeze({
+    name: "borne d’arcade",
+    url: "/models/borne-arcade.obj",
+    position: Object.freeze({ x: 6, y: 0, z: -6 }),
+    yaw: Math.PI,
+    pitch: 0,
+    height: 1.8,
+    color: "#6b7280",
+    collision: true,
+    interact: Object.freeze({ prompt: "jouer", radius: 2.2 }),
+  }),
+]);

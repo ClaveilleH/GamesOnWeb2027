@@ -7,9 +7,8 @@ import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { CreateCapsule } from "@babylonjs/core/Meshes/Builders/capsuleBuilder";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import { CreateTube } from "@babylonjs/core/Meshes/Builders/tubeBuilder";
-import { PLAYER } from "../config.js";
 import { PortalLayers } from "../portals/layers.js";
-import { gaitOf } from "./gait.js";
+import { advanceGait, createGaitPhase, gaitBlend, gaitTargets } from "./gait.js";
 
 export function createSkeletonVisual(scene) {
   const ivory = new StandardMaterial("os ivoire", scene);
@@ -149,64 +148,39 @@ export function createSkeletonVisual(scene) {
     return { side, hip, knee, ankle, shoulder, elbow };
   }
   const limbs = [-1, 1].map(makeLimbs);
-  let stride = 0;
-  let breath = 0;
+  const phase = createGaitPhase();
+  const target = {};
 
   function update(dt, speed, grounded, verticalSpeed) {
-    const gait = gaitOf(speed, grounded, verticalSpeed);
-    const running = gait === "run";
-    const walking = gait === "walk" || running;
-    const strength = walking ? Math.min(speed / PLAYER.walkSpeed, 1) : 0;
-    const blend = -Math.expm1(-13 * dt);
-    const ease = (value, target) => value + (target - value) * blend;
-    breath += dt * 2.2;
-    if (walking) stride += dt * Math.PI * 2 * (0.6 + 0.23 * speed);
-    const wave = Math.sin(stride);
-    const swing = strength * (running ? 0.92 : 0.59);
-    const bob = strength * Math.cos(stride * 2) * (running ? 0.032 : 0.018);
+    const { gait, strength, stride, breath } = advanceGait(phase, dt, speed, grounded, verticalSpeed);
+    const t = gaitTargets(gait, stride, breath, strength, target);
+    const blend = gaitBlend(dt);
+    const ease = (value, goal) => value + (goal - value) * blend;
+    // En plus de la démarche commune : rebond du bassin, souffle et roulis du buste, tête qui compense le bassin.
+    const bob = strength * Math.cos(stride * 2) * (gait === "run" ? 0.032 : 0.018);
     hips.position.y = ease(hips.position.y, 0.94 + bob);
-    hips.rotation.y = ease(hips.rotation.y, wave * strength * 0.105);
+    hips.rotation.y = ease(hips.rotation.y, t.hipsYaw);
     chest.position.y = ease(chest.position.y, 0.08 + 0.008 * Math.sin(breath));
-    chest.rotation.z = ease(chest.rotation.z, 0.014 * Math.cos(breath) + wave * strength * 0.043);
-    chest.rotation.x = ease(chest.rotation.x, running ? 0.16 : walking ? 0.06 : 0.012 * Math.sin(breath));
-    head.rotation.y = ease(head.rotation.y, gait === "idle" ? 0.09 * Math.sin(breath * 0.6) : -hips.rotation.y * 0.6);
+    chest.rotation.z = ease(chest.rotation.z, 0.014 * Math.cos(breath) + Math.sin(stride) * strength * 0.043);
+    chest.rotation.x = ease(chest.rotation.x, t.chestX);
+    head.rotation.y = ease(head.rotation.y, gait === "idle" ? t.headY : -hips.rotation.y * 0.6);
 
     for (const { side, hip, knee, ankle, shoulder, elbow } of limbs) {
-      const step = side * wave;
-      let thigh = -step * swing;
-      let shin = strength * Math.max(0, -step) * (running ? 1.05 : 0.65);
-      let arm = step * swing * 0.88;
-      let spread = 0.075;
-      let forearm = running ? -0.92 : -0.18 - 0.2 * strength;
-      if (gait === "jump") {
-        thigh = side === 1 ? -0.83 : -0.32;
-        shin = side === 1 ? 1.05 : 0.69;
-        arm = -0.56 + side * 0.28;
-        spread = 0.32;
-        forearm = -0.76;
-      } else if (gait === "fall") {
-        thigh = -0.17 + side * 0.11;
-        shin = 0.37;
-        arm = 0.04;
-        spread = 0.56;
-        forearm = -0.28;
-      }
-      hip.rotation.x = ease(hip.rotation.x, thigh);
-      knee.rotation.x = ease(knee.rotation.x, shin);
-      ankle.rotation.x = ease(ankle.rotation.x, -0.45 * (thigh + shin));
-      shoulder.rotation.x = ease(shoulder.rotation.x, arm);
-      shoulder.rotation.z = ease(shoulder.rotation.z, side * spread);
-      elbow.rotation.x = ease(elbow.rotation.x, forearm);
+      const L = side < 0;
+      hip.rotation.x = ease(hip.rotation.x, t[L ? "thighL" : "thighR"]);
+      knee.rotation.x = ease(knee.rotation.x, t[L ? "shinL" : "shinR"]);
+      ankle.rotation.x = ease(ankle.rotation.x, t[L ? "footL" : "footR"]);
+      shoulder.rotation.x = ease(shoulder.rotation.x, t[L ? "armL" : "armR"]);
+      shoulder.rotation.z = ease(shoulder.rotation.z, t[L ? "spreadL" : "spreadR"]);
+      elbow.rotation.x = ease(elbow.rotation.x, t[L ? "forearmL" : "forearmR"]);
     }
   }
 
   return {
     root, update, materials: [ivory, dark],
     setFade(alpha) {
-      if (ivory.alpha === alpha) return false;
       ivory.alpha = alpha;
       dark.alpha = alpha;
-      return true;
     },
     dispose() {
       root.dispose();

@@ -5,10 +5,12 @@ const LOCK_RETRY_MIN_MS = 50;
 const LOCK_RETRY_FALLBACK_MS = 250;
 const LOCK_RETRIES = 6;
 const SYSTEM_KEYS = new Set(["MetaLeft", "MetaRight", "OSLeft", "OSRight"]);
+// Descente en vol (menu debug). La montée reprend les touches de saut.
+const FLY_DOWN_CODE = "KeyC";
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export function createInput(canvas, bindings, platform, { isPaused, openMenu, onCapture, toggleDebug }) {
+export function createInput(canvas, bindings, platform, { isPaused, openMenu, onCapture, toggleDebug, toggleDebugMenu }) {
   const listeners = new AbortController();
   const options = { signal: listeners.signal };
   const held = new Set();
@@ -16,14 +18,20 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
   let capturePending = false;
   let relockOnRelease = null;
   let awaitingLock = false;
+  // Souris libérée par Tab pour cliquer dans le menu debug : le jeu continue, sans pause.
+  let freeCursor = false;
+  let descending = false;
   let userExitAt = -Infinity;
   let ignoreMouseUntil = 0;
   let jump = false;
   let respawn = false;
+  let interact = false;
   let lookX = 0;
   let lookY = 0;
   let virtual = null;
-  const controls = { forward: 0, strafe: 0, sprint: false, jump: false, respawn: false, lookX: 0, lookY: 0 };
+  const controls = {
+    forward: 0, strafe: 0, sprint: false, jump: false, respawn: false, interact: false, up: false, down: false, lookX: 0, lookY: 0,
+  };
 
   function hasCapture() {
     return captured && document.pointerLockElement === canvas;
@@ -40,13 +48,15 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
 
   function reset() {
     held.clear();
+    descending = false;
     virtual = null;
-    jump = respawn = false;
+    jump = respawn = interact = false;
     lookX = lookY = 0;
   }
 
   function pause() {
     captured = false;
+    freeCursor = false;
     relockOnRelease = null;
     reset();
     openMenu();
@@ -77,6 +87,7 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
 
   async function capture() {
     if (isPaused()) return;
+    freeCursor = false;
     relockOnRelease = null;
     canvas.focus({ preventScroll: true });
     // Le navigateur peut avoir gardé le verrou pendant la pause (blur, sortie refusée) :
@@ -121,6 +132,15 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
   // Firefox libère la souris au relâchement d’Échap : une capture faite pendant l’appui
   // serait aussitôt annulée et rouvrirait le menu. Attendre le relâchement ne coûte
   // rien ailleurs, car aucun navigateur n’accorde la capture sur Échap.
+  // Sans capture en cours, Tab empêche tout de même les touches de jeu de reprendre la souris.
+  function releaseCursor() {
+    // captured passe à faux avant la libération : pointerlockchange n’ouvre donc pas le menu.
+    captured = false;
+    freeCursor = true;
+    lookX = lookY = 0;
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+  }
+
   function resume(key) {
     if (key === "Escape") {
       canvas.focus({ preventScroll: true });
@@ -158,6 +178,19 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
       return;
     }
     if (isPaused()) return;
+    if (code === "KeyD" && (event.ctrlKey || event.metaKey)) {
+      // Remplace le raccourci « ajouter un favori » du navigateur.
+      event.preventDefault();
+      if (!event.repeat) toggleDebugMenu();
+      return;
+    }
+    if (code === "Tab") {
+      event.preventDefault();
+      if (event.repeat) return;
+      if (freeCursor) capture();
+      else releaseCursor();
+      return;
+    }
     if (code === "Escape") {
       event.preventDefault();
       if (!event.repeat) pause();
@@ -169,19 +202,27 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
       pause();
       return;
     }
-    if (!event.repeat && document.pointerLockElement !== canvas) capture();
+    if (!event.repeat && !freeCursor && document.pointerLockElement !== canvas) capture();
     const action = bindings.actionFor(code);
     if (action || code === "Space" || code.startsWith("Arrow")) event.preventDefault();
+    if (code === FLY_DOWN_CODE) descending = true;
     if (!action || event.repeat || held.has(code)) return;
     held.add(code);
     if (action === "jump") jump = true;
     if (action === "respawn") respawn = true;
+    if (action === "interact") interact = true;
   }, options);
   window.addEventListener("keyup", (event) => {
     held.delete(event.code);
+    if (event.code === FLY_DOWN_CODE) descending = false;
     if (event.code === relockOnRelease) capture();
   }, options);
-  window.addEventListener("blur", pause, options);
+  window.addEventListener("blur", () => {
+    // Souris déjà libérée par Tab (menu debug) : un Alt+Tab ne doit pas ouvrir la pause.
+    // On relâche seulement les entrées pour éviter une touche restée enfoncée hors focus.
+    if (freeCursor) reset();
+    else pause();
+  }, options);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) pause();
   }, options);
@@ -204,9 +245,12 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
       controls.sprint = pressed("sprint") || Boolean(virtual?.sprint);
       controls.jump = jump;
       controls.respawn = respawn;
+      controls.interact = interact;
+      controls.up = pressed("jump") || Boolean(virtual?.up);
+      controls.down = descending || Boolean(virtual?.down);
       controls.lookX = looking ? lookX : 0;
       controls.lookY = looking ? lookY : 0;
-      jump = respawn = false;
+      jump = respawn = interact = false;
       lookX = lookY = 0;
       return controls;
     },

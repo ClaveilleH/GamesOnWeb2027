@@ -111,11 +111,16 @@ export function createBodyTraveler(portals, { body, visual, size, scale = 1, nam
     }
   }
 
-  function applyWarp(warp) {
+  // Vitesses du corps vues à travers `warp` : la rotation angulaire tourne sans changer d’échelle.
+  function warpVelocities(warp, linearOut, angularOut) {
     body.getLinearVelocityToRef(linear);
     body.getAngularVelocityToRef(angular);
-    warp.direction(linear, linear);
-    warp.direction(angular, angular).scaleInPlace(1 / warp.scale);
+    warp.direction(linear, linearOut);
+    warp.direction(angular, angularOut).scaleInPlace(1 / warp.scale);
+  }
+
+  function applyWarp(warp) {
+    warpVelocities(warp, linear, angular);
     readPose(position, rotation);
     warp.point(position, position);
     warp.quaternion(rotation, rotation);
@@ -179,10 +184,7 @@ export function createBodyTraveler(portals, { body, visual, size, scale = 1, nam
     warp.point(position, proxyNode.position);
     warp.quaternion(rotation, proxyNode.rotationQuaternion);
     teleportBody(proxyBody);
-    body.getLinearVelocityToRef(linear);
-    body.getAngularVelocityToRef(angular);
-    warp.direction(linear, referenceLinear);
-    warp.direction(angular, referenceAngular).scaleInPlace(1 / warp.scale);
+    warpVelocities(warp, referenceLinear, referenceAngular);
     proxyBody.setLinearVelocity(referenceLinear);
     proxyBody.setAngularVelocity(referenceAngular);
     inverseWarp = warp.inverse();
@@ -239,7 +241,6 @@ export function createBodyTraveler(portals, { body, visual, size, scale = 1, nam
 
   return {
     traveler, body, visual, capturePose, afterStep, syncProxy, present,
-    get scale() { return currentScale; },
     place({ x, y, z, yaw = 0 }) {
       position.set(x, y, z);
       Quaternion.FromEulerAnglesToRef(0, yaw, 0, rotation);

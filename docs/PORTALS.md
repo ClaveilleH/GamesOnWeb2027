@@ -190,7 +190,7 @@ portals.addTraveler({
   visual: {                                      // facultatif : active les fantômes et ombres traversantes
     root,                                        // TransformNode racine du visuel (pose interpolée de l’image)
     radius() { return 1.1 * scale; },            // rayon englobant du visuel, échelle comprise
-    center(out) { /* facultatif : centre du visuel (défaut : position monde de root) */ return out; },
+    center(out) { /* facultatif : centre du visuel (défaut : position monde de root), testé contre les ouvertures */ return out; },
     materials,                                   // matériaux exclusifs au voyageur (le système les clone pour le fantôme et l’ombre)
   },
 });
@@ -216,7 +216,7 @@ Les clones du fantôme et du projecteur d’ombre ne rejoignent que les cartes d
 
 ### 6.2 Déroulé d’une image
 
-1. `scene.onBeforeRenderObservable` (main.js) : logique du jeu au pas fixe, pose des visuels, `portals.updateGhosts()`, caméra (`traceView`).
+1. `scene.onBeforeRenderObservable` (main.js) : logique du jeu au pas fixe, pose des visuels, caméra (`traceView`) et fondu du joueur, `portals.updateGhosts()`.
 2. `scene.onBeforeCameraRenderObservable` (caméra principale) : le renderer construit l’**arbre de passes** sur le CPU (§ 6.3) et règle la caméra principale (`layerMask = world`, brouillard neutre).
 3. Babylon rend la caméra principale : évaluation des maillages actifs filtrée par un fournisseur `scene.getActiveMeshCandidates` dédié (propriété publique de Babylon, restaurée dans `dispose()`, tableau `{ data, length }` réutilisé sans allocation) qui ne soumet que les maillages actifs du calque `world` (`(layerMask & camera.layerMask) !== 0 && isEnabled()`), cartes d’ombre (une fois par image), puis maillages `world` visibles. Les maillages `late` et projecteurs d’ombre (calque 0), exclus de l’évaluation principale, gardent des matrices monde exactes dans la carte d’ombre : `ShadowGenerator` lit `effectiveMesh.getWorldMatrix()`, qui rappelle `computeWorldMatrix()` dès que `scene.getRenderId()` a progressé (incrémenté avant chaque cible de rendu). Le stencil vaut 0 partout (`autoClearDepthAndStencil`), et son test est désactivé pour la passe racine.
 4. `scene.onAfterDrawPhaseObservable` (caméra principale) : le renderer parcourt l’arbre en profondeur d’abord (§ 6.4), puis dessine les maillages `late` de la racine avec la caméra principale (stencil `EQUAL 0`).
@@ -337,8 +337,8 @@ onBeforeRender :
     crate.syncProxy()           → recalculer le chevauchement, placer la doublure et régler les masques
   present(alpha) :
     poses interpolées (joueur, caisses), visual.update
-    portals.updateGhosts()
-    camera.follow(…)            → traceView, plan proche adaptatif
+    camera.follow(…)            → traceView, plan proche adaptatif, fondu du joueur
+    portals.updateGhosts()      → fantômes à la pose et à l’opacité de l’image
     hud.update(…)
 ```
 
@@ -352,7 +352,7 @@ La physique passe au pas fixe du jeu (60 Hz) au lieu du pas variable de `scene.r
 
 - `playerController.applyWarp(warp)` transforme la position et la vitesse de la capsule, le lacet, la pose précédente d’interpolation et l’échelle (§ 8). Comme `setPosition` conserve les anciens contacts, un court balayage vertical de la capsule par l’API publique `plugin.shapeCast` (`readArrivalSupport`) mesure l’appui à la sortie et `checkSupportToRef` est sauté pour ce pas (`placedSupport`). L’intégration suivante (`capsule.integrate`) reconstruit d’elle-même les contacts à la position courante, sans aucun appel d’API interne de Babylon (`docs/BABYLON_PATCHES.md` § 2). Le retour au point de départ (`respawn`) et `teleport` sautent également `checkSupportToRef` sur ce pas et forcent l’état non soutenu.
 - Le centre testé est le centre de la capsule.
-- `main.js` relaie le warp à la caméra (`camera.applyWarp(warp)`, § 9.4) quand le voyageur est le joueur.
+- L’adaptateur du joueur, dans `main.js`, relaie aussi le warp à la caméra (`camera.applyWarp(warp)`, § 9.4).
 
 ### 7.4 Corps dynamiques (caisses)
 
@@ -374,7 +374,7 @@ Soit W le warp du portail chevauché, R sa rotation et k son échelle. La doublu
 
 À chaque image, après la pose interpolée des visuels (`updateGhosts`), pour chaque voyageur avec visuel :
 
-1. **Fantômes (objet à cheval sur un ou deux portails).** `straddlingPortals` cherche les portails liés P tels que `|d(c)| < r` (c : position de la racine du visuel, r : `radius()`), que la projection de c sur le plan tombe dans l’ouverture élargie de r et que `canTraverse(P)` l’autorise. On retient jusqu’aux **deux** portails les plus proches (triés par distance euclidienne au rectangle d’ouverture) ; `straddlingPortal` renvoie le premier pour la doublure physique (§ 7.4) et le projecteur d’ombre ci-dessous. Pour chaque portail chevauché `P_i` (i ∈ {0, 1}) :
+1. **Fantômes (objet à cheval sur un ou deux portails).** `straddlingPortals` cherche les portails liés P tels que `|d(c)| < r` (c : centre du visuel, `visual.center` ou à défaut position monde de la racine ; r : `radius()`) et que `canTraverse(P)` l’autorise. Le **premier** portail retenu est le plus proche dont l’ouverture elle-même contient la projection de c : collé à l’extérieur d’un montant, un objet frôle le plan sans passer par l’ouverture, et le plan de coupe, infini, le trancherait en deux tandis que le fantôme montrerait l’autre moitié à côté de la sortie. Sans premier portail, rien n’est retenu. Le **second**, facultatif, est le plus proche des autres portails dont l’ouverture élargie de r contient la projection de c (jonction de deux ouvertures sans meneau, portails en angle). Le centre, et non la racine posée aux pieds du joueur, est testé : debout sur un linteau, le joueur n’est pas en face de l’ouverture. `straddlingPortal` renvoie le premier pour la doublure physique (§ 7.4) et le projecteur d’ombre ci-dessous. Pour chaque portail chevauché `P_i` (i ∈ {0, 1}) :
    - Côté `σ_i` = signe de `d_i(center())`, le centre **simulé** du dernier pas fixe (et non la position interpolée du visuel, qui a jusqu’à un pas de retard ; en cas de distance exactement nulle, repli sur `arrivalSide` si `P_i === arrival`, sinon `+1`).
    - Matériaux de l’original : `clipPlane = discardPlane(P_0, −σ_0)` et `clipPlane2 = discardPlane(P_1, −σ_1)` (ou `idlePlane` si un seul portail est chevauché). Chaque plan rejette la partie qui a traversé le portail correspondant.
    - Fantôme i (portail `P_i`, destination `D_i = P_i.target`, warp `W_i = P_i.warp`) : sa racine prend `W_i(pose de la racine)` (position, `rotationQuaternion`, `scaling × s`) et ses descendants copient leurs transformations locales depuis l’original. Ses matériaux clonés reçoivent :
@@ -422,6 +422,10 @@ Soit W le warp du portail chevauché, R sa rotation et k son échelle. La doublu
 La cible de la caméra est l’épaule **lissée**, en retard sur l’épaule simulée. Juste après une traversée, elle peut se trouver de l’autre côté du portail de sortie. Avant le chemin de vue, `thirdPersonCamera.follow` trace donc un court chemin de l’épaule simulée vers l’épaule lissée (`locateShoulder`). S’il franchit un portail, la vue part de l’épaule lissée dans **son** espace, avec la direction transformée. `isViewWarped` compare ces deux chemins pour savoir si la caméra est dans un autre espace que le joueur (`warped`).
 
 La logique actuelle (rétraction immédiate, relâchement progressif) s’applique à `allowed`, en unités de l’espace du joueur. Un second appel sans collision (`collide` absent) place la caméra à la distance lissée.
+
+**Première personne** (menu debug, section « Caméra ») : la même `TargetCamera` se pose à l’œil du modèle, mesuré sur sa géométrie au chargement (`src/player/firstPersonFit.js`, remplaçable par `CHARACTERS[].firstPerson`) : hauteur des yeux, et avancée devant l’axe du corps pour qu’en regardant en bas on voie le corps et les pieds. L’œil interpolé peut se trouver de l’autre côté de la sortie juste après une traversée, et l’avancée lui fait franchir un portail avant le corps : `follow` trace donc un chemin horizontal depuis l’**œil simulé sur l’axe** (à l’aplomb du centre, donc dans l’espace du joueur puisque les portails sont verticaux) vers l’œil interpolé et avancé, avec la garde ε du § 9.3 et le test de collision (recul `CAMERA.eyeWallClearance` devant un mur), puis oriente la caméra par `warp.yaw(yaw)`. Partir du centre rendrait ce chemin oblique : la rétraction de la garde, quand centre et œil sont tous deux à moins de ε du plan (marche lente), ramènerait l’œil jusqu’à 30 cm plus bas pendant quelques images.
+
+Le corps reste affiché, y compris à travers les portails (on se voit de dos dans une pièce cyclique), et le corps suit la direction du regard. Seule la tête est coupée, par un troisième plan de coupe (`clipPlane3`) sur les matériaux de l’original et de ses fantômes : `portals.setHeadCut(voyageur, { height, radius })`. Avant chaque passe des maillages `late`, le renderer appelle `placeHeadPlanes(node.eye)` : une copie du corps n’est coupée au-dessus du cou que si la caméra de cette vue est à moins de `radius` de son cou (vue directe ; fantôme quand on est à cheval sur un portail). Après les vues, `clearHeadPlanes` rend les plans inactifs : la carte d’ombre de l’image suivante voit le corps entier. Activer la coupe ajoute des variantes de shader, préchauffées par un nouvel appel à `warmUp`.
 
 ### 9.3 Garde ε et plan proche adaptatif
 
@@ -623,7 +627,8 @@ Sans bridage, le pire cas (pavillon) prend environ 2 ms par image. Le coût GPU 
 ## 14. Limites connues
 
 - Portails verticaux et statiques uniquement (pas de portail mobile ni incliné).
-- Un voyageur qui chevauche plusieurs ouvertures affiche jusqu’à **deux** fantômes simultanés (les deux portails chevauchés les plus proches) ; au-delà de deux ouvertures chevauchées en même temps, seules les deux plus proches reçoivent un fantôme et un plan de coupe. La doublure physique (`bodyTraveler.js`) et le projecteur d’ombre traversante (`createShadowCaster`) continuent d’utiliser uniquement le portail chevauché le plus proche (`straddlingPortal`).
+- Un voyageur qui chevauche plusieurs ouvertures affiche jusqu’à **deux** fantômes simultanés (les deux portails chevauchés les plus proches) ; au-delà de deux ouvertures chevauchées en même temps, seules les deux plus proches reçoivent un fantôme et un plan de coupe. La doublure physique (`bodyTraveler.js`) et le projecteur d’ombre traversante (`createShadowCaster`) continuent d’utiliser uniquement le premier portail chevauché (`straddlingPortal`).
+- Un objet n’est coupé par un portail que lorsque son centre est en face de l’ouverture (§ 7.5). Avec un montant de chaque côté, comme pour toutes les ouvertures des démos, un objet dont le centre est à côté de l’ouverture n’y engage aucune partie. Au bord d’une ouverture sans montant, la partie engagée resterait visible côté source tant que le centre n’est pas en face.
 - La doublure transmet les variations de vitesse linéaire et angulaire. Ses corrections de position sont perdues à la resynchronisation. Sa boîte reste entière jusque dans la partie masquée par le plan de coupe du visuel. Seules les boîtes des caisses disposent d’une doublure physique. La capsule du joueur garde un seul corps.
 - **Ombres traversantes** :
   - Seuls les voyageurs enregistrés dotés d’un visuel (joueur, caisses) projettent leur ombre à travers un portail (pas le décor statique).

@@ -29,11 +29,26 @@ const jumps = [
   { x: 7.2, z: 1.3, height: 1.35 },
 ];
 
+// Décalages de profondeur constants des peintures posées sur un sol : sols peints, puis panneaux au-dessus.
+export const FLOOR_PAINT_Z_OFFSET = -8;
+const SIGN_Z_OFFSET = -12;
+
 export function terrainMaterial(scene, name, color) {
   const mat = new StandardMaterial(name, scene);
   mat.diffuseColor = Color3.FromHexString(color);
   mat.specularColor = Color3.Black();
   return mat;
+}
+
+// Matériau mat portant une texture dessinée au canevas : `size` en pixels (nombre ou { width, height }),
+// `paint(ctx, size)` dessine avant l’envoi au GPU.
+export function canvasMaterial(scene, name, size, paint) {
+  const texture = new DynamicTexture(name, size, scene, true);
+  paint(texture.getContext(), texture.getSize());
+  texture.update();
+  const material = terrainMaterial(scene, name, "#ffffff");
+  material.diffuseTexture = texture;
+  return material;
 }
 
 export function solidTerrain(mesh, mat, shapeType = PhysicsShapeType.BOX, layer = collisionLayer.terrain) {
@@ -45,68 +60,58 @@ export function solidTerrain(mesh, mat, shapeType = PhysicsShapeType.BOX, layer 
 }
 
 function paintGrid(scene) {
-  const texture = new DynamicTexture("maille de cinq mètres", 512, scene, true);
-  const ctx = texture.getContext();
-  const unit = texture.getSize().width / 5;
-  ctx.scale(unit, unit);
-  ctx.fillStyle = "#436866";
-  ctx.fillRect(0, 0, 5, 5);
-  ctx.lineWidth = 0.025;
-  for (let i = 0; i <= 5; i++) {
-    ctx.strokeStyle = i % 5 === 0 ? "#60817c" : "#507470";
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i, 5);
-    ctx.moveTo(0, i);
-    ctx.lineTo(5, i);
-    ctx.stroke();
-  }
-  texture.update();
-  texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE;
+  // Maille de cinq mètres, répétée sur toute la dalle.
+  const mat = canvasMaterial(scene, "enrobé quadrillé", 512, (ctx, { width }) => {
+    const unit = width / 5;
+    ctx.scale(unit, unit);
+    ctx.fillStyle = "#436866";
+    ctx.fillRect(0, 0, 5, 5);
+    ctx.lineWidth = 0.025;
+    for (let i = 0; i <= 5; i++) {
+      ctx.strokeStyle = i % 5 === 0 ? "#60817c" : "#507470";
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, 5);
+      ctx.moveTo(0, i);
+      ctx.lineTo(5, i);
+      ctx.stroke();
+    }
+  });
+  mat.diffuseTexture.wrapU = mat.diffuseTexture.wrapV = Texture.WRAP_ADDRESSMODE;
 
   // La face supérieure de la dalle porte directement le quadrillage, les chants restent unis.
   const faceUV = Array(6).fill(new Vector4(0.5, 0.5, 0.5, 0.5));
   faceUV[4] = new Vector4(0, 0, fieldSize / 5, fieldSize / 5);
   const deck = CreateBox("dalle", { width: fieldSize, height: 0.64, depth: fieldSize, faceUV }, scene);
   deck.position.y = -0.32;
-  const mat = terrainMaterial(scene, "enrobé quadrillé", "#ffffff");
-  mat.diffuseTexture = texture;
   solidTerrain(deck, mat);
 }
 
 export function paintZoneSign(scene, title, x, z, width, height) {
   const sign = CreateGround(title, { width, height }, scene);
   sign.position.set(x, 0.008, z);
-  const texture = new DynamicTexture(title, { width: 1024, height: 256 }, scene, true);
-  const ctx = texture.getContext();
-  ctx.fillStyle = "#385756";
-  ctx.fillRect(0, 0, 1024, 256);
-  ctx.strokeStyle = "#efac72";
-  ctx.lineWidth = 6;
-  ctx.strokeRect(14, 14, 996, 228);
-  ctx.fillStyle = "#f2c494";
-  ctx.font = "bold 84px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(title, 512, 132, 930);
-  texture.update();
-  sign.material = terrainMaterial(scene, title, "#ffffff");
-  sign.material.diffuseTexture = texture;
+  sign.material = canvasMaterial(scene, title, { width: 1024, height: 256 }, (ctx) => {
+    ctx.fillStyle = "#385756";
+    ctx.fillRect(0, 0, 1024, 256);
+    ctx.strokeStyle = "#efac72";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(14, 14, 996, 228);
+    ctx.fillStyle = "#f2c494";
+    ctx.font = "bold 84px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(title, 512, 132, 930);
+  });
   // Décalage constant, jamais proportionnel à la pente : vue à travers un portail, la projection oblique
   // donne au sol une pente de profondeur énorme, et zOffset le ferait passer devant ce qui y est posé.
-  // Il reste au-dessus des sols peints des démos (zOffsetUnits = -8).
-  sign.material.zOffsetUnits = -12;
+  // Il reste au-dessus des sols peints (FLOOR_PAINT_Z_OFFSET).
+  sign.material.zOffsetUnits = SIGN_Z_OFFSET;
   sign.receiveShadows = true;
   return sign;
 }
 
-function paintFloor(scene) {
-  const floor = CreateGround("piste centrale", { width: trainingSize, height: trainingSize }, scene);
-  floor.position.y = 0.004;
-  floor.receiveShadows = true;
-  const texture = new DynamicTexture("piste peinte", 2048, scene, true);
-  const ctx = texture.getContext();
-  const size = texture.getSize().width;
+// Marquage de la piste centrale : quadrillage, couloir gradué, flèches, cercle de départ et légendes.
+function drawTrainingFloor(ctx, { width: size }) {
   const scale = size / trainingSize;
   // Le dessin est coté en mètres. Le haut de la texture correspond au nord (+Z).
   ctx.setTransform(scale, 0, 0, scale, size / 2, size / 2);
@@ -162,11 +167,15 @@ function paintFloor(scene) {
   for (const { x, z, height } of jumps) {
     label(`${height.toFixed(2).replace(".", ",")} m`, x, z - 1.65, 0.42, "#ede3bf");
   }
-  texture.update();
-  floor.material = terrainMaterial(scene, "enrobé", "#ffffff");
-  floor.material.diffuseTexture = texture;
+}
+
+function paintFloor(scene) {
+  const floor = CreateGround("piste centrale", { width: trainingSize, height: trainingSize }, scene);
+  floor.position.y = 0.004;
+  floor.receiveShadows = true;
+  floor.material = canvasMaterial(scene, "enrobé", 2048, drawTrainingFloor);
   // Décalage constant, comme les sols des démos (voir paintZoneSign).
-  floor.material.zOffsetUnits = -8;
+  floor.material.zOffsetUnits = FLOOR_PAINT_Z_OFFSET;
 }
 
 function addHorizon(scene) {
@@ -194,21 +203,18 @@ function wallSign(scene, title, detail, x, y, z, width) {
   const height = width / 4;
   const sign = CreatePlane(title, { width, height }, scene);
   sign.position.set(x, y, z);
-  const texture = new DynamicTexture(title, { width: 512, height: 128 }, scene, true);
-  const ctx = texture.getContext();
-  ctx.fillStyle = "#253e40";
-  ctx.fillRect(0, 0, 512, 128);
-  ctx.fillStyle = "#f4b783";
-  ctx.fillRect(18, 20, 7, 88);
-  ctx.font = "bold 58px sans-serif";
-  ctx.fillStyle = "#f6f0d9";
-  ctx.fillText(title, 44, 69);
-  ctx.font = "24px sans-serif";
-  ctx.fillStyle = "#bdcec0";
-  ctx.fillText(detail, 46, 106);
-  texture.update();
-  sign.material = terrainMaterial(scene, title, "#ffffff");
-  sign.material.diffuseTexture = texture;
+  sign.material = canvasMaterial(scene, title, { width: 512, height: 128 }, (ctx) => {
+    ctx.fillStyle = "#253e40";
+    ctx.fillRect(0, 0, 512, 128);
+    ctx.fillStyle = "#f4b783";
+    ctx.fillRect(18, 20, 7, 88);
+    ctx.font = "bold 58px sans-serif";
+    ctx.fillStyle = "#f6f0d9";
+    ctx.fillText(title, 44, 69);
+    ctx.font = "24px sans-serif";
+    ctx.fillStyle = "#bdcec0";
+    ctx.fillText(detail, 46, 106);
+  });
 }
 
 // Le même profil longitudinal (distance, hauteur) définit le dessin et l'enveloppe Havok.
