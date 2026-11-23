@@ -46,4 +46,6 @@ test("une map introuvable laisse le terrain d’entraînement", async ({ page })
   expect(player.x).toBeCloseTo(0, 1);
   expect(player.z).toBeCloseTo(-10, 1);
   expect(await page.evaluate(() => window.gowDev.portalSystem.portals.length)).toBeGreaterThan(0);
+  // Fichier absent vérifié avant le chargement : pas d'erreur Babylon sur la page renvoyée à sa place.
+  await expectCleanPage(page);
 });

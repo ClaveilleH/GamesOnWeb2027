@@ -14,13 +14,13 @@ Les réglages d'un objet sont ses propriétés personnalisées. Dans Blender : p
 | Propriété | Valeurs | Effet |
 | --- | --- | --- |
 | `collider` | `"mesh"` (défaut), `"box"`, `"none"` | Collision avec les triangles du maillage, avec sa boîte englobante, ou aucune. Un réglage posé sur un parent vaut pour ses enfants. |
-| `spawn` | `true` | Départ du joueur (un *empty* suffit). Ses pieds sont à la position de l'objet, et il regarde dans la direction de l'axe −Y de l'objet Blender (+Z glTF), comme un personnage tourné vers la vue de face. Sans départ, le joueur tombe au-dessus de l'origine. |
+| `spawn` | `true` | Départ du joueur (un *empty* suffit). Ses pieds sont à la position de l'objet, et il regarde dans la direction de l'axe −Y de l'objet Blender (+Z glTF), comme un personnage tourné vers la vue de face. Sans départ, le joueur tombe sur l'origine depuis le haut de la map. |
 
-Tous les maillages sont affichés, projettent et reçoivent les ombres. Ceux qui partagent un matériau sont fusionnés pour réduire le nombre d'appels de rendu.
+Tous les maillages sont affichés, projettent et reçoivent les ombres. Ceux qui partagent un matériau sont fusionnés pour réduire le nombre d'appels de rendu. La map est donc statique : ses animations glTF sont ignorées. Les maillages sans indices (exports three.js) et les instances GPU (`EXT_mesh_gpu_instancing`) sont pris en charge, collisions comprises.
 
 ## Mesures à respecter
 
-Le joueur mesure 1,92 m pour un rayon de 0,32 m. Il franchit une marche de 0,23 m au plus et une pente de 45° au plus. Pour monter une marche, même de 2 cm, il lui faut au-dessus de la tête une hauteur libre au moins égale à celle de la marche. Prévoir des passages d'au moins **0,8 m** de large et **2,05 m** de haut, plus la hauteur de la marche s'il y en a une dessous. La porte de la salle d'arcade, 2,04 m au-dessus d'un seuil plat, est à la limite. L'unité est le mètre. Le soleil ombre une zone de 150 m centrée sur l'origine.
+Le joueur mesure 1,92 m pour un rayon de 0,32 m. Il franchit une marche de 0,23 m au plus et une pente de 45° au plus. Pour monter une marche, même de 2 cm, il lui faut au-dessus de la tête une hauteur libre au moins égale à celle de la marche. Prévoir des passages d'au moins **0,8 m** de large et **2,05 m** de haut, plus la hauteur de la marche s'il y en a une dessous. La porte de la salle d'arcade, 2,04 m au-dessus d'un seuil plat, est à la limite. L'unité est le mètre. Le soleil ombre une zone de 150 m centrée sur l'origine. Le joueur réapparaît au départ s'il tombe à plus de 7 m sous le point le plus bas de la map.
 
 ## Ajouter une map
 

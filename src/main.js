@@ -66,11 +66,22 @@ function resolveMap() {
   return MAPS.find((map) => map.key === value) ?? { key: "custom", label: "Map imposée", url: value };
 }
 
+// En dev, Vite renvoie `index.html` (text/html) pour un fichier absent au lieu d'un 404 : on traite
+// les deux cas comme « introuvable », sans laisser le chargeur échouer bruyamment sur du HTML.
+async function isServed(url) {
+  const head = await fetch(url, { method: "HEAD" });
+  return head.ok && !(head.headers.get("content-type") || "").includes("text/html");
+}
+
 // Une map introuvable ou illisible n'empêche pas de jouer : on revient au terrain d'entraînement.
 async function loadRequestedMap(scene) {
   const spec = resolveMap();
   if (!spec) return null;
   try {
+    if (!(await isServed(spec.url))) {
+      console.warn(`Map ${spec.url} introuvable, retour au terrain d'entraînement.`);
+      return null;
+    }
     return await loadMap(scene, spec.url);
   } catch (error) {
     console.warn(`Map ${spec.url} non chargée, retour au terrain d'entraînement.`, error);
@@ -97,10 +108,7 @@ async function loadProps(scene) {
   const loaded = [];
   for (const spec of PROPS) {
     try {
-      // En dev, Vite renvoie `index.html` (text/html) pour un fichier absent au lieu d'un 404 :
-      // on traite les deux cas comme « introuvable » pour éviter une tentative de chargement vouée à l'échec.
-      const head = await fetch(spec.url, { method: "HEAD" });
-      if (!head.ok || (head.headers.get("content-type") || "").includes("text/html")) {
+      if (!(await isServed(spec.url))) {
         console.warn(`Décor ${spec.url} introuvable, ignoré.`);
         continue;
       }
@@ -150,8 +158,9 @@ async function start() {
     for (const prop of props) scene.onDisposeObservable.addOnce(prop.dispose);
     // Le ciel est peint par le quad de fond du renderer, après le décor, là où la profondeur vaut encore 1.
     portals.createSky(skyPalette);
+    const respawnBelow = map?.respawnBelow ?? PLAYER.respawnBelow;
     function shouldRespawn(position) {
-      if (position.y >= PLAYER.respawnBelow) return false;
+      if (position.y >= respawnBelow) return false;
       if (position.y < PLAYER.interiorRespawnBelow) return true;
       for (const volume of demos.interiors) {
         if (volume.intersectsPoint(position)) return false;

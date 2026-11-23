@@ -40,6 +40,9 @@ export function batchStaticMeshes(zone, meshes) {
         scene.removeMesh(mesh);
         scene.addTransformNode(mesh);
       } else {
+        // dispose() emporterait les enfants, qui peuvent appartenir à un autre lot : on les détache
+        // sans les déplacer dans le monde.
+        for (const child of mesh.getChildTransformNodes(true)) child.setParent(null);
         mesh.dispose();
       }
     }

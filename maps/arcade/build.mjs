@@ -44,7 +44,10 @@ scene.addChild(facadeRoot);
 
 // Les confettis du sol affleurent le dessus de la dalle (y = 0,15) : sans écart, ils scintillent.
 for (const node of hallRoot.listChildren().flatMap(descendants)) {
-  if (node.getName().startsWith("floor_") && node.getExtras().role === "accent") node.setTranslation([0, 0.003, 0]);
+  if (node.getName().startsWith("floor_") && node.getExtras().role === "accent") {
+    const [x, y, z] = node.getTranslation();
+    node.setTranslation([x, y + 0.003, z]);
+  }
 }
 
 // La salle est livrée ouverte comme une maquette (pas de mur +Z, pas de toit) : on la ferme.
