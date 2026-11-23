@@ -4,7 +4,7 @@
 import { fileURLToPath } from "node:url";
 import { NodeIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
-import { dedup, mergeDocuments, prune, unpartition, weld } from "@gltf-transform/functions";
+import { dedup, flatten, join, mergeDocuments, quantize, unpartition, weld } from "@gltf-transform/functions";
 
 const here = (path) => fileURLToPath(new URL(path, import.meta.url));
 const OUTPUT = here("../../public/models/maps/arcade.glb");
@@ -72,15 +72,21 @@ const pavement = hall.createMaterial("trottoir").setBaseColorFactor([0.16, 0.165
 addBox(outside, "chaussee", [-20, -0.2, -20], [25, 0, 20], asphalt);
 addBox(outside, "trottoir", [HALL_WALL_OUTSIDE_X, 0, -5], [9.5, 0.1, 6], pavement);
 
-// Départ sur la chaussée, face à la porte (axe +Z local du nœud vers −X).
+// Babylon a besoin d'indices pour retourner les faces en miroir.
+await hall.transform(weld(), dedup(), flatten());
+
+// Ce parent empêche join de mêler les accents (ampoules comprises) aux obstacles.
+const decorations = hall.createNode("decors").setExtras({ collider: "none" });
+for (const node of scene.listChildren()) {
+  if (node.getExtras().role === "accent") decorations.addChild(node);
+}
+scene.addChild(decorations);
+await hall.transform(join(), quantize({ quantizeNormal: 8 }), unpartition());
+
+// Après la fusion pour conserver ce nœud vide, sur la chaussée face à la porte (+Z local vers −X).
 const spawn = hall.createNode("spawn").setTranslation([11.5, 0, HALL_DOOR_Z]).setRotation(yawQuaternion(-90))
   .setExtras({ spawn: true });
 scene.addChild(spawn);
-scene.setExtras({ map: "arcade", label: "Salle d'arcade" });
-
-// Indexé (Babylon retourne alors les faces des maillages en miroir), matériaux identiques fusionnés,
-// un seul buffer ; les nœuds vides (départ) sont gardés.
-await hall.transform(weld(), dedup(), prune({ keepLeaves: true }), unpartition());
 await io.write(OUTPUT, hall);
 console.log(`Map écrite : ${OUTPUT}`);
 

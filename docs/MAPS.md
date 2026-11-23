@@ -28,7 +28,7 @@ Le joueur mesure 1,92 m pour un rayon de 0,32 m. Il franchit une marche de 0,23 
 2. La vérifier : `python3 -I .claude/skills/glb/tree.py <map.glb>` (objets, positions, `extras`) et `npx gltf-transform validate <map.glb>`.
 3. L'essayer avec `?map=/models/maps/<map>.glb`, puis l'ajouter à `MAPS` pour avoir une clé courte.
 
-Pas de compression Draco, Meshopt ni KTX2 : Babylon irait chercher leurs décodeurs sur son CDN. Voir `.claude/skills/glb/SKILL.md` pour alléger un fichier sans perdre les noms ni les `extras`.
+Pas de compression Draco, Meshopt ni KTX2 : Babylon irait chercher leurs décodeurs sur son CDN. On peut fusionner les maillages statiques par matériau au build si chaque lot conserve le `collider` effectif de ses triangles et si le nœud `spawn` garde ses `extras`, sa position et son orientation monde. Voir `.claude/skills/glb/SKILL.md` pour vérifier le résultat.
 
 ## Salle d'arcade (`?map=arcade`)
 
@@ -37,8 +37,12 @@ Pas de compression Draco, Meshopt ni KTX2 : Babylon irait chercher leurs décode
 - colle la façade contre le mur +X de la salle, porte dans l'axe de l'ouverture de la salle, et la surélève de 2 cm pour que sa marche affleure le seuil ;
 - ouvre les deux battants à 90° vers l'intérieur (les barres de poussée sont côté rue) et remonte l'imposte, trop basse pour le joueur ;
 - ferme la salle, livrée ouverte comme une maquette, avec un mur sur le côté +Z et un toit ;
-- ajoute la chaussée, le trottoir et le départ face à la porte ;
+- ajoute la chaussée et le trottoir ;
 - relève de 3 mm les confettis du sol, qui affleuraient la dalle et scintillaient ;
-- fusionne les matériaux identiques (93 → 19).
+- indexe la géométrie, déduplique les matériaux et aplatit la hiérarchie.
+
+Le script regroupe ensuite les accents de la salle et de la façade (confettis, néons, boutons et ampoules) sous le parent `decors`. Son `collider: "none"` les exclut des triangles envoyés à Havok. La fusion par matériau se fait entre nœuds frères de même statut de collision. Elle donne 19 lots, dont 10 de décor.
+
+Les positions sont quantifiées sur 14 bits et les normales sur 8 bits avec `KHR_mesh_quantization`, que Babylon lit sans décodeur externe. Le script ajoute le nœud vide `spawn` après la fusion pour préserver le départ sur la chaussée, face à la porte.
 
 `tests/map.spec.js` vérifie le départ, l'entrée dans la salle et le retour au terrain d'entraînement si la map manque.

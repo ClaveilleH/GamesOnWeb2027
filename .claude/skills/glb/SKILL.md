@@ -38,11 +38,16 @@ blender -b -P .claude/skills/glb/render.py -- <fichier.glb> <sortie> [px]   # é
   télécharge sur `cdn.babylonjs.com`, alors que la production sert tout depuis le VPS.
 - Par défaut, `gltf-transform optimize` compresse en Meshopt, fusionne les nœuds, simplifie la géométrie
   et supprime les nœuds vides : les noms, les `extras` et les marqueurs (points d'apparition…) d'une map
-  disparaissent. Sur une map, utiliser :
+  risquent de disparaître. Pour conserver toute la hiérarchie d'une map, utiliser :
   `npx --no gltf-transform optimize in.glb out.glb --compress false --flatten false --join false --instance false --palette false --prune false --simplify false`
   ou des commandes ciblées : `dedup`, `prune --keep-leaves true`, `weld`, `resize --width 1024 --height 1024`,
   `webp` (WebP est pris en charge par Babylon sans décodeur externe).
-- Vérifier après coup avec `tree.py` (mêmes nœuds, mêmes noms, mêmes extras) et `validate`.
+- Une map statique peut fusionner ses maillages au build par matériau et par statut de collision.
+  Dans `maps/arcade/build.mjs`, les décors sont regroupés après `flatten` sous un parent `collider: "none"`
+  pour que `join` fusionne uniquement des maillages de même `collider`. Le départ vide est ajouté après
+  la fusion. Les positions et normales quantifiées (`KHR_mesh_quantization`) sont lues directement par Babylon.
+- Vérifier avec `tree.py` les emprises monde, le marqueur `spawn` et le `collider` hérité de chaque lot,
+  puis lancer `validate` et vérifier le départ et son orientation dans le jeu.
 
 ## Maps
 
