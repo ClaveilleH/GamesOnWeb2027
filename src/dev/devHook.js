@@ -26,7 +26,7 @@ export function observeDevEffects(engine) {
 }
 
 export function installDevHook({
-  scene, player, playerTraveler, visual, camera, portals, input, crates, presentPose, getEffects, syncFrameTime,
+  scene, player, playerTraveler, visual, camera, portals, input, crates, teleport, presentPose, getEffects, syncFrameTime,
   firstPersonFit,
 }) {
   const engine = scene.getEngine();
@@ -73,10 +73,7 @@ export function installDevHook({
       };
     },
     teleportPlayer({ x, y, z, yaw = 0 }) {
-      player.teleport({ x, y, z }, yaw);
-      portals.resetTraveler(playerTraveler);
-      portals.resetHaze();
-      camera.reset(yaw);
+      teleport({ x, y, z }, yaw);
       presentPose();
     },
     setControls: input.setControls,

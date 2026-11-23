@@ -6,11 +6,11 @@ const LOCK_RETRY_FALLBACK_MS = 250;
 const LOCK_RETRIES = 6;
 const SYSTEM_KEYS = new Set(["MetaLeft", "MetaRight", "OSLeft", "OSRight"]);
 // Descente en vol (menu debug). La montée reprend les touches de saut.
-export const FLY_DOWN_CODE = "KeyC";
+const FLY_DOWN_CODE = "KeyC";
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export function createInput(canvas, bindings, platform, { isPaused, openMenu, onCapture, toggleDebug, toggleDebugMenu = () => {} }) {
+export function createInput(canvas, bindings, platform, { isPaused, openMenu, onCapture, toggleDebug, toggleDebugMenu }) {
   const listeners = new AbortController();
   const options = { signal: listeners.signal };
   const held = new Set();
@@ -234,7 +234,6 @@ export function createInput(canvas, bindings, platform, { isPaused, openMenu, on
   }
   return {
     resume,
-    get cursorFree() { return freeCursor; },
     setControls(controls) {
       if (controls?.jump && !virtual?.jump) jump = true;
       virtual = controls;

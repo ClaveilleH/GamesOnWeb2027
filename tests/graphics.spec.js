@@ -38,7 +38,22 @@ test("seul un ralentissement continu déclenche l’aide, une seule fois", () =>
   expect(run(20, 20)).toBe(false);
 });
 
+// Nom de GPU renvoyé pour RENDERER et UNMASKED_RENDERER_WEBGL.
+function spoofRenderer(page, renderer) {
+  return page.addInitScript((renderer) => {
+    for (const context of [WebGLRenderingContext, WebGL2RenderingContext]) {
+      const getParameter = context.prototype.getParameter;
+      context.prototype.getParameter = function (parameter) {
+        if (parameter === this.RENDERER || parameter === 0x9246) return renderer;
+        return getParameter.call(this, parameter);
+      };
+    }
+  }, renderer);
+}
+
 test("un GPU annoncé n’affiche l’aide que si le jeu rame, avec le réglage de Firefox", async ({ page }) => {
+  // Valeur observée sur Firefox.
+  await spoofRenderer(page, "Intel(R) HD Graphics, or similar");
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "userAgent", { value: "Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0" });
     // Firefox peut ignorer `failIfMajorPerformanceCaveat` : seul le ralentissement le trahit.
@@ -46,14 +61,6 @@ test("un GPU annoncé n’affiche l’aide que si le jeu rame, avec le réglage 
     HTMLCanvasElement.prototype.getContext = function (type, options) {
       return getContext.call(this, type, options && { ...options, failIfMajorPerformanceCaveat: false });
     };
-    for (const context of [WebGLRenderingContext, WebGL2RenderingContext]) {
-      const getParameter = context.prototype.getParameter;
-      context.prototype.getParameter = function (parameter) {
-        // RENDERER et UNMASKED_RENDERER_WEBGL, avec la valeur observée sur Firefox.
-        if (parameter === this.RENDERER || parameter === 0x9246) return "Intel(R) HD Graphics, or similar";
-        return getParameter.call(this, parameter);
-      };
-    }
   });
   await page.goto("/");
   const menu = page.getByRole("dialog");
@@ -90,6 +97,7 @@ test("SwiftShader affiche l’aide dans le menu et permet de jouer", async ({ pa
 });
 
 test("un renderer masqué reste détecté par failIfMajorPerformanceCaveat", async ({ page }) => {
+  await spoofRenderer(page, "ANGLE (Intel, Intel UHD Graphics)");
   await page.addInitScript(() => {
     // Chromium headless accepte l’option même sur SwiftShader : on imite le refus d’un navigateur
     // qui rend en logiciel, avec un nom de GPU masqué.
@@ -98,13 +106,6 @@ test("un renderer masqué reste détecté par failIfMajorPerformanceCaveat", asy
       if (options?.failIfMajorPerformanceCaveat) return null;
       return getContext.call(this, type, options);
     };
-    for (const context of [WebGLRenderingContext, WebGL2RenderingContext]) {
-      const getParameter = context.prototype.getParameter;
-      context.prototype.getParameter = function (parameter) {
-        if (parameter === this.RENDERER || parameter === 0x9246) return "ANGLE (Intel, Intel UHD Graphics)";
-        return getParameter.call(this, parameter);
-      };
-    }
   });
   await page.goto("/");
   await expect(page.getByRole("dialog").locator("#graphics-warning summary")).toHaveText(/rendu logiciel/);

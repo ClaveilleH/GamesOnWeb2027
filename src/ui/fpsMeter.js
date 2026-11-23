@@ -28,7 +28,7 @@ export function createFpsMeter() {
   let graphVisible = false;
   let smoothed = 0;
 
-  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#f4ab76";
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
 
   function syncRoot() {
     root.hidden = !counterVisible && !graphVisible;
@@ -51,11 +51,9 @@ export function createFpsMeter() {
     ctx.strokeStyle = accent;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    const start = Math.max(0, history.length - maxSamples);
-    for (let i = start; i < history.length; i++) {
-      const x = i - start;
-      const y = height - Math.min(history[i], top) / top * height;
-      if (i === start) ctx.moveTo(x, y);
+    for (let x = 0; x < history.length; x++) {
+      const y = height - Math.min(history[x], top) / top * height;
+      if (x === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
@@ -78,7 +76,10 @@ export function createFpsMeter() {
     update(fps) {
       if (!counterVisible && !graphVisible) return;
       smoothed = smoothed ? smoothed * 0.9 + fps * 0.1 : fps;
-      if (counterVisible) counter.textContent = Math.round(smoothed) + " i/s";
+      if (counterVisible) {
+        const text = Math.round(smoothed) + " i/s";
+        if (counter.textContent !== text) counter.textContent = text;
+      }
       if (graphVisible) {
         history.push(fps);
         if (history.length > maxSamples) history.shift();

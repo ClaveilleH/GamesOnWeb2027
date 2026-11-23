@@ -145,16 +145,23 @@ async function start() {
     const propCasters = props.flatMap((prop) => prop.casters);
     for (const mesh of [...casters, ...demos.casters, ...propCasters, ...bones]) shadows.addShadowCaster(mesh, false);
     const playerTraveler = {
-      name: "joueur", center: player.center, applyWarp: player.applyWarp,
+      name: "joueur", center: player.center,
+      applyWarp(warp) {
+        player.applyWarp(warp);
+        camera.applyWarp(warp);
+      },
       visual: {
         root: visual.root, materials: visual.materials, radius: () => 1.1 * player.state.scale,
         center: (out) => out.set(visual.root.position.x, visual.root.position.y + player.capsuleHeight / 2, visual.root.position.z),
       },
     };
     portals.addTraveler(playerTraveler);
-    portals.onTraverseObservable.add(({ traveler, warp }) => {
-      if (traveler === playerTraveler) camera.applyWarp(warp);
-    });
+    // Après un déplacement discontinu du joueur (réapparition, téléportation).
+    function resetPlayerView(yaw) {
+      portals.resetTraveler(playerTraveler);
+      portals.resetHaze();
+      camera.reset(yaw);
+    }
     // À la première personne, le corps reste visible (pieds, reflets dans les portails) ; seule la tête
     // est coupée là où la caméra est dedans. Le plan de coupe ajoute des variantes de shader : on les
     // préchauffe, l’une après l’autre si on bascule plusieurs fois.
@@ -166,7 +173,7 @@ async function start() {
       camera.setFirstPerson(firstPerson, firstPersonFit);
       player.state.faceCamera = firstPerson;
       portals.setHeadCut(playerTraveler, firstPerson ? headCut : null);
-      if (firstPerson && visual.setFade(1)) portals.syncGhostAppearance(playerTraveler);
+      if (firstPerson) visual.setFade(1);
       warming = warming.then(() => portals.warmUp()).catch((error) => console.error(error));
     }
     const bindings = createBindings();
@@ -191,16 +198,16 @@ async function start() {
       get cameraView() { return camera.firstPerson ? "first" : "third"; },
       setCameraView,
       get hudVisible() { return hud.debugVisible; },
-      toggleHud: hud.toggleDebug,
+      setHudVisible(visible) {
+        if (visible !== hud.debugVisible) hud.toggleDebug();
+      },
       get fpsCounterVisible() { return fpsMeter.counterVisible; },
-      toggleFpsCounter() { fpsMeter.setCounterVisible(!fpsMeter.counterVisible); },
+      setFpsCounterVisible: fpsMeter.setCounterVisible,
       get fpsGraphVisible() { return fpsMeter.graphVisible; },
-      toggleFpsGraph() { fpsMeter.setGraphVisible(!fpsMeter.graphVisible); },
+      setFpsGraphVisible: fpsMeter.setGraphVisible,
       teleport(feet, yaw) {
         player.teleport(feet, yaw);
-        portals.resetTraveler(playerTraveler);
-        portals.resetHaze();
-        camera.reset(yaw);
+        resetPlayerView(yaw);
       },
     };
     const debugMenu = createDebugMenu(canvas, debugGame);
@@ -228,15 +235,16 @@ async function start() {
 
     // Décors interactifs (config `PROPS[].interact`) : à portée, une invite s'affiche en bas
     // de l'écran ; l'appui sur « Interagir » déclenche le décor via `onPropInteraction`.
-    const interactables = props.filter((prop) => prop.spec.interact).map((prop) => ({ prop, config: prop.spec.interact }));
+    const interactables = props.filter((prop) => prop.spec.interact);
     let activeInteractable = null;
     function nearestInteractable(position) {
       let best = null;
       let bestDistance = Infinity;
-      for (const item of interactables) {
-        const distance = Math.hypot(position.x - item.prop.position.x, position.z - item.prop.position.z);
-        if (distance <= item.config.radius && distance < bestDistance) {
-          best = item;
+      for (const prop of interactables) {
+        const { x, z } = prop.root.position;
+        const distance = Math.hypot(position.x - x, position.z - z);
+        if (distance <= prop.spec.interact.radius && distance < bestDistance) {
+          best = prop;
           bestDistance = distance;
         }
       }
@@ -257,21 +265,23 @@ async function start() {
       visual.root.scaling.setAll(state.scale);
       visual.update(dt, state.speed / state.scale, state.grounded, state.verticalSpeed / state.scale);
       for (const crate of crates) crate.present(alpha);
-      portals.updateGhosts();
       const shoulderDistance = camera.follow(dt, feet, state.scale, portals, state.position);
       if (!camera.firstPerson) {
         const fade = InverseLerp(CAMERA.fadeNear, CAMERA.fadeFar, shoulderDistance);
-        if (visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade))) portals.syncGhostAppearance(playerTraveler);
+        visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade));
       }
+      // Après le fondu : les fantômes reprennent l’opacité de l’image en même temps que la pose.
+      portals.updateGhosts();
       hud.update(state, camera, visual.root);
       activeInteractable = nearestInteractable(state.position);
-      hud.showInteraction(activeInteractable ? activeInteractable.config.prompt : null);
+      hud.showInteraction(activeInteractable?.spec.interact.prompt ?? null);
       debugMenu.update();
     }
     camera.reset(SPAWN_YAW);
     present(0, 0);
     dev?.installDevHook({
       scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, firstPersonFit,
+      teleport: debugGame.teleport,
       presentPose: () => present(0, 1),
       syncFrameTime(now, restart) {
         previousFrameTime = now;
@@ -308,14 +318,10 @@ async function start() {
       // Une image sans pas physique laisse les entrées en attente pour le prochain pas.
       if (steps > 0) {
         const controls = input.read();
-        if (controls.interact && activeInteractable) onPropInteraction(activeInteractable.prop);
+        if (controls.interact && activeInteractable) onPropInteraction(activeInteractable);
         camera.look(controls.lookX, controls.lookY);
         for (let i = 0; i < steps; i++) {
-          if (player.update(FIXED_STEP, controls, camera.yaw).respawned) {
-            camera.reset(SPAWN_YAW);
-            portals.resetTraveler(playerTraveler);
-            portals.resetHaze();
-          }
+          if (player.update(FIXED_STEP, controls, camera.yaw).respawned) resetPlayerView(SPAWN_YAW);
           for (const crate of crates) crate.capturePose();
           plugin.executeStep(FIXED_STEP, physics.getBodies());
           for (const crate of crates) crate.afterStep();

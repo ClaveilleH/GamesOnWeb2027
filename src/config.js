@@ -58,6 +58,9 @@ export const CAMERA = Object.freeze({
 // fichier glTF/GLB de `public/models/`. On choisit dans le menu debug (Ctrl+D), le
 // choix est mémorisé. `?character=<clé>` ou `?model=<url>` force un personnage.
 //   yawOffset        : rotation (radians) à ajouter si le modèle ne regarde pas vers +Z.
+//   animation        : "clips" joue les clips du fichier ; "procedural" pilote les os avec la démarche
+//                      du squelette ; "baked" fige cette démarche en clips keyframés. Sans rig reconnu,
+//                      les deux derniers reviennent aux clips du fichier.
 //   animations       : noms exacts des clips du fichier ; null = détection par mots-clés
 //                      (idle, walk, run, jump, fall…). Un modèle à un seul clip le joue partout.
 //   walk/runAnimationSpeed : vitesses (m/s) où marche et course tournent à vitesse normale.
@@ -65,23 +68,23 @@ export const CAMERA = Object.freeze({
 //   firstPerson      : facultatif, { eyeHeight, eyeForward, headCutHeight } en mètres à l'échelle 1,
 //                      pour remplacer la mesure automatique de la première personne (yeux, avancée
 //                      de l'œil devant l'axe du corps, hauteur de coupe de la tête).
-const noNamedAnimations = Object.freeze({ idle: null, walk: null, run: null, jump: null, fall: null });
+const modelDefaults = Object.freeze({
+  yawOffset: 0, animation: "clips",
+  animations: Object.freeze({ idle: null, walk: null, run: null, jump: null, fall: null }),
+  walkAnimationSpeed: 1.6, runAnimationSpeed: 4.5, blendRate: 10,
+});
 export const CHARACTERS = Object.freeze([
+  // Le squelette n'utilise pas les réglages de modèle, mais `?model=<url>` les reprend de sa base (main.js).
+  Object.freeze({ ...modelDefaults, key: "squelette", label: "Squelette", model: null }),
   Object.freeze({
-    key: "squelette", label: "Squelette", model: null, yawOffset: 0,
-    animations: noNamedAnimations, walkAnimationSpeed: 1.6, runAnimationSpeed: 4.5, blendRate: 10,
-  }),
-  Object.freeze({
-    key: "shrek", label: "Shrek", model: "/models/shrek_2001_xbox_doing_toothless_dancing.glb",
-    yawOffset: 0, animations: noNamedAnimations, walkAnimationSpeed: 1.6, runAnimationSpeed: 4.5, blendRate: 10,
+    ...modelDefaults, key: "shrek", label: "Shrek", model: "/models/shrek_2001_xbox_doing_toothless_dancing.glb",
     // Pilote les os avec la démarche du squelette (marche/course/idle/saut) au lieu de la danse.
-    procedural: true,
+    animation: "procedural",
   }),
   Object.freeze({
-    key: "shrek-clips", label: "Shrek (clips)", model: "/models/shrek_2001_xbox_doing_toothless_dancing.glb",
-    yawOffset: 0, animations: noNamedAnimations, walkAnimationSpeed: 1.6, runAnimationSpeed: 4.5, blendRate: 10,
+    ...modelDefaults, key: "shrek-clips", label: "Shrek (clips)", model: "/models/shrek_2001_xbox_doing_toothless_dancing.glb",
     // Même démarche, mais figée en vrais clips keyframés (idle/walk/run/jump/fall) et mélangée.
-    bakedClips: true,
+    animation: "baked",
   }),
 ]);
 

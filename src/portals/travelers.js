@@ -153,6 +153,13 @@ function shadowPortal(portals, adapter, center, radius, lightDir, straddling, st
   return out;
 }
 
+// Direction normalisée des ombres d’une lumière directionnelle, ou null si elle est nulle.
+function shadowDirectionOf(light, out) {
+  light.computeTransformedInformation();
+  const raw = light.getShadowDirection();
+  return raw.lengthSquared() > 1e-12 ? Vector3.NormalizeToRef(raw, out) : null;
+}
+
 function sceneShadowGenerators(scene) {
   return scene.lights.flatMap((light) => [...(light.getShadowGenerators()?.values() ?? [])]);
 }
@@ -370,11 +377,7 @@ function createShadowCaster(visual) {
       if (!renderList) continue;
       if (sources.some((source) => source.subMeshes && renderList.includes(source))) matching.push(generator);
     }
-    if (!matching.length) continue;
-    light.computeTransformedInformation();
-    const raw = light.getShadowDirection();
-    if (raw.lengthSquared() <= 1e-12) continue;
-    Vector3.NormalizeToRef(raw, candidateDirection);
+    if (!matching.length || !shadowDirectionOf(light, candidateDirection)) continue;
     if (!primaryLight) {
       primaryLight = light;
       primaryDirection.copyFrom(candidateDirection);
@@ -413,10 +416,7 @@ function createShadowCaster(visual) {
 
   function getLightDirection(out) {
     if (!primaryLight.isEnabled() || !primaryLight.shadowEnabled) return null;
-    primaryLight.computeTransformedInformation();
-    const raw = primaryLight.getShadowDirection();
-    if (raw.lengthSquared() <= 1e-12) return null;
-    return Vector3.NormalizeToRef(raw, out);
+    return shadowDirectionOf(primaryLight, out);
   }
 
   function show(portal, side, position, lightDir, margin) {
@@ -451,10 +451,6 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
   const hit = { t: 0, side: null, point: new Vector3() };
   const shadowHit = { portal: null, distance: 0, side: 1 };
 
-  function crossingsFor(traveler) {
-    return getPortals().filter((p) => p.warp).map((portal) => ({ traveler, portal, warp: portal.warp }));
-  }
-
   function entryFor(adapter) {
     for (let i = 0; i < entries.length; i++) {
       if (entries[i].adapter === adapter) return entries[i];
@@ -471,7 +467,7 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
 
   function addTraveler(adapter) {
     const entry = {
-      adapter, previous: new Vector3(), current: new Vector3(), crossings: crossingsFor(adapter),
+      adapter, previous: new Vector3(), current: new Vector3(),
       ghosts: adapter.visual ? createGhostSet(adapter.visual) : null,
       shadowCaster: adapter.visual ? createShadowCaster(adapter.visual) : null,
       arrival: null, arrivalSide: 1,
@@ -487,27 +483,29 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
   }
 
   function updateTravelers() {
+    const portals = getPortals();
     const list = entries;
     for (let i = 0; i < list.length; i++) {
       const entry = list[i];
-      const { adapter, previous, current, crossings } = entry;
+      const { adapter, previous, current } = entry;
       adapter.center(current);
       let first = null;
       let firstT = Infinity;
-      for (let j = 0; j < crossings.length; j++) {
-        const { portal } = crossings[j];
-        if (adapter.canTraverse && !adapter.canTraverse(portal)) continue;
+      for (let j = 0; j < portals.length; j++) {
+        const portal = portals[j];
+        if (!portal.warp || (adapter.canTraverse && !adapter.canTraverse(portal))) continue;
         if (segmentCrossing(portal, previous, current, hit) && hit.t < firstT) {
-          first = crossings[j];
+          first = portal;
           firstT = hit.t;
           entry.arrivalSide = hit.side === "front" ? 1 : -1;
         }
       }
       if (first) {
-        entry.arrival = first.portal.target;
-        first.traveler.applyWarp(first.warp, first.portal);
-        onTraverseObservable.notifyObservers(first);
-        first.warp.point(current, previous);
+        const { warp } = first;
+        entry.arrival = first.target;
+        adapter.applyWarp(warp, first);
+        onTraverseObservable.notifyObservers({ traveler: adapter, portal: first, warp });
+        warp.point(current, previous);
       } else {
         previous.copyFrom(current);
       }
@@ -583,7 +581,6 @@ export function createTravelerRegistry(getPortals, settings, isLightBlocked = nu
     get activeShadowCasters() { return entries.reduce((n, entry) => n + (entry.shadowCaster?.active ? 1 : 0), 0); },
     linksChanged() {
       for (const entry of entries) {
-        entry.crossings = crossingsFor(entry.adapter);
         if (entry.arrival && !entry.arrival.warp) entry.arrival = null;
       }
     },

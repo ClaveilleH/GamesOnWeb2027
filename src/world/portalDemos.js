@@ -1,5 +1,4 @@
 import { BoundingBox } from "@babylonjs/core/Culling/boundingBox";
-import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder";
@@ -10,7 +9,7 @@ import { PhysicsShapeType } from "@babylonjs/core/Physics/v2/IPhysicsEnginePlugi
 import { collisionLayer } from "../core/physics.js";
 import { createCrate } from "./crates.js";
 import { batchStaticMeshes } from "./staticBatch.js";
-import { paintZoneSign, solidTerrain, terrainMaterial } from "./testTerrain.js";
+import { canvasMaterial, FLOOR_PAINT_Z_OFFSET, paintZoneSign, solidTerrain, terrainMaterial } from "./testTerrain.js";
 
 const east = Math.PI / 2;
 const west = -Math.PI / 2;
@@ -18,18 +17,15 @@ const basement = -20;
 // La face avant du cadre masque la marge du stencil, la face arrière rejoint l’alcôve.
 const frameOverhang = 0.01;
 
+// Matériau peint coté en mètres (`width` × `depth`) sur un fond `color`.
 function paintedMaterial(scene, name, width, depth, color, paint) {
-  const texture = new DynamicTexture(name, { width: 1024, height: Math.round(1024 * depth / width) }, scene, true);
-  const ctx = texture.getContext();
-  const size = texture.getSize();
-  ctx.scale(size.width / width, size.height / depth);
-  ctx.fillStyle = color;
-  ctx.fillRect(0, 0, width, depth);
-  paint(ctx);
-  texture.update();
-  const material = terrainMaterial(scene, name, "#ffffff");
-  material.diffuseTexture = texture;
-  return material;
+  const pixels = { width: 1024, height: Math.round(1024 * depth / width) };
+  return canvasMaterial(scene, name, pixels, (ctx, size) => {
+    ctx.scale(size.width / width, size.height / depth);
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, width, depth);
+    paint(ctx);
+  });
 }
 
 export function createPortalDemos(scene, portals) {
@@ -100,7 +96,7 @@ export function createPortalDemos(scene, portals) {
   sand.position.set(b.origin.x, 0.004, b.origin.z);
   sand.material = terrainMaterial(scene, "sable", "#d8b98a");
   sand.material.diffuseColor.scaleInPlace(0.77);
-  sand.material.zOffsetUnits = -8;
+  sand.material.zOffsetUnits = FLOOR_PAINT_Z_OFFSET;
   sand.receiveShadows = true;
 
   function obelisk(x, z, height, mat) {
@@ -122,7 +118,7 @@ export function createPortalDemos(scene, portals) {
       subdivisionsX: Math.ceil(width * 2), subdivisionsY: Math.ceil(depth * 2) }, scene);
     floor.position.set(x, y + 0.004, z);
     floor.material = material;
-    floor.material.zOffsetUnits = -8;
+    floor.material.zOffsetUnits = FLOOR_PAINT_Z_OFFSET;
     floor.receiveShadows = true;
     floor.isPickable = false;
   }

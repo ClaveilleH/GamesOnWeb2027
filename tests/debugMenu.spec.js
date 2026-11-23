@@ -1,40 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { expectCleanPage, startDevGame } from "./support/devGame.js";
+import { debugPanel as panel, expectCleanPage, openDebugMenu, startDevGame } from "./support/devGame.js";
+import { emulatePointerLock } from "./support/pointerLock.js";
 
 const player = (page) => page.evaluate(() => window.gowDev.state().player);
-const panel = (page) => page.getByRole("complementary", { name: "Menu debug" });
 
-// Ouvre le menu et libère la souris : capturée, elle enverrait les clics à la scène.
-// Les catégories sont des accordéons (certaines repliées par défaut) : on les déplie
-// toutes pour que les contrôles de chaque section soient cliquables dans les tests.
-async function openDebugMenu(page) {
-  await page.keyboard.press("Control+KeyD");
-  await page.keyboard.press("Tab");
-  await page.evaluate(() => {
-    for (const details of document.querySelectorAll("#debug-menu details")) details.open = true;
-  });
-}
-
-// Pointer lock minimal : accordé sur geste, rendu par exitPointerLock.
-async function emulatePointerLock(page) {
-  await page.addInitScript(() => {
-    let locked = null;
-    Object.defineProperty(document, "pointerLockElement", { configurable: true, get: () => locked });
-    const changed = () => document.dispatchEvent(new Event("pointerlockchange"));
-    HTMLCanvasElement.prototype.requestPointerLock = async function () {
-      if (!navigator.userActivation.isActive) throw new DOMException("Geste requis", "NotAllowedError");
-      locked = this;
-      changed();
-    };
-    document.exitPointerLock = () => {
-      if (!locked) return;
-      locked = null;
-      changed();
-    };
-  });
-}
-
-async function hold(page, code, until) {
+async function holdUntil(page, code, until) {
   await page.keyboard.down(code);
   try {
     await expect.poll(async () => until(await player(page)), { timeout: 10000 }).toBe(true);
@@ -96,12 +66,12 @@ test("le vol monte sans gravité et bute sur un mur, le noclip le traverse", asy
   await openDebugMenu(page);
   await panel(page).getByRole("button", { name: "Vol", exact: true }).click();
   const start = await player(page);
-  await hold(page, "Space", ({ y }) => y > start.y + 1.5);
+  await holdUntil(page, "Space", ({ y }) => y > start.y + 1.5);
   const hovering = await player(page);
   await page.waitForTimeout(400);
   expect((await player(page)).y).toBeGreaterThan(hovering.y - 0.05);
   expect((await player(page)).grounded).toBe(false);
-  await hold(page, "KeyC", ({ y }) => y < hovering.y - 1);
+  await holdUntil(page, "KeyC", ({ y }) => y < hovering.y - 1);
 
   // Le mur « PENTES » occupe z ∈ [5,15 ; 5,65] pour x ∈ [−12,8 ; −2,8].
   await page.evaluate(() => window.gowDev.teleportPlayer({ x: -7.8, y: 0.5, z: 3, yaw: 0 }));
@@ -111,7 +81,7 @@ test("le vol monte sans gravité et bute sur un mur, le noclip le traverse", asy
   expect((await player(page)).z).toBeLessThan(5.2);
 
   await panel(page).getByRole("button", { name: "Noclip" }).click();
-  await hold(page, "KeyW", ({ z }) => z > 6.5);
+  await holdUntil(page, "KeyW", ({ z }) => z > 6.5);
   await panel(page).getByRole("button", { name: "Marche" }).click();
   await page.waitForFunction(() => window.gowDev.state().player.grounded);
 });

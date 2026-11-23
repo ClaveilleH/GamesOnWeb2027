@@ -1,3 +1,5 @@
+import { detectBrowser } from "./browser.js";
+
 // Babylon lit le renderer du contexte du jeu. Un nom masqué ou inconnu reste indéterminé.
 export function isSoftwareRenderer(renderer) {
   return /\b(?:swiftshader|llvmpipe|softpipe|swrast|lavapipe|software (?:rasterizer|renderer)|microsoft basic render driver|gdi generic)\b/i.test(renderer);
@@ -41,15 +43,11 @@ export function createSlowFrameMonitor({ minFps = 30, duration = 5 } = {}) {
   };
 }
 
-function isDesktopFirefox(userAgent, maxTouchPoints) {
-  return /\bFirefox\//.test(userAgent) && !isMobile(userAgent, maxTouchPoints);
-}
-
 export function graphicsHelp(userAgent, maxTouchPoints = 0) {
   if (isMobile(userAgent, maxTouchPoints)) {
     return "Sur mobile ou tablette, mettez le système et le navigateur à jour, puis rouvrez le jeu.";
   }
-  if (isDesktopFirefox(userAgent, maxTouchPoints)) {
+  if (detectBrowser(userAgent, "") === "firefox") {
     return "Dans les paramètres de Firefox, recherchez « Performances » et décochez « Utiliser les paramètres de performance recommandés » pour voir le réglage. Si « Utiliser l’accélération graphique matérielle si disponible » est déjà cochée, l’accélération est active : recochez les paramètres recommandés. Sinon, cochez-la puis redémarrez Firefox.";
   }
   if (/Edg\//.test(userAgent)) {

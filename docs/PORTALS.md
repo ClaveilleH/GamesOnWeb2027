@@ -216,7 +216,7 @@ Les clones du fantôme et du projecteur d’ombre ne rejoignent que les cartes d
 
 ### 6.2 Déroulé d’une image
 
-1. `scene.onBeforeRenderObservable` (main.js) : logique du jeu au pas fixe, pose des visuels, `portals.updateGhosts()`, caméra (`traceView`).
+1. `scene.onBeforeRenderObservable` (main.js) : logique du jeu au pas fixe, pose des visuels, caméra (`traceView`) et fondu du joueur, `portals.updateGhosts()`.
 2. `scene.onBeforeCameraRenderObservable` (caméra principale) : le renderer construit l’**arbre de passes** sur le CPU (§ 6.3) et règle la caméra principale (`layerMask = world`, brouillard neutre).
 3. Babylon rend la caméra principale : évaluation des maillages actifs filtrée par un fournisseur `scene.getActiveMeshCandidates` dédié (propriété publique de Babylon, restaurée dans `dispose()`, tableau `{ data, length }` réutilisé sans allocation) qui ne soumet que les maillages actifs du calque `world` (`(layerMask & camera.layerMask) !== 0 && isEnabled()`), cartes d’ombre (une fois par image), puis maillages `world` visibles. Les maillages `late` et projecteurs d’ombre (calque 0), exclus de l’évaluation principale, gardent des matrices monde exactes dans la carte d’ombre : `ShadowGenerator` lit `effectiveMesh.getWorldMatrix()`, qui rappelle `computeWorldMatrix()` dès que `scene.getRenderId()` a progressé (incrémenté avant chaque cible de rendu). Le stencil vaut 0 partout (`autoClearDepthAndStencil`), et son test est désactivé pour la passe racine.
 4. `scene.onAfterDrawPhaseObservable` (caméra principale) : le renderer parcourt l’arbre en profondeur d’abord (§ 6.4), puis dessine les maillages `late` de la racine avec la caméra principale (stencil `EQUAL 0`).
@@ -337,8 +337,8 @@ onBeforeRender :
     crate.syncProxy()           → recalculer le chevauchement, placer la doublure et régler les masques
   present(alpha) :
     poses interpolées (joueur, caisses), visual.update
-    portals.updateGhosts()
-    camera.follow(…)            → traceView, plan proche adaptatif
+    camera.follow(…)            → traceView, plan proche adaptatif, fondu du joueur
+    portals.updateGhosts()      → fantômes à la pose et à l’opacité de l’image
     hud.update(…)
 ```
 
@@ -352,7 +352,7 @@ La physique passe au pas fixe du jeu (60 Hz) au lieu du pas variable de `scene.r
 
 - `playerController.applyWarp(warp)` transforme la position et la vitesse de la capsule, le lacet, la pose précédente d’interpolation et l’échelle (§ 8). Comme `setPosition` conserve les anciens contacts, un court balayage vertical de la capsule par l’API publique `plugin.shapeCast` (`readArrivalSupport`) mesure l’appui à la sortie et `checkSupportToRef` est sauté pour ce pas (`placedSupport`). L’intégration suivante (`capsule.integrate`) reconstruit d’elle-même les contacts à la position courante, sans aucun appel d’API interne de Babylon (`docs/BABYLON_PATCHES.md` § 2). Le retour au point de départ (`respawn`) et `teleport` sautent également `checkSupportToRef` sur ce pas et forcent l’état non soutenu.
 - Le centre testé est le centre de la capsule.
-- `main.js` relaie le warp à la caméra (`camera.applyWarp(warp)`, § 9.4) quand le voyageur est le joueur.
+- L’adaptateur du joueur, dans `main.js`, relaie aussi le warp à la caméra (`camera.applyWarp(warp)`, § 9.4).
 
 ### 7.4 Corps dynamiques (caisses)
 

@@ -35,3 +35,16 @@ export async function expectCleanPage(page) {
   expect(messages.filter((m) => m.type() === "error" || (m.type() === "warning" && /BJS|Babylon/i.test(m.text())))
     .map((m) => m.text())).toEqual([]);
 }
+
+export const debugPanel = (page) => page.getByRole("complementary", { name: "Menu debug" });
+
+// Ouvre le menu debug et libère la souris : capturée, elle enverrait les clics à la scène.
+// Les catégories sont des accordéons (certaines repliées par défaut) : on les déplie toutes.
+export async function openDebugMenu(page) {
+  await page.keyboard.press("Control+KeyD");
+  await page.keyboard.press("Tab");
+  await page.evaluate(() => {
+    for (const details of document.querySelectorAll("#debug-menu details")) details.open = true;
+  });
+  return debugPanel(page);
+}
