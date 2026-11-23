@@ -2,3 +2,5 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+.code_graph.sqlite*
+.claude/settings.local.json
