@@ -23,6 +23,14 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps --only-shell chromium
       - run: npm test
+      # Traces et contexte des tests en échec ou « flaky » : seuls ceux-là laissent un dossier dans test-results/.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-results
+          path: test-results/*/**
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Préparer le site testé
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: dist
