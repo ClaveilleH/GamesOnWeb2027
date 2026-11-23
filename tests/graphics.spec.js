@@ -62,23 +62,29 @@ test("un GPU annoncé n’affiche l’aide que si le jeu rame, avec le réglage 
       return getContext.call(this, type, options && { ...options, failIfMajorPerformanceCaveat: false });
     };
   });
-  await page.goto("/");
+  await page.goto("/?dev");
   const menu = page.getByRole("dialog");
   const warning = menu.locator("#graphics-warning");
   await expect(menu.getByRole("button", { name: "Jouer" })).toBeVisible();
   await expect(warning).toBeHidden();
   await menu.getByRole("button", { name: "Jouer" }).click();
   await expect(menu).toBeHidden();
-  // Images de 50 ms : environ 20 i/s, sous le seuil de 30.
-  await page.evaluate(() => {
-    const requestFrame = window.requestAnimationFrame.bind(window);
-    window.requestAnimationFrame = (callback) => requestFrame((time) => {
-      const end = performance.now() + 50;
-      while (performance.now() < end);
-      callback(time);
-    });
+  // Images de 250 ms (4 i/s, sous le seuil de 30) sur l’horloge manuelle : le compte ne dépend pas de la
+  // vitesse du rendu. Chaque image vaut au plus 0,25 s, l’aide attend donc au moins 20 images.
+  const slowFrames = await page.evaluate(() => {
+    const clock = window.gowDev.manualClock();
+    try {
+      for (let frame = 1; frame <= 60; frame++) {
+        clock.step(250);
+        if (!document.querySelector("#graphics-notice").hidden) return frame;
+      }
+      return null;
+    } finally {
+      clock.release();
+    }
   });
-  await expect(page.locator("#graphics-notice")).toBeVisible({ timeout: 15000 });
+  expect(slowFrames).toBeGreaterThanOrEqual(20);
+  await expect(page.locator("#graphics-notice")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(menu).toBeVisible();
   await expect(warning.locator("summary")).toHaveText("Le jeu ralentit. Vérifier l’accélération graphique");
