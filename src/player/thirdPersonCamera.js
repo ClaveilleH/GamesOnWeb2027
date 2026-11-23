@@ -1,4 +1,5 @@
 import { TargetCamera } from "@babylonjs/core/Cameras/targetCamera";
+import { Clamp } from "@babylonjs/core/Maths/math.scalar.functions";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { CAMERA, SPAWN_YAW } from "../config.js";
 import { createSightTest } from "../core/physics.js";
@@ -35,18 +36,15 @@ export function createThirdPersonCamera(scene) {
   // Œil du modèle à l’échelle 1 (src/player/firstPersonFit.js).
   const eye = { height: 0, forward: 0 };
 
-  const pitchLimits = () => (firstPerson
-    ? [CAMERA.firstPersonMinPitch, CAMERA.firstPersonMaxPitch]
-    : [CAMERA.minPitch, CAMERA.maxPitch]);
-
   function clampPitch(value) {
-    const [min, max] = pitchLimits();
-    return Math.max(min, Math.min(max, value));
+    return firstPerson
+      ? Clamp(value, CAMERA.firstPersonMinPitch, CAMERA.firstPersonMaxPitch)
+      : Clamp(value, CAMERA.minPitch, CAMERA.maxPitch);
   }
 
   function setNear(nearestPortalDistance) {
     const nearestInCameraUnits = nearestPortalDistance / cameraScale;
-    camera.minZ = Math.max(MIN_NEAR, Math.min(CAMERA.minZ, 0.5 * nearestInCameraUnits)) * cameraScale;
+    camera.minZ = Clamp(0.5 * nearestInCameraUnits, MIN_NEAR, CAMERA.minZ) * cameraScale;
   }
 
   // L’œil suit les pieds interpolés, qui peuvent être de l’autre côté d’un portail juste après
@@ -119,7 +117,6 @@ export function createThirdPersonCamera(scene) {
     get yaw() { return yaw; },
     get pitch() { return pitch; },
     get warped() { return warped; },
-    get scale() { return cameraScale; },
     look(dx, dy) {
       yaw = (yaw + dx * CAMERA.sensitivity) % (2 * Math.PI);
       pitch = clampPitch(pitch + dy * CAMERA.sensitivity);

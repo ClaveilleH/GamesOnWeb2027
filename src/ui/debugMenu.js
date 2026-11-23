@@ -1,12 +1,12 @@
 import { movementModes } from "../player/playerController.js";
 
 const modeLabels = { walk: "Marche", fly: "Vol", noclip: "Noclip" };
-const cameraViews = [{ view: "third", label: "3e personne" }, { view: "first", label: "1re personne" }];
+const cameraViews = [{ value: "third", label: "3e personne" }, { value: "first", label: "1re personne" }];
 const scales = [0.25, 0.5, 1, 2];
 const east = Math.PI / 2;
 
 // Pieds légèrement au-dessus du sol : le joueur se pose au pas suivant.
-export const debugDestinations = Object.freeze([
+const debugDestinations = Object.freeze([
   { label: "Départ", feet: { x: 0, y: 0.05, z: -10 }, yaw: 0 },
   { label: "Arche A · paradoxe", feet: { x: 0, y: 0.05, z: 26 }, yaw: 0 },
   { label: "Esplanade B", feet: { x: -30, y: 0.05, z: -26 }, yaw: Math.PI },
@@ -52,46 +52,43 @@ export function createDebugMenu(canvas, game) {
   const options = { signal: listeners.signal };
   const { player, portals } = game;
 
-  const characterButtons = (game.characters ?? []).map(({ key, label }) => {
-    const button = element("button", { type: "button", textContent: label });
-    button.dataset.character = key;
-    button.setAttribute("aria-pressed", String(key === game.currentCharacter));
-    button.addEventListener("click", () => game.selectCharacter(key), options);
-    return button;
-  });
+  // Boutons à choix unique : `pick(value)` agit, `isPressed(value)` reflète l’état dans `refresh`.
+  const choiceGroups = [];
+  function choices(items, isPressed, pick) {
+    const buttons = items.map(({ value, label }) => {
+      const button = element("button", { type: "button", textContent: label });
+      button.addEventListener("click", () => {
+        pick(value);
+        refresh();
+      }, options);
+      return button;
+    });
+    choiceGroups.push(() => {
+      items.forEach(({ value }, i) => buttons[i].setAttribute("aria-pressed", String(isPressed(value))));
+    });
+    return element("div", { className: "debug-choices" }, buttons);
+  }
 
-  const modeButtons = movementModes.map((mode) => {
-    const button = element("button", { type: "button", textContent: modeLabels[mode] });
-    button.dataset.mode = mode;
-    button.addEventListener("click", () => {
-      player.setMode(mode);
-      refresh();
-    }, options);
-    return button;
-  });
-  const viewButtons = cameraViews.map(({ view, label }) => {
-    const button = element("button", { type: "button", textContent: label });
-    button.dataset.view = view;
-    button.addEventListener("click", () => {
-      game.setCameraView(view);
-      refresh();
-    }, options);
-    return button;
-  });
+  // Case à cocher reliée à un état du jeu, relu dans `refresh`.
+  const checks = [];
+  function check(label, isChecked, setChecked) {
+    const input = element("input", { type: "checkbox" });
+    input.addEventListener("change", () => setChecked(input.checked), options);
+    checks.push(() => { input.checked = isChecked(); });
+    return element("label", { className: "debug-check" }, [input, label]);
+  }
+
+  const characters = (game.characters ?? []).map(({ key, label }) => ({ value: key, label }));
+  const characterChoices = choices(characters, (key) => key === game.currentCharacter, (key) => game.selectCharacter(key));
+  const modeChoices = choices(movementModes.map((mode) => ({ value: mode, label: modeLabels[mode] })),
+    (mode) => mode === player.state.mode, (mode) => player.setMode(mode));
+  const viewChoices = choices(cameraViews, (view) => view === game.cameraView, (view) => game.setCameraView(view));
+  const scaleChoices = choices(scales.map((scale) => ({ value: scale, label: "×" + number(scale).replace(/,?0+$/, "") })),
+    (scale) => scale === player.state.scale, (scale) => player.resize(scale));
 
   const flySpeed = slider("Vitesse de vol", {
     min: 1, max: 40, step: 1, value: player.state.flySpeed, format: (v) => v + " m/s",
   }, (value) => { player.state.flySpeed = value; });
-
-  const scaleButtons = scales.map((scale) => {
-    const button = element("button", { type: "button", textContent: "×" + number(scale).replace(/,?0+$/, "") });
-    button.dataset.scale = String(scale);
-    button.addEventListener("click", () => {
-      player.resize(scale);
-      refresh();
-    }, options);
-    return button;
-  });
 
   const timeScale = slider("Vitesse du temps", {
     min: 0.1, max: 2, step: 0.05, value: game.timeScale, format: (v) => "×" + number(v),
@@ -103,22 +100,9 @@ export function createDebugMenu(canvas, game) {
     return element("li", {}, [button]);
   });
 
-  const hudToggle = element("input", { type: "checkbox" });
-  hudToggle.addEventListener("change", () => {
-    if (hudToggle.checked !== game.hudVisible) game.toggleHud();
-  }, options);
   const depth = slider("Profondeur des portails", {
     min: 0, max: 8, step: 1, value: portals.settings.maxDepth, format: String,
   }, (value) => { portals.settings.maxDepth = value; });
-
-  const fpsCounterToggle = element("input", { type: "checkbox" });
-  fpsCounterToggle.addEventListener("change", () => {
-    if (fpsCounterToggle.checked !== game.fpsCounterVisible) game.toggleFpsCounter();
-  }, options);
-  const fpsGraphToggle = element("input", { type: "checkbox" });
-  fpsGraphToggle.addEventListener("change", () => {
-    if (fpsGraphToggle.checked !== game.fpsGraphVisible) game.toggleFpsGraph();
-  }, options);
 
   const coordinates = element("output", { className: "debug-position" });
   const copy = element("button", { type: "button", textContent: "Copier" });
@@ -135,25 +119,25 @@ export function createDebugMenu(canvas, game) {
       element("p", {}, [element("kbd", { textContent: "Tab" }), " souris · ", element("kbd", { textContent: "Ctrl D" }), " fermer"]),
     ]),
     section("Déplacement", {},
-      element("div", { className: "debug-choices" }, modeButtons),
+      modeChoices,
       flySpeed.row,
       element("p", { className: "debug-note" }, [
         element("kbd", { textContent: "Espace" }), " monter · ", element("kbd", { textContent: "C" }), " descendre · ",
         element("kbd", { textContent: "Maj" }), " ×2,5",
       ])),
-    section("Caméra", {}, element("div", { className: "debug-choices" }, viewButtons)),
+    section("Caméra", {}, viewChoices),
     section("Performance", { open: true },
-      element("label", { className: "debug-check" }, [fpsCounterToggle, "Compteur FPS"]),
-      element("label", { className: "debug-check" }, [fpsGraphToggle, "Graphique des FPS"])),
+      check("Compteur FPS", () => game.fpsCounterVisible, game.setFpsCounterVisible),
+      check("Graphique des FPS", () => game.fpsGraphVisible, game.setFpsGraphVisible)),
     section("Affichage", {},
-      element("label", { className: "debug-check" }, [hudToggle, "HUD et contours des portails (F3)"]),
+      check("HUD et contours des portails (F3)", () => game.hudVisible, game.setHudVisible),
       depth.row),
-    section("Échelle du joueur", {}, element("div", { className: "debug-choices" }, scaleButtons)),
+    section("Échelle du joueur", {}, scaleChoices),
     section("Téléportation", {}, element("ul", { className: "debug-destinations" }, destinations)),
     section("Temps", {}, timeScale.row),
-    ...(characterButtons.length
+    ...(characters.length
       ? [section("Personnage", {},
-          element("div", { className: "debug-choices" }, characterButtons),
+          characterChoices,
           element("p", { className: "debug-note" }, ["Recharge la page pour appliquer."]))]
       : []),
     section("Position", { open: true }, element("div", { className: "debug-position-row" }, [coordinates, copy])),
@@ -170,20 +154,15 @@ export function createDebugMenu(canvas, game) {
   function refresh() {
     lastScale = player.state.scale;
     lastMode = player.state.mode;
-    for (const button of modeButtons) button.setAttribute("aria-pressed", String(button.dataset.mode === player.state.mode));
-    for (const button of viewButtons) button.setAttribute("aria-pressed", String(button.dataset.view === game.cameraView));
-    for (const button of scaleButtons) button.setAttribute("aria-pressed", String(Number(button.dataset.scale) === player.state.scale));
+    for (const sync of choiceGroups) sync();
+    for (const sync of checks) sync();
     flySpeed.set(player.state.flySpeed);
     timeScale.set(game.timeScale);
     depth.set(portals.settings.maxDepth);
-    hudToggle.checked = game.hudVisible;
-    fpsCounterToggle.checked = game.fpsCounterVisible;
-    fpsGraphToggle.checked = game.fpsGraphVisible;
   }
 
   let lastText = "";
   return {
-    get isOpen() { return !panel.hidden; },
     toggle() {
       panel.hidden = !panel.hidden;
       if (!panel.hidden) refresh();

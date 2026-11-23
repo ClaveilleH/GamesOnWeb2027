@@ -17,8 +17,8 @@ function expectVector(actual, expected, tolerance = 1e-9) {
   expect(Vector3.Distance(actual, expected), `${actual} ≈ ${expected}`).toBeLessThanOrEqual(tolerance);
 }
 
-function opening(x, z, yaw, width = 4) {
-  return { origin: new Vector3(x, 0, z), yaw, width, height: width, sides: "both", ...portalBasis(yaw) };
+function opening(x, z, yaw, width = 4, height = width) {
+  return { origin: new Vector3(x, 0, z), yaw, width, height, sides: "both", ...portalBasis(yaw) };
 }
 
 function link(a, b) {
@@ -432,10 +432,8 @@ test("les quatre plans de culling englobent les rayons passant dans l’ouvertur
 });
 
 test("la détection d’ombre portée respecte la direction du soleil, les faces et la portée au sol", () => {
-  const a = opening(0, 31, Math.PI, 2.4);
-  a.height = 3;
-  const b = opening(-30, -32, 0, 2.4);
-  b.height = 3;
+  const a = opening(0, 31, Math.PI, 2.4, 3);
+  const b = opening(-30, -32, 0, 2.4, 3);
   link(a, b);
   const sun = new Vector3(-0.58, -1, 0.48).normalize();
   const radius = Math.sqrt(3) / 2;
@@ -467,8 +465,7 @@ test("la détection d’ombre portée respecte la direction du soleil, les faces
   expect(shadowPortalCrossing(b, new Vector3(-29.65, 0.5, -32.02), radius, sun, out, 1)).toBeNull();
 
   // Lien qui tourne de 180° (même normale) : le soleil ne sort pas du côté récepteur de la cible.
-  const flipped = opening(-30, -32, Math.PI, 2.4);
-  flipped.height = 3;
+  const flipped = opening(-30, -32, Math.PI, 2.4, 3);
   const rotatedA = { ...a, target: flipped };
   expect(shadowPortalCrossing(rotatedA, new Vector3(0.35, 0.5, 30.45), radius, sun)).toBeNull();
 
@@ -519,10 +516,7 @@ test("warpPlane transporte un plan quelconque avec rotation, translation et éch
   const warp = createWarp(a, b);
   // Plan incliné non unitaire pour vérifier la normalisation et la conservation du signe.
   const source = new Plane(2, -4, 6, -10);
-  const unit = source.clone();
-  const invLen = 1 / unit.normal.length();
-  unit.normal.scaleInPlace(invLen);
-  unit.d *= invLen;
+  const unit = source.clone().normalize();
 
   const out = new Plane(0, 0, 0, 0);
   expect(warpPlane(warp, source, out)).toBe(out);

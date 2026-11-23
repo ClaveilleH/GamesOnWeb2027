@@ -20,6 +20,7 @@ import { createFpsMeter } from "./ui/fpsMeter.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
 import { createPlatform } from "./platform/browser.js";
+import { createSlowFrameMonitor, graphicsHelp, hasMajorPerformanceCaveat, isSoftwareRenderer } from "./platform/graphics.js";
 import { createLighting, skyPalette } from "./world/lighting.js";
 import { createPortalDemos } from "./world/portalDemos.js";
 import { loadDecorProp } from "./world/props.js";
@@ -27,6 +28,15 @@ import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
 const canvas = document.querySelector("#scene");
 const status = document.querySelector("#status");
+const graphicsWarning = document.querySelector("#graphics-warning");
+const graphicsNotice = document.querySelector("#graphics-notice");
+
+function showGraphicsWarning(title, open = false) {
+  graphicsWarning.querySelector("summary").textContent = title;
+  graphicsWarning.querySelector("p").textContent = graphicsHelp(navigator.userAgent, navigator.maxTouchPoints);
+  graphicsWarning.open = open;
+  graphicsWarning.hidden = false;
+}
 // `npm run dev` ou `?dev` : hook de pilotage des tests (docs/PORTALS.md § 10.3), chargé à part du bundle principal.
 const devMode = import.meta.env.DEV || new URLSearchParams(location.search).has("dev");
 
@@ -86,6 +96,9 @@ async function start() {
   // Chargé avant le moteur : le compteur de compilations doit voir les tout premiers effets.
   const dev = devMode ? await import("./dev/devHook.js") : null;
   const engine = new Engine(canvas, true, { alpha: true, stencil: true });
+  if (isSoftwareRenderer(engine.getGlInfo().renderer) || hasMajorPerformanceCaveat()) {
+    showGraphicsWarning("Le jeu utilise le rendu logiciel et risque de ralentir. Comment activer l’accélération graphique ?");
+  }
   const getEffects = dev?.observeDevEffects(engine);
   const scene = new Scene(engine);
   try {
@@ -132,16 +145,23 @@ async function start() {
     const propCasters = props.flatMap((prop) => prop.casters);
     for (const mesh of [...casters, ...demos.casters, ...propCasters, ...bones]) shadows.addShadowCaster(mesh, false);
     const playerTraveler = {
-      name: "joueur", center: player.center, applyWarp: player.applyWarp,
+      name: "joueur", center: player.center,
+      applyWarp(warp) {
+        player.applyWarp(warp);
+        camera.applyWarp(warp);
+      },
       visual: {
         root: visual.root, materials: visual.materials, radius: () => 1.1 * player.state.scale,
         center: (out) => out.set(visual.root.position.x, visual.root.position.y + player.capsuleHeight / 2, visual.root.position.z),
       },
     };
     portals.addTraveler(playerTraveler);
-    portals.onTraverseObservable.add(({ traveler, warp }) => {
-      if (traveler === playerTraveler) camera.applyWarp(warp);
-    });
+    // Après un déplacement discontinu du joueur (réapparition, téléportation).
+    function resetPlayerView(yaw) {
+      portals.resetTraveler(playerTraveler);
+      portals.resetHaze();
+      camera.reset(yaw);
+    }
     // À la première personne, le corps reste visible (pieds, reflets dans les portails) ; seule la tête
     // est coupée là où la caméra est dedans. Le plan de coupe ajoute des variantes de shader : on les
     // préchauffe, l’une après l’autre si on bascule plusieurs fois.
@@ -153,7 +173,7 @@ async function start() {
       camera.setFirstPerson(firstPerson, firstPersonFit);
       player.state.faceCamera = firstPerson;
       portals.setHeadCut(playerTraveler, firstPerson ? headCut : null);
-      if (firstPerson && visual.setFade(1)) portals.syncGhostAppearance(playerTraveler);
+      if (firstPerson) visual.setFade(1);
       warming = warming.then(() => portals.warmUp()).catch((error) => console.error(error));
     }
     const bindings = createBindings();
@@ -178,16 +198,16 @@ async function start() {
       get cameraView() { return camera.firstPerson ? "first" : "third"; },
       setCameraView,
       get hudVisible() { return hud.debugVisible; },
-      toggleHud: hud.toggleDebug,
+      setHudVisible(visible) {
+        if (visible !== hud.debugVisible) hud.toggleDebug();
+      },
       get fpsCounterVisible() { return fpsMeter.counterVisible; },
-      toggleFpsCounter() { fpsMeter.setCounterVisible(!fpsMeter.counterVisible); },
+      setFpsCounterVisible: fpsMeter.setCounterVisible,
       get fpsGraphVisible() { return fpsMeter.graphVisible; },
-      toggleFpsGraph() { fpsMeter.setGraphVisible(!fpsMeter.graphVisible); },
+      setFpsGraphVisible: fpsMeter.setGraphVisible,
       teleport(feet, yaw) {
         player.teleport(feet, yaw);
-        portals.resetTraveler(playerTraveler);
-        portals.resetHaze();
-        camera.reset(yaw);
+        resetPlayerView(yaw);
       },
     };
     const debugMenu = createDebugMenu(canvas, debugGame);
@@ -215,15 +235,16 @@ async function start() {
 
     // Décors interactifs (config `PROPS[].interact`) : à portée, une invite s'affiche en bas
     // de l'écran ; l'appui sur « Interagir » déclenche le décor via `onPropInteraction`.
-    const interactables = props.filter((prop) => prop.spec.interact).map((prop) => ({ prop, config: prop.spec.interact }));
+    const interactables = props.filter((prop) => prop.spec.interact);
     let activeInteractable = null;
     function nearestInteractable(position) {
       let best = null;
       let bestDistance = Infinity;
-      for (const item of interactables) {
-        const distance = Math.hypot(position.x - item.prop.position.x, position.z - item.prop.position.z);
-        if (distance <= item.config.radius && distance < bestDistance) {
-          best = item;
+      for (const prop of interactables) {
+        const { x, z } = prop.root.position;
+        const distance = Math.hypot(position.x - x, position.z - z);
+        if (distance <= prop.spec.interact.radius && distance < bestDistance) {
+          best = prop;
           bestDistance = distance;
         }
       }
@@ -244,31 +265,45 @@ async function start() {
       visual.root.scaling.setAll(state.scale);
       visual.update(dt, state.speed / state.scale, state.grounded, state.verticalSpeed / state.scale);
       for (const crate of crates) crate.present(alpha);
-      portals.updateGhosts();
       const shoulderDistance = camera.follow(dt, feet, state.scale, portals, state.position);
       if (!camera.firstPerson) {
         const fade = InverseLerp(CAMERA.fadeNear, CAMERA.fadeFar, shoulderDistance);
-        if (visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade))) portals.syncGhostAppearance(playerTraveler);
+        visual.setFade(SmoothStep(CAMERA.minPlayerOpacity, 1, fade));
       }
+      // Après le fondu : les fantômes reprennent l’opacité de l’image en même temps que la pose.
+      portals.updateGhosts();
       hud.update(state, camera, visual.root);
       activeInteractable = nearestInteractable(state.position);
-      hud.showInteraction(activeInteractable ? activeInteractable.config.prompt : null);
+      hud.showInteraction(activeInteractable?.spec.interact.prompt ?? null);
       debugMenu.update();
     }
     camera.reset(SPAWN_YAW);
     present(0, 0);
     dev?.installDevHook({
       scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, firstPersonFit,
+      teleport: debugGame.teleport,
       presentPose: () => present(0, 1),
       syncFrameTime(now, restart) {
         previousFrameTime = now;
         if (restart) accumulatedTime = 0;
       },
     });
+    // Sans rendu logiciel détecté, l’aide n’apparaît que si le jeu rame vraiment (Firefox peut rendre
+    // l’affichage sans accélération en annonçant quand même le GPU).
+    const slowFrames = graphicsWarning.hidden ? createSlowFrameMonitor() : null;
+    let noticeTimer = 0;
+    scene.onDisposeObservable.addOnce(() => clearTimeout(noticeTimer));
     scene.onAfterRenderObservable.add(() => {
       const fps = engine.getFps();
       hud.updatePortals(fps);
       fpsMeter.update(fps);
+      if (!slowFrames) return;
+      if (menu.isOpen) slowFrames.reset();
+      else if (slowFrames.sample(fps, engine.getDeltaTime() / 1000)) {
+        showGraphicsWarning("Le jeu ralentit. Vérifier l’accélération graphique");
+        graphicsNotice.hidden = false;
+        noticeTimer = setTimeout(() => { graphicsNotice.hidden = true; }, 8000);
+      }
     });
     scene.onBeforeRenderObservable.add(() => {
       if (menu.isOpen) return;
@@ -283,14 +318,10 @@ async function start() {
       // Une image sans pas physique laisse les entrées en attente pour le prochain pas.
       if (steps > 0) {
         const controls = input.read();
-        if (controls.interact && activeInteractable) onPropInteraction(activeInteractable.prop);
+        if (controls.interact && activeInteractable) onPropInteraction(activeInteractable);
         camera.look(controls.lookX, controls.lookY);
         for (let i = 0; i < steps; i++) {
-          if (player.update(FIXED_STEP, controls, camera.yaw).respawned) {
-            camera.reset(SPAWN_YAW);
-            portals.resetTraveler(playerTraveler);
-            portals.resetHaze();
-          }
+          if (player.update(FIXED_STEP, controls, camera.yaw).respawned) resetPlayerView(SPAWN_YAW);
           for (const crate of crates) crate.capturePose();
           plugin.executeStep(FIXED_STEP, physics.getBodies());
           for (const crate of crates) crate.afterStep();
@@ -315,6 +346,8 @@ async function start() {
     scene.onDisposeObservable.addOnce(() => window.removeEventListener("pagehide", onPageHide));
     if (import.meta.hot) import.meta.hot.dispose(() => engine.dispose());
     await portals.warmUp();
+    // Toujours placée dans le menu : un ralentissement détecté en jeu n’aura qu’à l’afficher.
+    document.querySelector("#pause-menu .commands").before(graphicsWarning);
     menu.open();
     engine.runRenderLoop(() => scene.render());
     status.hidden = true;
@@ -326,6 +359,12 @@ async function start() {
 
 start().catch((error) => {
   console.error(error);
-  status.textContent = "Impossible de charger la scène 3D. Vérifiez que WebGL est activé et rechargez la page.";
+  const message = document.querySelector("#status-message");
+  if (error.message === "WebGL not supported") {
+    message.textContent = "WebGL est indisponible. Le jeu ne peut pas afficher la scène 3D.";
+    showGraphicsWarning("Vérifier l’accélération graphique", true);
+  } else {
+    message.textContent = "Impossible de charger la scène 3D. Rechargez la page pour réessayer.";
+  }
   status.hidden = false;
 });

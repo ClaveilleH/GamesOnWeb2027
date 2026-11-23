@@ -13,16 +13,20 @@ export function createHud(bindings, layout, portals) {
   const listeners = new AbortController();
   const options = { signal: listeners.signal };
 
-  function showMovementKeys() {
-    const labels = ["forward", "left", "back", "right"].map((action) => {
-      const [primary, secondary] = bindings.keys(action);
-      return layout.label(primary ?? secondary);
-    });
+  const keyLabel = (action) => {
+    const [primary, secondary] = bindings.keys(action);
+    return layout.label(primary ?? secondary);
+  };
+  // Touches affichées : relues seulement quand les affectations ou la disposition changent.
+  function showKeys() {
+    const labels = ["forward", "left", "back", "right"].map(keyLabel);
     movementKeys.textContent = labels.join(labels.every((key) => key.length === 1) ? "" : " · ");
+    interactionKey.textContent = keyLabel("interact");
   }
-  showMovementKeys();
-  bindings.changes.addEventListener("change", showMovementKeys, options);
-  layout.changes.addEventListener("change", showMovementKeys, options);
+  showKeys();
+  bindings.changes.addEventListener("change", showKeys, options);
+  layout.changes.addEventListener("change", showKeys, options);
+  let interactionShown = null;
 
   function update({ position, speed, grounded, scale }, camera, visualRoot) {
     const feet = visualRoot.position;
@@ -58,17 +62,13 @@ export function createHud(bindings, layout, portals) {
       if (telemetry.dataset.fps !== rounded) telemetry.dataset.fps = fpsLabel.textContent = rounded;
     },
     showCaptureHint(visible) { hint.hidden = !visible; },
-    // Invite d'interaction en bas de l'écran. `verb` (ex. « jouer ») l'affiche ; null la masque.
-    // La touche montrée suit la touche affectée à « Interagir » et la disposition clavier.
+    // Invite d'interaction en bas de l'écran, appelée à chaque image. `verb` (ex. « jouer ») l'affiche ;
+    // null la masque. La touche montrée suit la touche affectée à « Interagir » et la disposition clavier.
     showInteraction(verb) {
-      if (!verb) {
-        interactionPrompt.hidden = true;
-        return;
-      }
-      const [primary, secondary] = bindings.keys("interact");
-      interactionKey.textContent = layout.label(primary ?? secondary);
-      if (interactionVerb.textContent !== verb) interactionVerb.textContent = verb;
-      interactionPrompt.hidden = false;
+      if (verb === interactionShown) return;
+      interactionShown = verb;
+      if (verb) interactionVerb.textContent = verb;
+      interactionPrompt.hidden = !verb;
     },
     get debugVisible() { return !telemetry.hidden; },
     toggleDebug() {

@@ -1,3 +1,4 @@
+import { NormalizeRadians } from "@babylonjs/core/Maths/math.scalar.functions";
 import { Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { ShapeCastResult } from "@babylonjs/core/Physics/shapeCastResult";
 import { CharacterSupportedState, PhysicsCharacterController } from "@babylonjs/core/Physics/v2/characterController";
@@ -129,15 +130,20 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
     state.grounded = surface.supportedState === CharacterSupportedState.SUPPORTED && !risingFromJump;
   }
 
-  function place(center, yaw) {
-    pushingBody = false;
-    capsule.setPosition(center);
+  // Arrête la capsule et oublie l’appui et le saut en cours : le pas suivant ne lit pas les anciens contacts.
+  function stopMotion() {
     capsule.setVelocity(Vector3.ZeroReadOnly);
     coyote = jumpBuffer = 0;
     risingFromJump = false;
-    state.yaw = yaw;
     surface.supportedState = CharacterSupportedState.UNSUPPORTED;
     placedSupport = true;
+  }
+
+  function place(center, yaw) {
+    pushingBody = false;
+    capsule.setPosition(center);
+    stopMotion();
+    state.yaw = yaw;
   }
 
   function teleport(feet, yaw) {
@@ -161,19 +167,14 @@ export function createPlayerController(scene, spawn, gravity, shouldRespawn = (p
   function setMode(mode) {
     if (!movementModes.includes(mode) || state.mode === mode) return;
     state.mode = mode;
-    capsule.setVelocity(Vector3.ZeroReadOnly);
-    coyote = jumpBuffer = 0;
-    risingFromJump = false;
-    surface.supportedState = CharacterSupportedState.UNSUPPORTED;
-    placedSupport = true;
+    stopMotion();
   }
 
   function turn(dt, dx, dz, cameraYaw) {
     if (state.faceCamera && !state.respawned) {
       state.yaw = cameraYaw;
     } else if (state.speed > 0.08 * state.scale) {
-      const delta = Math.atan2(dx, dz) - state.yaw;
-      state.yaw += Math.atan2(Math.sin(delta), Math.cos(delta)) * -Math.expm1(-PLAYER.turnRate * dt);
+      state.yaw += NormalizeRadians(Math.atan2(dx, dz) - state.yaw) * -Math.expm1(-PLAYER.turnRate * dt);
     }
   }
 
