@@ -13,7 +13,7 @@ Les réglages d'un objet sont ses propriétés personnalisées. Dans Blender : p
 
 | Propriété | Valeurs | Effet |
 | --- | --- | --- |
-| `collider` | `"mesh"` (défaut), `"box"`, `"none"` | Collision avec les triangles du maillage, avec sa boîte englobante, ou aucune. Un réglage posé sur un parent vaut pour ses enfants. |
+| `collider` | `"mesh"` (défaut), `"none"` | Collision avec les triangles du maillage ou aucune. Un réglage posé sur un parent vaut pour ses enfants. |
 | `spawn` | `true` | Départ du joueur (un *empty* suffit). Ses pieds sont à la position de l'objet, et il regarde dans la direction de l'axe −Y de l'objet Blender (+Z glTF), comme un personnage tourné vers la vue de face. Sans départ, le joueur tombe sur l'origine depuis le haut de la map. |
 
 Tous les maillages sont affichés, projettent et reçoivent les ombres. Ceux qui partagent un matériau sont fusionnés pour réduire le nombre d'appels de rendu. La map est donc statique : ses animations glTF sont ignorées. Les maillages sans indices (exports three.js) et les instances GPU (`EXT_mesh_gpu_instancing`) sont pris en charge, collisions comprises.

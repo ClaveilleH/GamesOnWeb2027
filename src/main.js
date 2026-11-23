@@ -59,13 +59,6 @@ function resolveCharacter() {
   return characterByKey(key) ?? characterByKey("squelette");
 }
 
-// Map demandée par `?map=<clé de MAPS>` ou `?map=<url>`, sinon null : terrain d'entraînement.
-function resolveMap() {
-  const value = new URLSearchParams(location.search).get("map");
-  if (!value) return null;
-  return MAPS.find((map) => map.key === value) ?? { key: "custom", label: "Map imposée", url: value };
-}
-
 // En dev, Vite renvoie `index.html` (text/html) pour un fichier absent au lieu d'un 404 : on traite
 // les deux cas comme « introuvable », sans laisser le chargeur échouer bruyamment sur du HTML.
 async function isServed(url) {
@@ -75,16 +68,17 @@ async function isServed(url) {
 
 // Une map introuvable ou illisible n'empêche pas de jouer : on revient au terrain d'entraînement.
 async function loadRequestedMap(scene) {
-  const spec = resolveMap();
-  if (!spec) return null;
+  const value = new URLSearchParams(location.search).get("map");
+  if (!value) return null;
+  const url = Object.hasOwn(MAPS, value) ? MAPS[value] : value;
   try {
-    if (!(await isServed(spec.url))) {
-      console.warn(`Map ${spec.url} introuvable, retour au terrain d'entraînement.`);
+    if (!(await isServed(url))) {
+      console.warn(`Map ${url} introuvable, retour au terrain d'entraînement.`);
       return null;
     }
-    return await loadMap(scene, spec.url);
+    return await loadMap(scene, url);
   } catch (error) {
-    console.warn(`Map ${spec.url} non chargée, retour au terrain d'entraînement.`, error);
+    console.warn(`Map ${url} non chargée, retour au terrain d'entraînement.`, error);
     return null;
   }
 }

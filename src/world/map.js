@@ -1,13 +1,11 @@
-import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import { VertexBuffer } from "@babylonjs/core/Buffers/buffer";
-import { BoundingBox } from "@babylonjs/core/Culling/boundingBox";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
-import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData";
 import { PhysicsAggregate } from "@babylonjs/core/Physics/v2/physicsAggregate";
 import { PhysicsShapeType } from "@babylonjs/core/Physics/v2/IPhysicsEnginePlugin";
 import { PLAYER } from "../config.js";
+import { loadContainer } from "../core/models.js";
 import { collisionLayer } from "../core/physics.js";
 import { PortalLayers } from "../portals/layers.js";
 import { batchStaticMeshes } from "./staticBatch.js";
@@ -59,25 +57,9 @@ function createMeshCollider(scene, meshes) {
   }
   const collider = new Mesh("map · collisions", scene);
   Object.assign(new VertexData(), { positions, indices }).applyToMesh(collider);
-  solidCollider(collider, PhysicsShapeType.MESH);
-}
-
-function createBoxColliders(scene, mesh) {
-  // Boîte de la géométrie seule : avec des thin instances, `getBoundingInfo()` les englobe toutes.
-  const { minimum, maximum } = (mesh.rawBoundingInfo ?? mesh.getBoundingInfo()).boundingBox;
-  for (const world of worldMatricesOf(mesh)) {
-    const { minimumWorld: min, maximumWorld: max } = new BoundingBox(minimum, maximum, world);
-    const size = max.subtract(min);
-    const collider = CreateBox(mesh.name + " · collision", { width: size.x, height: size.y, depth: size.z }, scene);
-    collider.position.copyFrom(Vector3.Center(min, max));
-    solidCollider(collider, PhysicsShapeType.BOX);
-  }
-}
-
-function solidCollider(collider, shapeType) {
   collider.isVisible = false;
   collider.isPickable = false;
-  const aggregate = new PhysicsAggregate(collider, shapeType, { mass: 0, friction: 0.8 }, collider.getScene());
+  const aggregate = new PhysicsAggregate(collider, PhysicsShapeType.MESH, { mass: 0, friction: 0.8 }, scene);
   aggregate.shape.filterMembershipMask = collisionLayer.terrain;
 }
 
@@ -99,28 +81,20 @@ function findSpawn(container, top) {
 
 // Charge une map glTF/GLB (docs/MAPS.md) à la place du terrain d'entraînement. Les maillages sont
 // rendus dans le monde, reçoivent et projettent les ombres et arrêtent le joueur selon `collider`.
-// Retourne { casters, spawn: { feet, position, yaw }, respawnBelow }. En cas d'échec, la scène
-// est rendue telle qu'avant l'appel.
+// Retourne { casters, spawn: { feet, position, yaw }, respawnBelow }. En cas d'échec, tous les
+// objets de la map sont retirés de la scène.
 export async function loadMap(scene, url) {
-  await import("@babylonjs/loaders/glTF/index.js");
-  const container = await LoadAssetContainerAsync(url, scene);
+  const { container, meshes } = await loadContainer(scene, url, PortalLayers.world);
   const previousMeshes = new Set(scene.meshes);
   try {
-    const meshes = container.meshes.filter((mesh) => mesh.getTotalVertices() > 0);
-    if (meshes.length === 0) throw new Error(`La map ${url} ne contient aucun maillage.`);
-    container.addAllToScene();
     // La map est statique : ses maillages vont être fusionnés, une animation n'aurait plus rien à animer.
     for (const group of [...container.animationGroups]) group.dispose();
 
     const solid = [];
     for (const mesh of meshes) {
       indexTriangles(mesh);
-      mesh.layerMask = PortalLayers.world;
-      mesh.isPickable = false;
-      mesh.receiveShadows = true;
       const collider = colliderOf(mesh);
       if (collider === "mesh") solid.push(mesh);
-      else if (collider === "box") createBoxColliders(scene, mesh);
       else if (collider !== "none") console.warn(`${mesh.name} : collider « ${collider} » inconnu, ignoré.`);
     }
     if (solid.length > 0) createMeshCollider(scene, solid);
@@ -137,7 +111,7 @@ export async function loadMap(scene, url) {
     };
   } catch (error) {
     container.dispose();
-    // Restent les colliders, chacun avec son PhysicsAggregate, et les lots déjà fusionnés.
+    // Le collider et les lots déjà fusionnés ont été créés hors du conteneur.
     for (const mesh of scene.meshes.filter((mesh) => !previousMeshes.has(mesh))) mesh.dispose();
     throw error;
   }
