@@ -44,6 +44,16 @@ npm test
 
 `npm test` reconstruit d’abord `dist/`, puis lance Playwright sur `vite preview`. `npm run lint` vérifie le code avec ESLint.
 
+### Index code-graph (facultatif)
+
+Si l’outil `code-graph` est installé, les hooks Git de `.githooks/` mettent à jour son index (`.code_graph.sqlite`, non versionné) en arrière-plan après chaque `git merge`, `git pull` et `git checkout`. Pour les activer, lancer une fois dans le clone
+
+```sh
+git config core.hooksPath .githooks
+```
+
+Sans `code-graph`, les hooks ne font rien. Ils n’existent que sur les branches qui contiennent `.githooks/` : un checkout vers une branche plus ancienne ne réindexe pas, le retour sur `dev` le fait.
+
 ## Production
 
 GitHub Actions vérifie le code avec ESLint, compile le site et teste le chargement de Havok, l’atterrissage, la marche et le saut du personnage, ainsi que le rendu et la traversée des portails sur les pull requests vers `main` et sur les pushs vers `main`. Après un push validé, le workflow publie le contenu de `dist/` dans une release GitHub. L’archive embarque Babylon.js et le module WebAssembly de Havok.
