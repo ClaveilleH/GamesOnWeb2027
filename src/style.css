@@ -336,3 +336,20 @@ main:has(#debug-menu:not([hidden])) #player-state { right: calc(var(--inset-righ
   letter-spacing: .02em;
   pointer-events: none;
 }
+
+/* Incrustation du caméscope (salle VHS de la carte direction artistique). */
+.vhs-osd {
+  position: fixed;
+  inset: 6vh 7vw auto 7vw;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 5;
+  font: 700 clamp(16px, 2.4vw, 30px) / 1.2 "VT323", "Courier New", monospace;
+  color: #ffffff;
+  text-shadow: 2px 0 #ff2a6d, -2px 0 #00e5ff, 0 0 6px rgb(255 255 255 / 0.6);
+  letter-spacing: 0.06em;
+  white-space: pre;
+}
+.vhs-osd .vhs-sp { margin-left: auto; margin-right: 3vw; }
+.vhs-osd .vhs-date { position: fixed; right: 7vw; bottom: 9vh; text-align: right; }

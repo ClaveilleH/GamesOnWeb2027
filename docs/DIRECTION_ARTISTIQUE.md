@@ -83,3 +83,7 @@ L'arcade fermée depuis des années, en ambiance d'horreur. Presque aucune lumi�
 ### 18 · Sous l'eau
 
 L'arcade engloutie : brouillard bleu dense, faïence verdie et moussue, sable ridé au sol, laiton oxydé, corail sur les sièges. Les caustiques sont trois calques additifs (`ALPHA_ADD`, sans écriture de profondeur) peints au canevas en boucles lumineuses lissées : deux au sol qui défilent en sens contraires, un au plafond pour les reflets de la surface. Une tentative avec la texture projetée d'un projecteur (`SpotLight.projectionTexture`) n'a produit qu'un éclairage uniforme et a été abandonnée. Des bulles montent en zigzag depuis cinq points, des algues ondulent le long des murs.
+
+### 19 · Caméscope VHS 1994
+
+Arcade de galerie marchande des années 90 (moquette à confettis, frise en zigzag turquoise et rose, plastiques brillants, caissons de tubes fluorescents), filmée comme une cassette. Post-traitement maison `artVhs` : tube cathodique bombé aux coins noirs, couches rouge et bleue décalées, chrominance floutée horizontalement (les couleurs bavent), flottement ligne par ligne, lignes de balayage, bruit, bande de tracking qui remonte l'image avec de la neige, voile chaud et vignette. Une incrustation HTML (`.vhs-osd`) affiche « ▶ PLAY », « SP » et l'heure réelle datée de 1994 ; elle est retirée en quittant la salle.
