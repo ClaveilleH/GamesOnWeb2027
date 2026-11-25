@@ -35,3 +35,17 @@ Noir et blanc (saturation −100), contraste et vignette très marqués. La lumi
 Esthétique rétro-futuriste des années 80. Les murs portent une fresque peinte : coucher de soleil rayé, montagnes, palmiers en silhouette et ciel étoilé. Au sol, une grille magenta lumineuse défile vers le fond comme une route et se reflète dans le sol miroir. Le chrome du bar et des tables reflète la salle par une sonde. Les tubes au plafond, les liserés des bornes et les bouteilles sont des néons magenta et cyan au glow fort. Le sol est exclu du glow (`noGlow`) pour que la grille reste nette.
 
 Les textures peintes au canevas sont désormais répétées (`WRAP`) : `DynamicTexture` bornait leurs UV par défaut, ce qui écrasait toute texture répétée sur le pixel de bord.
+
+### 6 à 10 · Échelle de réalisme
+
+Cinq salles identiques (mêmes couleurs, mêmes meubles, mêmes lumières) où seule la technique de rendu change, pour comparer les niveaux de réalisme à décor égal :
+
+1. **Aplats sans lumière** : couleurs émissives, aucun éclairage ni ombre.
+2. **Éclairage diffus** : Lambert, lumière d'ambiance et trois points.
+3. **Phong texturé et ombres** : textures peintes (carrelage, lambris, bois), reflets spéculaires, projecteur à ombres douces.
+4. **PBR et reflets** : métal/rugosité, sol miroir flouté, sonde de réflexion, tone mapping ACES.
+5. **PBR et post-traitement** : niveau 4 plus occlusion ambiante (SSAO2), bloom, MSAA, grain, aberration chromatique, netteté et vignette.
+
+Le post-traitement passe par un nouveau crochet `theme.post(scene, camera, room)` : il est appelé à l'entrée de la salle et renvoie la fonction qui le libère à la sortie. Les matériaux PBR utilisent l'atténuation standard (`usePhysicalLightFalloff = false`) : les intensités des lumières restent celles des niveaux 2 et 3, et le joueur (matériau standard) n'est pas surexposé.
+
+Le coût grimpe nettement : dans le navigateur logiciel des tests, le niveau 1 tourne environ 10 fois plus vite que le niveau 5.

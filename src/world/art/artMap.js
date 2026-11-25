@@ -160,9 +160,14 @@ export function createArtMap(scene) {
   document.querySelector("#interaction-prompt")?.before(banner);
   let bannerTimer = 0;
 
+  // Post-traitement de la salle active (pipeline de rendu sur la caméra), recréé à chaque entrée.
+  let disposePost = null;
+
   function activate(index) {
     if (index === current) return;
     current = index;
+    disposePost?.();
+    disposePost = null;
     for (const room of rooms) {
       const on = room.index === index;
       for (const mesh of room.meshes) mesh.setEnabled(on);
@@ -211,6 +216,9 @@ export function createArtMap(scene) {
       }
       image.colorCurves = curves;
     }
+    if (rooms[index].theme.post && scene.activeCamera) {
+      disposePost = rooms[index].theme.post(scene, scene.activeCamera, rooms[index]);
+    }
     glow.intensity = glowIntensity;
     glow.isEnabled = glowIntensity > 0;
     banner.textContent = `${index + 1} · ${rooms[index].theme.title}`;
@@ -252,6 +260,7 @@ export function createArtMap(scene) {
     },
     state: () => ({ room: current, theme: rooms[current].theme.key, count: rooms.length }),
     dispose() {
+      disposePost?.();
       clearTimeout(bannerTimer);
       banner.remove();
     },
