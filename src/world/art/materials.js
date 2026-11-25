@@ -53,6 +53,9 @@ export function paintedTexture(scene, name, width, height, paint, { pixelated = 
     pixelated ? Texture.NEAREST_SAMPLINGMODE : Texture.TRILINEAR_SAMPLINGMODE);
   paint(texture.getContext(), width, height);
   texture.update();
+  // DynamicTexture borne ses UV par défaut : une texture répétée (uScale > 1) doit boucler.
+  texture.wrapU = Texture.WRAP_ADDRESSMODE;
+  texture.wrapV = Texture.WRAP_ADDRESSMODE;
   return texture;
 }
 

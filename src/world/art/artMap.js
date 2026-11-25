@@ -142,6 +142,8 @@ export function createArtMap(scene) {
         room.meshes.push(mesh);
         return mesh;
       },
+      // Exclut un maillage du halo (glow) : sa propre émission reste nette.
+      noGlow(mesh) { glow.addExcludedMesh(mesh); },
       onUpdate(fn) { room.updates.push(fn); },
     };
     theme.decorate?.(ctx);
