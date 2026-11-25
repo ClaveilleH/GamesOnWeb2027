@@ -3,7 +3,8 @@ import { expectCleanPage } from "./support/devGame.js";
 
 // Map « direction artistique » (`?map=direction-artistique`, src/world/art/) : une salle par direction.
 
-test.setTimeout(process.env.CI ? 120_000 : 60_000);
+// Sous rendu logiciel, la première entrée dans une salle compile ses shaders : plusieurs secondes par salle.
+test.setTimeout(process.env.CI ? 400_000 : 300_000);
 
 test("chaque salle de direction artistique s'active quand le joueur y entre, sans erreur", async ({ page }) => {
   await page.goto("/?dev&map=direction-artistique");
@@ -13,7 +14,7 @@ test("chaque salle de direction artistique s'active quand le joueur y entre, san
   expect(count).toBeGreaterThan(0);
   for (let room = 0; room < count; room++) {
     await page.evaluate((x) => window.gowDev.teleportPlayer({ x, y: 0.05, z: -3.5 }), room * 30);
-    await expect.poll(() => page.evaluate(() => window.gowDev.map().room)).toBe(room);
+    await expect.poll(() => page.evaluate(() => window.gowDev.map().room), { timeout: 30_000 }).toBe(room);
   }
   await expectCleanPage(page);
 });
