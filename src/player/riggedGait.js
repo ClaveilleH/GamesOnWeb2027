@@ -21,16 +21,20 @@ const ROLE_PREFIX = {
   forearmL: "forearm_stretch.l", forearmR: "forearm_stretch.r",
 };
 
-// Axes LOCAUX de rotation, propres au rig : `swing` = balancement avant/arrière ; `spread` = écartement
-// des bras. Un axe opposé (par exemple −X) inverse le sens d'un mouvement.
+// Axes de rotation exprimés dans le repère du PERSONNAGE (comme le squelette d'os : il regarde vers +Z,
+// X vers le côté, Y vers le haut). Chaque os les reçoit traduits dans son repère local au repos
+// (voir `localAxis`) : les axes locaux d'un rig varient d'un os à l'autre et ne s'en déduisent pas.
 const X = Object.freeze(new Vector3(1, 0, 0));
 const Y = Object.freeze(new Vector3(0, 1, 0));
 const Z = Object.freeze(new Vector3(0, 0, 1));
-const AXES = Object.freeze({ swing: X, spread: Z, hipsYaw: Y, chest: X, head: Y });
+// Rôle → [axe du premier angle, axe du second angle (écartement des bras)].
+const ROLE_AXES = {
+  hips: [Y], chest: [X], head: [Y],
+  thighL: [X], thighR: [X], shinL: [X], shinR: [X], footL: [X], footR: [X],
+  forearmL: [X], forearmR: [X],
+  armL: [X, Z], armR: [X, Z],
+};
 
-// Articulations animées (rôles) et clé d'angle associée.
-const SWING_ROLES = ["thighL", "thighR", "shinL", "shinR", "footL", "footR", "forearmL", "forearmR"];
-const ARM_ROLES = [["armL", "spreadL"], ["armR", "spreadR"]];
 const REQUIRED = ["thighL", "thighR", "shinL", "shinR", "armL", "armR"];
 const ARM_DOWN_FRACTION = 0.9;
 
@@ -39,9 +43,27 @@ function restOf(node) {
   return node.rotationQuaternion.clone();
 }
 
+// Recalcule la matrice monde d'un nœud et de tous ses parents, du haut vers le bas.
+function refreshWorld(node) {
+  if (node.parent) refreshWorld(node.parent);
+  node.computeWorldMatrix(true);
+}
+
+// Axe `axis` du repère du personnage (le nœud le plus haut de la hiérarchie) traduit dans le repère
+// local de `node`. Si la matrice monde de l'os est un miroir (déterminant négatif, fréquent avec la
+// conversion glTF main droite → main gauche), une rotation locale tourne en sens inverse dans le
+// monde : on retourne l'axe pour garder le sens du squelette.
+function localAxis(node, top, axis) {
+  const world = Vector3.TransformNormal(axis, top.getWorldMatrix());
+  const matrix = node.getWorldMatrix();
+  const local = Vector3.TransformNormal(world, matrix.clone().invert()).normalize();
+  return matrix.determinant() < 0 ? local.negateInPlace() : local;
+}
+
 // Repère les os par leur nom et calcule leur pose de repos. Le modèle étant bind en T-pose,
 // on abaisse les bras le long du corps : calcul en repère LOCAL (direction du bras = position
 // de l'enfant, « bas » du monde ramené par l'inverse de la matrice monde), sans dépendre des axes.
+// Calcule ensuite, pour chaque os, ses axes de rotation locaux dans cette pose de repos.
 function setupRig(container) {
   const nodes = {};
   for (const [role, prefix] of Object.entries(ROLE_PREFIX)) {
@@ -56,7 +78,7 @@ function setupRig(container) {
   const worldDown = new Vector3(0, -1, 0);
   for (const [arm, child] of [[nodes.armL, nodes.forearmL], [nodes.armR, nodes.forearmR]]) {
     if (!child) continue;
-    arm.computeWorldMatrix(true);
+    refreshWorld(arm);
     const inverse = arm.getWorldMatrix().clone().invert();
     const localDir = child.position.clone().normalize();
     const localDown = Vector3.TransformNormal(worldDown, inverse).normalize();
@@ -65,7 +87,18 @@ function setupRig(container) {
     Quaternion.FromUnitVectorsToRef(localDir, target, delta);
     rest.set(arm, rest.get(arm).multiply(delta));
   }
-  return { nodes, rest };
+
+  // Axes mesurés dans la pose de repos finale (bras baissés).
+  for (const [node, q] of rest) node.rotationQuaternion.copyFrom(q);
+  let top = nodes.thighL;
+  while (top.parent) top = top.parent;
+  refreshWorld(top);
+  const axes = {};
+  for (const [role, node] of Object.entries(nodes)) {
+    refreshWorld(node);
+    axes[role] = ROLE_AXES[role].map((axis) => localAxis(node, top, axis));
+  }
+  return { nodes, rest, axes };
 }
 
 const tmp = new Quaternion();
@@ -82,15 +115,13 @@ function boneQuat(restQ, axis, angle, axis2, angle2) {
 }
 
 // Applique les angles `v` à tous les os. `write(role, quaternion)` reçoit chaque pose, à copier aussitôt.
-function composePose(nodes, rest, v, write) {
-  if (nodes.hips) write("hips", boneQuat(rest.get(nodes.hips), AXES.hipsYaw, v.hipsYaw));
-  if (nodes.chest) write("chest", boneQuat(rest.get(nodes.chest), AXES.chest, v.chestX));
-  if (nodes.head) write("head", boneQuat(rest.get(nodes.head), AXES.head, v.headY));
-  for (const role of SWING_ROLES) {
-    if (nodes[role]) write(role, boneQuat(rest.get(nodes[role]), AXES.swing, v[role]));
-  }
-  for (const [role, spread] of ARM_ROLES) {
-    if (nodes[role]) write(role, boneQuat(rest.get(nodes[role]), AXES.swing, v[role], AXES.spread, v[spread]));
+const ANGLE_KEYS = { hips: "hipsYaw", chest: "chestX", head: "headY", armL: ["armL", "spreadL"], armR: ["armR", "spreadR"] };
+function composePose({ nodes, rest, axes }, v, write) {
+  for (const [role, node] of Object.entries(nodes)) {
+    const key = ANGLE_KEYS[role] ?? role;
+    const [axis, axis2] = axes[role];
+    if (Array.isArray(key)) write(role, boneQuat(rest.get(node), axis, v[key[0]], axis2, v[key[1]]));
+    else write(role, boneQuat(rest.get(node), axis, v[key]));
   }
 }
 
@@ -98,7 +129,7 @@ function composePose(nodes, rest, v, write) {
 export function createRiggedGait(container) {
   const rig = setupRig(container);
   if (!rig) return null;
-  const { nodes, rest } = rig;
+  const { nodes } = rig;
 
   const phase = createGaitPhase();
   const target = gaitTargets("idle", 0, 0, 0);
@@ -111,7 +142,7 @@ export function createRiggedGait(container) {
     gaitTargets(gait, stride, breath, strength, target);
     const blend = gaitBlend(dt);
     for (const key of keys) eased[key] += (target[key] - eased[key]) * blend;
-    composePose(nodes, rest, eased, writeBone);
+    composePose(rig, eased, writeBone);
   }
 
   return {
@@ -134,7 +165,7 @@ const CLIP_SPECS = [
 export function bakeGaitClips(container) {
   const rig = setupRig(container);
   if (!rig) return [];
-  const { nodes, rest } = rig;
+  const { nodes } = rig;
   const scene = nodes.thighL.getScene();
   const roles = Object.keys(nodes);
 
@@ -146,7 +177,7 @@ export function bakeGaitClips(container) {
     for (let i = 0; i <= spec.frames; i++) {
       const u = i / spec.frames;
       const v = gaitTargets(spec.gait, u * spec.strideTo, u * spec.breathTo, spec.strength);
-      composePose(nodes, rest, v, (role, q) => keys[role].push({ frame: i, value: q.clone() }));
+      composePose(rig, v, (role, q) => keys[role].push({ frame: i, value: q.clone() }));
     }
     for (const role of roles) {
       if (!keys[role].length) continue;

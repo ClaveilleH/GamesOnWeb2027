@@ -80,6 +80,8 @@ export function createDebugMenu(canvas, game) {
 
   const characters = (game.characters ?? []).map(({ key, label }) => ({ value: key, label }));
   const characterChoices = choices(characters, (key) => key === game.currentCharacter, (key) => game.selectCharacter(key));
+  const maps = (game.maps ?? []).map(({ key, label }) => ({ value: key, label }));
+  const mapChoices = choices(maps, (key) => key === game.currentMap, (key) => game.selectMap(key));
   const modeChoices = choices(movementModes.map((mode) => ({ value: mode, label: modeLabels[mode] })),
     (mode) => mode === player.state.mode, (mode) => player.setMode(mode));
   const viewChoices = choices(cameraViews, (view) => view === game.cameraView, (view) => game.setCameraView(view));
@@ -138,6 +140,11 @@ export function createDebugMenu(canvas, game) {
     ...(characters.length
       ? [section("Personnage", {},
           characterChoices,
+          element("p", { className: "debug-note" }, ["Recharge la page pour appliquer."]))]
+      : []),
+    ...(maps.length
+      ? [section("Carte", {},
+          mapChoices,
           element("p", { className: "debug-note" }, ["Recharge la page pour appliquer."]))]
       : []),
     section("Position", { open: true }, element("div", { className: "debug-position-row" }, [coordinates, copy])),

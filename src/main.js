@@ -24,6 +24,7 @@ import { createSlowFrameMonitor, graphicsHelp, hasMajorPerformanceCaveat, isSoft
 import { createLighting, skyPalette } from "./world/lighting.js";
 import { loadMap } from "./world/map.js";
 import { createPortalDemos } from "./world/portalDemos.js";
+import { createPuzzleMap } from "./world/puzzleMap.js";
 import { loadDecorProp } from "./world/props.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
@@ -42,6 +43,14 @@ function showGraphicsWarning(title, open = false) {
 const devMode = import.meta.env.DEV || new URLSearchParams(location.search).has("dev");
 
 const CHARACTER_PREFERENCE = "character";
+// Maps construites en code (et non chargées depuis un glTF), demandées comme les autres par `?map=<clé>`.
+const PROCEDURAL_MAPS = Object.freeze({ "casse-tete": createPuzzleMap });
+// Choix du menu debug : terrain d'entraînement (sans `?map`), maps glTF de `MAPS`, maps construites en code.
+const MAP_CHOICES = Object.freeze([
+  { key: "", label: "Entraînement" },
+  ...Object.keys(MAPS).map((key) => ({ key, label: key[0].toUpperCase() + key.slice(1) })),
+  { key: "casse-tete", label: "Casse-tête" },
+]);
 
 // Personnage à charger : `?model=<url>` (outils/tests) > `?character=<clé>` > choix mémorisé
 // > Shrek par défaut. Les tests automatisés (`navigator.webdriver`) gardent le squelette,
@@ -69,7 +78,7 @@ async function isServed(url) {
 // Une map introuvable ou illisible n'empêche pas de jouer : on revient au terrain d'entraînement.
 async function loadRequestedMap(scene) {
   const value = new URLSearchParams(location.search).get("map");
-  if (!value) return null;
+  if (!value || Object.hasOwn(PROCEDURAL_MAPS, value)) return null;
   const url = Object.hasOwn(MAPS, value) ? MAPS[value] : value;
   try {
     if (!(await isServed(url))) {
@@ -131,9 +140,10 @@ async function start() {
     const plugin = physics.getPhysicsPlugin();
     const { shadows } = createLighting(scene);
 
+    const mapKey = new URLSearchParams(location.search).get("map") ?? "";
+    const buildMap = PROCEDURAL_MAPS[mapKey] ?? null;
     const map = await loadRequestedMap(scene);
-    const casters = map ? map.casters : createTestTerrain(scene);
-    const spawn = map?.spawn ?? { position: spawnPoint, yaw: SPAWN_YAW };
+    const casters = map ? map.casters : buildMap ? [] : createTestTerrain(scene);
     const character = resolveCharacter();
     const visual = await createPlayerVisual(scene, character);
     scene.onDisposeObservable.addOnce(visual.dispose);
@@ -146,9 +156,14 @@ async function start() {
     }
     const portals = createPortalSystem(scene, { camera: camera.camera, isLightBlocked });
     scene.onDisposeObservable.addOnce(portals.dispose);
-    // Démos de portails et décors sont placés pour le terrain d'entraînement.
-    const demos = map ? { crates: [], casters: [], interiors: [] } : createPortalDemos(scene, portals);
-    const props = map ? [] : await loadProps(scene);
+    // Démos de portails et décors sont placés pour le terrain d'entraînement. Une map construite en code
+    // fournit ses propres caisses, interactions, point de départ et logique (`update`).
+    const demos = map ? { crates: [], casters: [], interiors: [] }
+      : buildMap ? buildMap(scene, portals) : createPortalDemos(scene, portals);
+    if (demos.dispose) scene.onDisposeObservable.addOnce(demos.dispose);
+    const props = map || buildMap ? [] : await loadProps(scene);
+    // La carte casse-tête déplace son point de reprise : le vecteur est relu à chaque réapparition.
+    const spawn = map?.spawn ?? { position: demos.spawn ?? spawnPoint, yaw: SPAWN_YAW };
     for (const prop of props) scene.onDisposeObservable.addOnce(prop.dispose);
     // Le ciel est peint par le quad de fond du renderer, après le décor, là où la profondeur vaut encore 1.
     portals.createSky(skyPalette);
@@ -214,9 +229,19 @@ async function start() {
     const debugGame = {
       player, portals, timeScale: 1,
       // Destinations du menu debug : celles du terrain d'entraînement n'existent pas dans une map.
-      destinations: map ? [{ label: "Départ", feet: spawn.feet, yaw: spawn.yaw }] : null,
+      destinations: map ? [{ label: "Départ", feet: spawn.feet, yaw: spawn.yaw }] : demos.destinations ?? null,
       characters: CHARACTERS.map(({ key, label }) => ({ key, label })),
       currentCharacter: character.key,
+      maps: MAP_CHOICES,
+      currentMap: mapKey,
+      // Une map se choisit par lien (docs/MAPS.md) : on recharge la page avec le nouveau `?map`.
+      selectMap(key) {
+        if (key === mapKey) return;
+        const url = new URL(location.href);
+        if (key) url.searchParams.set("map", key);
+        else url.searchParams.delete("map");
+        location.assign(url);
+      },
       // Le personnage est choisi au chargement : on mémorise et on recharge la page.
       selectCharacter(key) {
         if (key === character.key) return;
@@ -263,7 +288,8 @@ async function start() {
 
     // Décors interactifs (config `PROPS[].interact`) : à portée, une invite s'affiche en bas
     // de l'écran ; l'appui sur « Interagir » déclenche le décor via `onPropInteraction`.
-    const interactables = props.filter((prop) => prop.spec.interact);
+    // La carte peut ajouter les siens : même forme ({ spec: { name, interact }, root }) plus `onInteract`.
+    const interactables = [...props.filter((prop) => prop.spec.interact), ...(demos.interactables ?? [])];
     let activeInteractable = null;
     function nearestInteractable(position) {
       let best = null;
@@ -278,9 +304,13 @@ async function start() {
       }
       return best;
     }
-    // Point d'extension : ce que déclenche un décor à l'appui sur « Interagir » à portée.
-    // Rien n'est encore branché — on signale seulement le déclenchement (console + évènement).
+    // Point d'extension : ce que déclenche un décor à l'appui sur « Interagir » à portée. Les éléments
+    // de carte fournissent `onInteract` ; les décors de PROPS signalent seulement le déclenchement.
     function onPropInteraction(prop) {
+      if (prop.onInteract) {
+        prop.onInteract();
+        return;
+      }
       console.info(`Interaction déclenchée : ${prop.spec.name}`);
       window.dispatchEvent(new CustomEvent("gow:interact", { detail: { name: prop.spec.name } }));
     }
@@ -308,7 +338,7 @@ async function start() {
     camera.reset(spawn.yaw);
     present(0, 0);
     dev?.installDevHook({
-      scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, firstPersonFit,
+      scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, firstPersonFit, world: demos,
       teleport: debugGame.teleport,
       presentPose: () => present(0, 1),
       syncFrameTime(now, restart) {
@@ -350,6 +380,7 @@ async function start() {
         camera.look(controls.lookX, controls.lookY);
         for (let i = 0; i < steps; i++) {
           if (player.update(FIXED_STEP, controls, camera.yaw).respawned) resetPlayerView(spawn.yaw);
+          demos.update?.(FIXED_STEP, player);
           for (const crate of crates) crate.capturePose();
           plugin.executeStep(FIXED_STEP, physics.getBodies());
           for (const crate of crates) crate.afterStep();

@@ -20,6 +20,16 @@ Le système est un module générique (`src/portals/`). Son architecture, son AP
 
 Le terrain d’entraînement est la map par défaut. D’autres maps glTF/GLB se chargent par lien : http://localhost:5173/?map=arcade ouvre la salle d’arcade et sa façade. Conventions et ajout d’une map : [docs/MAPS.md](docs/MAPS.md).
 
+### Casse-tête (`?map=casse-tete`)
+
+http://localhost:5173/?map=casse-tete (ou **Ctrl + D** › Carte) charge, sans fichier glTF, un niveau de trois salles de test, à résoudre avec les mécaniques du jeu : portails, portails d’échelle, caisses à pousser et saut.
+
+- **Salle 1 · Poids** : la caisse est sur un balcon qu’on n’atteint que par un portail. La faire tomber et la pousser sur la plaque ouvre la porte.
+- **Salle 2 · Échelle** : la corniche de 1,9 m est trop haute. Poussée dans le petit portail, la petite caisse ressort du grand deux fois plus grande et sert de marchepied.
+- **Salle 3 · Aiguillage** : le portail violet mène d’abord à une cellule close où attend la caisse. Une fois la caisse posée sur la plaque, le même portail mène au sommet de la tour, vers l’arrivée.
+
+Dans chaque salle, un bouton rouge (**E**) rappelle la caisse. **R** fait réapparaître le joueur au début de la dernière salle atteinte. Le code est dans `src/world/puzzleMap.js` et les tests dans `tests/puzzleMap.spec.js`.
+
 ## Personnage
 
 Le squelette procédural peut être remplacé par un modèle glTF/GLB animé, déposé dans `public/models/` : voir [docs/PERSONNAGE.md](docs/PERSONNAGE.md).
