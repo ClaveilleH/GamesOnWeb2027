@@ -79,6 +79,8 @@ export function installDevHook({
     setControls: input.setControls,
     // État de la carte casse-tête (salle atteinte, plaques, portes, aiguillage) ; null sur les démos.
     puzzle() { return world?.state?.() ?? null; },
+    // État de la map construite en code (même source que `puzzle()`, nom générique).
+    map() { return world?.state?.() ?? null; },
     // Animations du modèle chargé (null avec le squelette procédural) et leurs poids actuels.
     character() {
       return { animations: visual.animations ?? null, weights: visual.weights?.() ?? null };

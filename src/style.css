@@ -320,7 +320,7 @@ main:has(#debug-menu:not([hidden])) #player-state { right: calc(var(--inset-righ
 }
 
 /* Bandeau de la carte casse-tête : titre de salle, puis temps final. */
-#puzzle-banner {
+#puzzle-banner, .map-banner {
   position: absolute;
   top: max(1.4rem, env(safe-area-inset-top));
   left: 50%;

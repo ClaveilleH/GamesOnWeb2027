@@ -25,6 +25,7 @@ import { createLighting, skyPalette } from "./world/lighting.js";
 import { loadMap } from "./world/map.js";
 import { createPortalDemos } from "./world/portalDemos.js";
 import { createPuzzleMap } from "./world/puzzleMap.js";
+import { createArtMap } from "./world/art/artMap.js";
 import { loadDecorProp } from "./world/props.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
@@ -44,12 +45,13 @@ const devMode = import.meta.env.DEV || new URLSearchParams(location.search).has(
 
 const CHARACTER_PREFERENCE = "character";
 // Maps construites en code (et non chargées depuis un glTF), demandées comme les autres par `?map=<clé>`.
-const PROCEDURAL_MAPS = Object.freeze({ "casse-tete": createPuzzleMap });
+const PROCEDURAL_MAPS = Object.freeze({ "casse-tete": createPuzzleMap, "direction-artistique": createArtMap });
 // Choix du menu debug : terrain d'entraînement (sans `?map`), maps glTF de `MAPS`, maps construites en code.
 const MAP_CHOICES = Object.freeze([
   { key: "", label: "Entraînement" },
   ...Object.keys(MAPS).map((key) => ({ key, label: key[0].toUpperCase() + key.slice(1) })),
   { key: "casse-tete", label: "Casse-tête" },
+  { key: "direction-artistique", label: "Direction artistique" },
 ]);
 
 // Personnage à charger : `?model=<url>` (outils/tests) > `?character=<clé>` > choix mémorisé
@@ -181,6 +183,8 @@ async function start() {
     const crates = demos.crates;
     for (const crate of crates) scene.onDisposeObservable.addOnce(crate.dispose);
     const bones = visual.root.getChildMeshes();
+    // Une map à miroirs y fait apparaître le joueur.
+    demos.attachPlayer?.(bones);
     // Mesuré au repos, avant la première image animée.
     const firstPersonFit = measureFirstPerson(visual.root, bones, character.firstPerson);
     const propCasters = props.flatMap((prop) => prop.casters);
@@ -308,7 +312,7 @@ async function start() {
     // de carte fournissent `onInteract` ; les décors de PROPS signalent seulement le déclenchement.
     function onPropInteraction(prop) {
       if (prop.onInteract) {
-        prop.onInteract();
+        prop.onInteract({ teleport: debugGame.teleport });
         return;
       }
       console.info(`Interaction déclenchée : ${prop.spec.name}`);

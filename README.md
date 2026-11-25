@@ -30,6 +30,10 @@ http://localhost:5173/?map=casse-tete (ou **Ctrl + D** › Carte) charge, sans f
 
 Dans chaque salle, un bouton rouge (**E**) rappelle la caisse. **R** fait réapparaître le joueur au début de la dernière salle atteinte. Le code est dans `src/world/puzzleMap.js` et les tests dans `tests/puzzleMap.spec.js`.
 
+### Direction artistique (`?map=direction-artistique`)
+
+Une même salle d'arcade (bar, table, bornes) déclinée dans plusieurs directions artistiques : lumières, matériaux, reflets, néons. Voir [docs/DIRECTION_ARTISTIQUE.md](docs/DIRECTION_ARTISTIQUE.md).
+
 ## Personnage
 
 Le squelette procédural peut être remplacé par un modèle glTF/GLB animé, déposé dans `public/models/` : voir [docs/PERSONNAGE.md](docs/PERSONNAGE.md).
