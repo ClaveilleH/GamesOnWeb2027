@@ -95,10 +95,10 @@ export function createArtMap(scene) {
         return ctx.mirror(material, room.anchors.floor, new Plane(0, -1, 0, 0.002), options);
       },
       // Ombres portées d'une lumière ponctuelle ou d'un projecteur : tout le mobilier, plus le joueur.
-      shadows(light, { size = 1024, darkness = 0.15, bias = 0.0005 } = {}) {
+      shadows(light, { size = 1024, darkness = 0.15, bias = 0.0005, soft = true } = {}) {
         const generator = new ShadowGenerator(size, light);
         generator.usePercentageCloserFiltering = true;
-        generator.filteringQuality = ShadowGenerator.QUALITY_MEDIUM;
+        generator.filteringQuality = soft ? ShadowGenerator.QUALITY_MEDIUM : ShadowGenerator.QUALITY_LOW;
         generator.bias = bias;
         generator.setDarkness(darkness);
         generator.transparencyShadow = true;
