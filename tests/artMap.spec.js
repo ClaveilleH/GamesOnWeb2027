@@ -4,7 +4,7 @@ import { expectCleanPage } from "./support/devGame.js";
 // Map « direction artistique » (`?map=direction-artistique`, src/world/art/) : une salle par direction.
 
 // Sous rendu logiciel, la première entrée dans une salle compile ses shaders : plusieurs secondes par salle.
-test.setTimeout(process.env.CI ? 400_000 : 300_000);
+test.setTimeout(process.env.CI ? 1_200_000 : 900_000);
 
 test("chaque salle de direction artistique s'active quand le joueur y entre, sans erreur", async ({ page }) => {
   await page.goto("/?dev&map=direction-artistique");
