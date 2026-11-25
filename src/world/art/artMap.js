@@ -1,3 +1,4 @@
+import { Scene } from "@babylonjs/core/scene";
 import { GlowLayer } from "@babylonjs/core/Layers/glowLayer";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
@@ -160,6 +161,9 @@ export function createArtMap(scene) {
   document.querySelector("#interaction-prompt")?.before(banner);
   let bannerTimer = 0;
 
+  // Brouillard de la scène hors de cette carte, restauré à la sortie.
+  const sceneFog = { mode: scene.fogMode, color: scene.fogColor.clone(), density: scene.fogDensity };
+
   // Post-traitement de la salle active (pipeline de rendu sur la caméra), recréé à chaque entrée.
   let disposePost = null;
 
@@ -219,6 +223,13 @@ export function createArtMap(scene) {
     if (rooms[index].theme.post && scene.activeCamera) {
       disposePost = rooms[index].theme.post(scene, scene.activeCamera, rooms[index]);
     }
+    // Brouillard exponentiel facultatif : `fog: { color, density }`.
+    const fog = rooms[index].theme.fog;
+    scene.fogMode = fog ? Scene.FOGMODE_EXP2 : Scene.FOGMODE_NONE;
+    if (fog) {
+      scene.fogColor = color(fog.color);
+      scene.fogDensity = fog.density;
+    }
     glow.intensity = glowIntensity;
     glow.isEnabled = glowIntensity > 0;
     banner.textContent = `${index + 1} · ${rooms[index].theme.title}`;
@@ -261,6 +272,9 @@ export function createArtMap(scene) {
     state: () => ({ room: current, theme: rooms[current].theme.key, count: rooms.length }),
     dispose() {
       disposePost?.();
+      scene.fogMode = sceneFog.mode;
+      scene.fogColor = sceneFog.color;
+      scene.fogDensity = sceneFog.density;
       clearTimeout(bannerTimer);
       banner.remove();
     },
