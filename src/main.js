@@ -23,6 +23,7 @@ import { createPlatform } from "./platform/browser.js";
 import { createSlowFrameMonitor, graphicsHelp, hasMajorPerformanceCaveat, isSoftwareRenderer } from "./platform/graphics.js";
 import { createLighting, skyPalette } from "./world/lighting.js";
 import { createPortalDemos } from "./world/portalDemos.js";
+import { createPuzzleMap } from "./world/puzzleMap.js";
 import { loadDecorProp } from "./world/props.js";
 import { createTestTerrain, spawnPoint } from "./world/testTerrain.js";
 
@@ -41,6 +42,18 @@ function showGraphicsWarning(title, open = false) {
 const devMode = import.meta.env.DEV || new URLSearchParams(location.search).has("dev");
 
 const CHARACTER_PREFERENCE = "character";
+const MAP_PREFERENCE = "map";
+const MAPS = Object.freeze([
+  { key: "demos", label: "Démos des portails" },
+  { key: "casse-tete", label: "Casse-tête" },
+]);
+
+// Carte à charger : `?map=<clé>` > choix mémorisé > démos. Les tests gardent les démos sauf override.
+function resolveMap() {
+  const key = new URLSearchParams(location.search).get("map")
+    || (navigator.webdriver ? null : readPreference(MAP_PREFERENCE));
+  return MAPS.some((map) => map.key === key) ? key : "demos";
+}
 
 // Personnage à charger : `?model=<url>` (outils/tests) > `?character=<clé>` > choix mémorisé
 // > Shrek par défaut. Les tests automatisés (`navigator.webdriver`) gardent le squelette,
@@ -109,7 +122,9 @@ async function start() {
     const plugin = physics.getPhysicsPlugin();
     const { shadows } = createLighting(scene);
 
-    const casters = createTestTerrain(scene);
+    const mapKey = resolveMap();
+    const puzzle = mapKey === "casse-tete";
+    const casters = puzzle ? [] : createTestTerrain(scene);
     const character = resolveCharacter();
     const visual = await createPlayerVisual(scene, character);
     scene.onDisposeObservable.addOnce(visual.dispose);
@@ -122,8 +137,9 @@ async function start() {
     }
     const portals = createPortalSystem(scene, { camera: camera.camera, isLightBlocked });
     scene.onDisposeObservable.addOnce(portals.dispose);
-    const demos = createPortalDemos(scene, portals);
-    const props = await loadProps(scene);
+    const demos = puzzle ? createPuzzleMap(scene, portals) : createPortalDemos(scene, portals);
+    if (demos.dispose) scene.onDisposeObservable.addOnce(demos.dispose);
+    const props = puzzle ? [] : await loadProps(scene);
     for (const prop of props) scene.onDisposeObservable.addOnce(prop.dispose);
     // Le ciel est peint par le quad de fond du renderer, après le décor, là où la profondeur vaut encore 1.
     portals.createSky(skyPalette);
@@ -135,7 +151,8 @@ async function start() {
       }
       return true;
     }
-    const player = createPlayerController(scene, spawnPoint, gravity, shouldRespawn);
+    // La carte casse-tête déplace son point de reprise (le vecteur est relu à chaque réapparition).
+    const player = createPlayerController(scene, demos.spawn ?? spawnPoint, gravity, shouldRespawn);
     scene.onDisposeObservable.addOnce(player.dispose);
     const crates = demos.crates;
     for (const crate of crates) scene.onDisposeObservable.addOnce(crate.dispose);
@@ -189,6 +206,16 @@ async function start() {
       player, portals, timeScale: 1,
       characters: CHARACTERS.map(({ key, label }) => ({ key, label })),
       currentCharacter: character.key,
+      maps: MAPS,
+      currentMap: mapKey,
+      selectMap(key) {
+        if (key === mapKey) return;
+        writePreference(MAP_PREFERENCE, key);
+        const url = new URL(location.href);
+        url.searchParams.delete("map");
+        location.assign(url);
+      },
+      destinations: demos.destinations,
       // Le personnage est choisi au chargement : on mémorise et on recharge la page.
       selectCharacter(key) {
         if (key === character.key) return;
@@ -235,7 +262,8 @@ async function start() {
 
     // Décors interactifs (config `PROPS[].interact`) : à portée, une invite s'affiche en bas
     // de l'écran ; l'appui sur « Interagir » déclenche le décor via `onPropInteraction`.
-    const interactables = props.filter((prop) => prop.spec.interact);
+    // La carte peut ajouter les siens : même forme ({ spec: { name, interact }, root }) plus `onInteract`.
+    const interactables = [...props.filter((prop) => prop.spec.interact), ...(demos.interactables ?? [])];
     let activeInteractable = null;
     function nearestInteractable(position) {
       let best = null;
@@ -250,9 +278,13 @@ async function start() {
       }
       return best;
     }
-    // Point d'extension : ce que déclenche un décor à l'appui sur « Interagir » à portée.
-    // Rien n'est encore branché — on signale seulement le déclenchement (console + évènement).
+    // Point d'extension : ce que déclenche un décor à l'appui sur « Interagir » à portée. Les éléments
+    // de carte fournissent `onInteract` ; les décors de PROPS signalent seulement le déclenchement.
     function onPropInteraction(prop) {
+      if (prop.onInteract) {
+        prop.onInteract();
+        return;
+      }
       console.info(`Interaction déclenchée : ${prop.spec.name}`);
       window.dispatchEvent(new CustomEvent("gow:interact", { detail: { name: prop.spec.name } }));
     }
@@ -280,7 +312,7 @@ async function start() {
     camera.reset(SPAWN_YAW);
     present(0, 0);
     dev?.installDevHook({
-      scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, firstPersonFit,
+      scene, player, playerTraveler, visual, camera, portals, input, crates, getEffects, firstPersonFit, world: demos,
       teleport: debugGame.teleport,
       presentPose: () => present(0, 1),
       syncFrameTime(now, restart) {
@@ -322,6 +354,7 @@ async function start() {
         camera.look(controls.lookX, controls.lookY);
         for (let i = 0; i < steps; i++) {
           if (player.update(FIXED_STEP, controls, camera.yaw).respawned) resetPlayerView(SPAWN_YAW);
+          demos.update?.(FIXED_STEP, player);
           for (const crate of crates) crate.capturePose();
           plugin.executeStep(FIXED_STEP, physics.getBodies());
           for (const crate of crates) crate.afterStep();

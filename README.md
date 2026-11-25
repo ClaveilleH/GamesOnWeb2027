@@ -16,6 +16,16 @@ Le terrain de 100 m × 100 m entoure la zone d’entraînement de cinq démonstr
 
 Le système est un module générique (`src/portals/`). Son architecture, son API et ses limites sont décrites dans [docs/PORTALS.md](docs/PORTALS.md). Les limites de Babylon.js rencontrées, avec les correctifs proposés, sont dans [docs/BABYLON_PATCHES.md](docs/BABYLON_PATCHES.md). Ajouter `?dev` à l’URL expose `window.gowDev`, un hook de pilotage utilisé par les tests Playwright, qui permet aussi de mesurer les performances.
 
+## Carte casse-tête
+
+`?map=casse-tete` (ou **Ctrl + D** › Carte) charge un niveau de trois salles de test, à résoudre avec les mécaniques du jeu : portails, portails d’échelle, caisses à pousser et saut.
+
+- **Salle 1 · Poids** : la caisse est sur un balcon qu’on n’atteint que par un portail. La faire tomber et la pousser sur la plaque ouvre la porte.
+- **Salle 2 · Échelle** : la corniche de 1,9 m est trop haute. Poussée dans le petit portail, la petite caisse ressort du grand deux fois plus grande et sert de marchepied.
+- **Salle 3 · Aiguillage** : le portail violet mène d’abord à une cellule close où attend la caisse. Une fois la caisse posée sur la plaque, le même portail mène au sommet de la tour, vers l’arrivée.
+
+Dans chaque salle, un bouton rouge (**E**) rappelle la caisse. **R** fait réapparaître le joueur au début de la dernière salle atteinte. Le code est dans `src/world/puzzleMap.js` et les tests dans `tests/puzzleMap.spec.js`.
+
 ## Personnage
 
 Le squelette procédural peut être remplacé par un modèle glTF/GLB animé, déposé dans `public/models/` : voir [docs/PERSONNAGE.md](docs/PERSONNAGE.md).

@@ -318,3 +318,21 @@ main:has(#debug-menu:not([hidden])) #player-state { right: calc(var(--inset-righ
   border-radius: .4rem;
   background: #10282bcc;
 }
+
+/* Bandeau de la carte casse-tête : titre de salle, puis temps final. */
+#puzzle-banner {
+  position: absolute;
+  top: max(1.4rem, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  padding: .6rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  background: #10282bee;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  pointer-events: none;
+}

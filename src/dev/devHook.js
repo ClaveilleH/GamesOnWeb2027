@@ -27,7 +27,7 @@ export function observeDevEffects(engine) {
 
 export function installDevHook({
   scene, player, playerTraveler, visual, camera, portals, input, crates, teleport, presentPose, getEffects, syncFrameTime,
-  firstPersonFit,
+  firstPersonFit, world,
 }) {
   const engine = scene.getEngine();
   const canvas = engine.getRenderingCanvas();
@@ -77,6 +77,8 @@ export function installDevHook({
       presentPose();
     },
     setControls: input.setControls,
+    // État de la carte casse-tête (salle atteinte, plaques, portes, aiguillage) ; null sur les démos.
+    puzzle() { return world?.state?.() ?? null; },
     // Animations du modèle chargé (null avec le squelette procédural) et leurs poids actuels.
     character() {
       return { animations: visual.animations ?? null, weights: visual.weights?.() ?? null };
