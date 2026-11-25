@@ -241,7 +241,9 @@ export function createBodyTraveler(portals, { body, visual, size, scale = 1, nam
 
   return {
     traveler, body, visual, capturePose, afterStep, syncProxy, present,
-    place({ x, y, z, yaw = 0 }) {
+    // `scale` facultatif : rend aussi au corps une échelle donnée (remise à zéro d’un casse-tête).
+    place({ x, y, z, yaw = 0, scale }) {
+      if (scale > 0) setScale(scale);
       position.set(x, y, z);
       Quaternion.FromEulerAnglesToRef(0, yaw, 0, rotation);
       writePose(node, position, rotation);
