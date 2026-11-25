@@ -1,5 +1,6 @@
 import { GlowLayer } from "@babylonjs/core/Layers/glowLayer";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
+import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
 import { MirrorTexture } from "@babylonjs/core/Materials/Textures/mirrorTexture";
 import { RenderTargetTexture } from "@babylonjs/core/Materials/Textures/renderTargetTexture";
@@ -42,7 +43,7 @@ export function createArtMap(scene) {
     const name = `salle ${index + 1}`;
     const look = theme.look(scene, name);
     const room = buildArcadeRoom(scene, name, origin, look);
-    Object.assign(room, { theme, index, origin, lights: [], mirrors: [], probes: [], updates: [] });
+    Object.assign(room, { theme, index, origin, lights: [], mirrors: [], probes: [], shadows: [], updates: [] });
     const local = (x, y, z) => new Vector3(origin.x + x, y, origin.z + z);
 
     // Outils passés à la direction artistique pour éclairer et décorer sa salle.
@@ -77,16 +78,43 @@ export function createArtMap(scene) {
         room.meshes.push(mesh);
         return mesh;
       },
-      // Sol miroir : reflet plan en temps réel de la salle et du joueur, flouté de `blur` pixels.
-      mirrorFloor(material, { level = 0.5, blur = 0, size = 1024 } = {}) {
-        const mirror = new MirrorTexture(`${name} · miroir`, size, scene, true);
-        mirror.mirrorPlane = new Plane(0, -1, 0, 0.002);
+      // Miroir plan en temps réel (salle et joueur), flouté de `blur` pixels. `plane` est le plan du miroir,
+      // normale tournée vers l'arrière de la surface ; `surface` est exclu de son propre reflet.
+      mirror(material, surface, plane, { level = 0.5, blur = 0, size = 1024 } = {}) {
+        const mirror = new MirrorTexture(`${name} · miroir ${room.mirrors.length}`, size, scene, true);
+        mirror.mirrorPlane = plane;
         if (blur) mirror.blurKernel = blur;
         mirror.level = level;
-        mirror.renderList = room.meshes.filter((mesh) => mesh !== room.anchors.floor);
+        mirror.renderList = room.meshes.filter((mesh) => mesh !== surface && mesh.material !== material);
         material.reflectionTexture = mirror;
         room.mirrors.push(mirror);
         return mirror;
+      },
+      mirrorFloor(material, options) {
+        return ctx.mirror(material, room.anchors.floor, new Plane(0, -1, 0, 0.002), options);
+      },
+      // Ombres portées d'une lumière ponctuelle ou d'un projecteur : tout le mobilier, plus le joueur.
+      shadows(light, { size = 1024, darkness = 0.15, bias = 0.0005 } = {}) {
+        const generator = new ShadowGenerator(size, light);
+        generator.usePercentageCloserFiltering = true;
+        generator.filteringQuality = ShadowGenerator.QUALITY_MEDIUM;
+        generator.bias = bias;
+        generator.setDarkness(darkness);
+        generator.transparencyShadow = true;
+        for (const mesh of room.meshes) {
+          if (mesh !== room.anchors.floor && mesh !== room.anchors.ceiling && !room.anchors.walls.includes(mesh)) {
+            generator.addShadowCaster(mesh, false);
+          }
+        }
+        room.shadows.push(generator);
+        return generator;
+      },
+      // Maillage quelconque rattaché à la salle (allumé et éteint avec elle).
+      add(mesh, material) {
+        if (material) mesh.material = material;
+        mesh.isPickable = false;
+        if (mesh.getClassName() !== "TransformNode") room.meshes.push(mesh);
+        return mesh;
       },
       // Sonde de réflexion au centre de la salle, rendue une fois à l'entrée : reflets des surfaces brillantes.
       probe(materials, { level = 0.4, size = 256, at = [0, 1.6, 0] } = {}) {
@@ -144,6 +172,12 @@ export function createArtMap(scene) {
       for (const probe of room.probes) {
         if (on) probe.cubeTexture.resetRefreshCounter();
       }
+      if (on) {
+        for (const generator of room.shadows) {
+          const casters = generator.getShadowMap().renderList;
+          for (const mesh of playerMeshes) if (!casters.includes(mesh)) generator.addShadowCaster(mesh, false);
+        }
+      }
     }
     const { ambient = {}, glow: glowIntensity = 0 } = rooms[index].theme;
     hemi.intensity = ambient.hemi ?? 0.7;
@@ -153,6 +187,16 @@ export function createArtMap(scene) {
     hemi.setEnabled(hemi.intensity > 0);
     sun.setEnabled((ambient.sun ?? 0) > 0);
     sun.intensity = ambient.sun ?? 0;
+    // Traitement d'image de la salle (tone mapping, exposition, contraste, vignette), neutre par défaut.
+    const image = scene.imageProcessingConfiguration;
+    const look = rooms[index].theme.image ?? {};
+    image.toneMappingEnabled = Boolean(look.toneMapping);
+    image.toneMappingType = { aces: 1, neutral: 2 }[look.toneMapping] ?? 0;
+    image.exposure = look.exposure ?? 1;
+    image.contrast = look.contrast ?? 1;
+    image.vignetteEnabled = Boolean(look.vignette);
+    image.vignetteWeight = look.vignette ?? 0;
+    image.vignetteColor.set(0, 0, 0, 0);
     glow.intensity = glowIntensity;
     glow.isEnabled = glowIntensity > 0;
     banner.textContent = `${index + 1} · ${rooms[index].theme.title}`;

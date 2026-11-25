@@ -66,11 +66,20 @@ export function buildArcadeRoom(scene, name, origin, look) {
   floor.position.set(ox, 0.002, oz);
   add(floor, look.floor);
   anchors.floor = floor;
-  box("plafond", 0, H + T / 2, 0, W + 2 * T, T, D + 2 * T, look.ceiling);
-  box("mur nord", 0, H / 2, D / 2 + T / 2, W + 2 * T, H, T, look.wall);
-  box("mur sud", 0, H / 2, -D / 2 - T / 2, W + 2 * T, H, T, look.wall);
-  box("mur ouest", -W / 2 - T / 2, H / 2, 0, T, H, D, look.wall);
-  box("mur est", W / 2 + T / 2, H / 2, 0, T, H, D, look.wall);
+  // Faces intérieures en plans : la texture d'un mur garde le haut de l'image en haut, quelle que soit la paroi.
+  function surface(label, x, y, z, w, h, rotation, material) {
+    const mesh = CreatePlane(`${name} · ${label}`, { width: w, height: h }, scene);
+    mesh.position.set(ox + x, y, oz + z);
+    mesh.rotation.set(...rotation);
+    return add(mesh, material);
+  }
+  anchors.walls = [
+    surface("mur nord", 0, H / 2, D / 2, W, H, [0, 0, 0], look.wall),
+    surface("mur sud", 0, H / 2, -D / 2, W, H, [0, Math.PI, 0], look.wall),
+    surface("mur ouest", -W / 2, H / 2, 0, D, H, [0, -Math.PI / 2, 0], look.wall),
+    surface("mur est", W / 2, H / 2, 0, D, H, [0, Math.PI / 2, 0], look.wall),
+  ];
+  anchors.ceiling = surface("plafond", 0, H, 0, W, D, [-Math.PI / 2, 0, 0], look.ceiling);
   collider("mur nord", 0, H / 2, D / 2 + T / 2, W + 2 * T, H, T);
   collider("mur sud", 0, H / 2, -D / 2 - T / 2, W + 2 * T, H, T);
   collider("mur ouest", -W / 2 - T / 2, H / 2, 0, T, H, D);
@@ -101,7 +110,7 @@ export function buildArcadeRoom(scene, name, origin, look) {
   collider("bar", barX, 0.55, barZ - 0.04, barLength + 0.2, 1.1, 0.78);
   anchors.bar = new Vector3(ox + barX, 1.1, oz + barZ);
   // Étagères rétroéclairées et bouteilles.
-  box("bar · fond", barX, 1.75, D / 2 - 0.06, barLength, 1.5, 0.04, look.backBar);
+  anchors.backBar = box("bar · fond", barX, 1.75, D / 2 - 0.06, barLength, 1.5, 0.04, look.backBar);
   for (const [i, y] of [1.3, 1.82].entries()) {
     box("bar · étagère " + i, barX, y, D / 2 - 0.2, barLength - 0.4, 0.04, 0.28, look.shelf);
     for (let b = 0; b < 12; b++) {
