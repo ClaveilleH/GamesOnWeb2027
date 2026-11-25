@@ -2,6 +2,7 @@ import { GlowLayer } from "@babylonjs/core/Layers/glowLayer";
 import { PointLight } from "@babylonjs/core/Lights/pointLight";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 import { SpotLight } from "@babylonjs/core/Lights/spotLight";
+import { ColorCurves } from "@babylonjs/core/Materials/colorCurves";
 import { MirrorTexture } from "@babylonjs/core/Materials/Textures/mirrorTexture";
 import { RenderTargetTexture } from "@babylonjs/core/Materials/Textures/renderTargetTexture";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
@@ -197,6 +198,17 @@ export function createArtMap(scene) {
     image.vignetteEnabled = Boolean(look.vignette);
     image.vignetteWeight = look.vignette ?? 0;
     image.vignetteColor.set(0, 0, 0, 0);
+    // Saturation globale (−100 : noir et blanc) et teinte d'étalonnage facultatives.
+    image.colorCurvesEnabled = look.saturation !== undefined || look.tint !== undefined;
+    if (image.colorCurvesEnabled) {
+      const curves = new ColorCurves();
+      curves.globalSaturation = look.saturation ?? 0;
+      if (look.tint) {
+        curves.globalHue = look.tint.hue;
+        curves.globalDensity = look.tint.density;
+      }
+      image.colorCurves = curves;
+    }
     glow.intensity = glowIntensity;
     glow.isEnabled = glowIntensity > 0;
     banner.textContent = `${index + 1} · ${rooms[index].theme.title}`;
