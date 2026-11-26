@@ -262,6 +262,10 @@ Une rémanence (mélange avec l'image précédente) a été essayée puis retir�
 
 Inspirée des estampes japonaises gravées sur bois. Le post-traitement `artWoodblock` lisse légèrement l'image, puis ramène chaque pixel à l'encre la plus proche d'une palette de huit : papier, bleu de Prusse, indigo clair, vermillon, ocre, vert-de-gris, chair, noir. La distance est pondérée, plus sensible au vert. Les contours sont tracés au trait noir, le grain de la planche (veines horizontales ondulées) module les aplats, les fibres du washi texturent le tout, et un dégradé *bokashi* de bleu de Prusse assombrit le haut de l'image. Les ombres et les reflets spéculaires deviennent eux-mêmes des aplats, ce qui donne des formes très graphiques. Tatami, bar indigo, chaises vermillon, sous une lumière douce à une seule ombre nette.
 
+### 59 · Parking souterrain
+
+Réalisme urbain froid, désaturé. Béton taché de coulures d'humidité, sol peint avec taches d'huile, lignes jaunes des places et flèche de sens de circulation. Piliers marqués « B2 » avec bande de danger jaune et noire en pied, gaine de ventilation, sprinklers, porte coupe-feu rouge et panneau vert « sortie piétons ». Éclairage par cinq réglettes de tubes fluorescents verdâtres ; l'un d'eux grésille, avec des coupures brèves et irrégulières (somme de sinus). Le sol mouillé est un miroir partiel où se reflètent tubes et piliers. Brouillard sombre, grain de film animé, aberration chromatique et forte vignette.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
