@@ -168,6 +168,10 @@ Basalte noir veiné de fissures incandescentes qui pulsent lentement, sol d'obsi
 
 La salle est vue par une caméra infrarouge. Le post-traitement `artThermal` lit la luminance (légèrement floutée, avec un bruit de capteur) comme une température et la convertit en palette « fer chaud » : noir, bleu nuit, violet, rouge, orange, jaune, blanc. Il ajoute un réticule central et une échelle de couleurs. Les matériaux sont donc des niveaux de gris qui codent la chaleur : salle froide et sombre ; radiateurs, ampoules, tasses fumantes, moteurs à l'arrière des bornes, écrans et quelques bouteilles tièdes ressortent. Le joueur est la source la plus chaude : le matériau de ses os (« os ivoire ») reçoit une couleur émissive le temps de la visite, restaurée par le disposer du post-traitement.
 
+### 37 · Izakaya
+
+Cloisons shoji rétroéclairées : une même texture (papier chaud et grille de bois) sert de diffuse et d'émissive, de sorte que le papier rayonne et que le bois reste sombre. Plancher clair ciré au reflet doux (miroir plan à faible intensité), comptoir et table en laque noire brillante qui reflètent la salle (sonde), coussins rouge sombre. Quatre lanternes de papier rouge marquées 酒 se balancent et éclairent d'un orange chaud. Un rideau noren bleu nuit (« 居酒屋 ») ondule devant le fond du bar, et des pétales de cerisier tombent en tournoyant.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
