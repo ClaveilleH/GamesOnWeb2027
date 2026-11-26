@@ -87,3 +87,7 @@ L'arcade engloutie : brouillard bleu dense, faïence verdie et moussue, sable ri
 ### 19 · Caméscope VHS 1994
 
 Arcade de galerie marchande des années 90 (moquette à confettis, frise en zigzag turquoise et rose, plastiques brillants, caissons de tubes fluorescents), filmée comme une cassette. Post-traitement maison `artVhs` : tube cathodique bombé aux coins noirs, couches rouge et bleue décalées, chrominance floutée horizontalement (les couleurs bavent), flottement ligne par ligne, lignes de balayage, bruit, bande de tracking qui remonte l'image avec de la neige, voile chaud et vignette. Une incrustation HTML (`.vhs-osd`) affiche « ▶ PLAY », « SP » et l'heure réelle datée de 1994 ; elle est retirée en quittant la salle.
+
+### 20 · Aquarelle
+
+La scène 3D devient une peinture grâce au post-traitement maison `artWatercolor` : filtre de Kuwahara à quatre quadrants (aplats lissés qui gardent les bords), légère dérive de l'image comme un pinceau imprécis, couleurs éclaircies et un peu désaturées, contours assombris là où la luminance varie (accumulation de pigment), taches de lavis inégal, grain de papier, et bords de l'image qui se fondent dans le papier crème. Les matériaux sont de simples aplats de couleurs douces sous une lumière de jour latérale.
