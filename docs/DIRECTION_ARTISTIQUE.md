@@ -274,6 +274,10 @@ L'image se corrompt par salves, environ une fois sur trois quarts de seconde, et
 
 Zelliges peints au canevas (étoiles à huit branches bleues et vertes, cœur doré, points rouges) au sol, en soubassement et sur le comptoir ; tadelakt ocre nuancé au-dessus, arcs outrepassés creusés et bordés d'or, plafond de cèdre, tapis berbère sous la table, verres à thé. Quatre lanternes de laiton suspendues, dont la flamme vacille. Leurs motifs ajourés sont projetés sur le sol et sur le mur le plus proche par des panneaux additifs (couronnes d'étoiles qui s'estompent vers le bord), puisque `projectionTexture` n'avait rien donné en salle 19. Brouillard chaud de hammam.
 
+### 62 · Nuit d'orage
+
+Salon lambrissé de chêne sous un papier peint sombre, parquet ciré à bâtons rompus qui reflète, marbre noir sur le bar, velours bordeaux, carafes. Les hautes fenêtres du mur ouest montrent un ciel nocturne et des arbres tourmentés en silhouette, avec par-dessus une couche de pluie qui ruisselle (coulures et gouttes peintes, texture qui défile, transparence par `opacityTexture`). La lumière vient de bougies vacillantes sur la table et le bar, d'une applique et d'un faible clair de lune bleuté. Environ toutes les 7 secondes, un éclair : un double flash irrégulier puis une décroissance, porté par un projecteur blanc-bleu derrière les fenêtres (les croisillons se projettent au sol en ombres dures), une remontée de la lumière d'ambiance et un ciel qui s'illumine.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
