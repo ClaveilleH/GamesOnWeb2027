@@ -354,7 +354,7 @@ L'image devient un tirage au bleu de Prusse sur papier aquarelle, le procédé p
 
 ### 78 · Pays des bonbons
 
-Tout semble en sucre. Murs à rayures obliques de sucre d'orge, sol en damier rose et menthe de guimauve laquée (miroir plan), plafond lilas et nuages de barbe à papa (grappes de sphères roses légèrement émissives). Comptoir menthe à glaçage nacré, chaises citron à pieds framboise, porte en chocolat, boules de gomme alignées sur le bar, beignets glacés sur la table. Trois sucettes géantes à spirale se dressent dans les coins. Tous les matériaux sont très brillants (spéculaire blanc, exposant 160 à 200), sous une lumière douce et une touche rose. À reprendre : la spirale des sucettes est plaquée sur un cylindre plat, dont les UV de face la rendent grisâtre de loin ; un disque (comme les hublots de la salle 56) la montrerait mieux.
+Tout semble en sucre. Murs à rayures obliques de sucre d'orge, sol en damier rose et menthe de guimauve laquée (miroir plan), plafond lilas et nuages de barbe à papa (grappes de sphères roses légèrement émissives). Comptoir menthe à glaçage nacré, chaises citron à pieds framboise, porte en chocolat, boules de gomme alignées sur le bar, beignets glacés sur la table. Trois sucettes géantes à spirale se dressent dans les coins. Tous les matériaux sont très brillants (spéculaire blanc, exposant 160 à 200), sous une lumière douce et une touche rose. La spirale des sucettes est portée par deux disques dos à dos bordés d'une tranche rose : plaquée d'abord sur les faces d'un cylindre plat, elle paraissait grisâtre.
 
 ### 79 · Kaléidoscope
 

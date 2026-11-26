@@ -1,4 +1,5 @@
 import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder";
+import { CreateDisc } from "@babylonjs/core/Meshes/Builders/discBuilder";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import { CreateTorus } from "@babylonjs/core/Meshes/Builders/torusBuilder";
 import { paintedTexture, signTexture, std } from "../materials.js";
@@ -104,15 +105,24 @@ export const candy = {
       const stick = CreateCylinder(`${key} · bâton ${x} ${z}`, { height: h, diameter: 0.08, tessellation: 12 }, scene);
       stick.position.copyFrom(ctx.local(x, h / 2, z));
       ctx.add(stick, gloss("bâton", "#fff8f8"));
-      const disc = CreateCylinder(`${key} · sucette ${x} ${z}`, { height: 0.12, diameter: 1.1, tessellation: 40 }, scene);
-      disc.rotation.set(Math.PI / 2, yaw, 0);
-      disc.position.copyFrom(ctx.local(x, h + 0.5, z));
-      ctx.add(disc, swirl);
+      // Deux disques dos à dos (face avant et face arrière) portent la spirale ; une tranche les borde.
+      for (const flip of [0, Math.PI]) {
+        const disc = CreateDisc(`${key} · sucette ${x} ${z} ${flip}`, { radius: 0.55, tessellation: 48 }, scene);
+        disc.rotation.set(0, yaw + flip, 0);
+        disc.position.copyFrom(ctx.local(x, h + 0.5, z));
+        disc.position.x += Math.sin(yaw + flip) * -0.05;
+        disc.position.z += Math.cos(yaw + flip) * -0.05;
+        ctx.add(disc, swirl);
+      }
+      const rim = CreateCylinder(`${key} · tranche ${x} ${z}`, { height: 0.1, diameter: 1.1, tessellation: 48, cap: 0 }, scene);
+      rim.rotation.set(Math.PI / 2, yaw, 0);
+      rim.position.copyFrom(ctx.local(x, h + 0.5, z));
+      ctx.add(rim, gloss("tranche", "#ff8ac0"));
     }
     // Boules de gomme sur le bar et beignets glacés sur la table.
     for (let k = 0; k < 14; k++) {
       const ball = CreateSphere(`${key} · gomme ${k}`, { diameter: 0.12, segments: 12 }, scene);
-      ball.position.copyFrom(ctx.local(-3.3 + k * 0.35, 1.18, 3.6 + (k % 2) * 0.1));
+      ball.position.copyFrom(ctx.local(-3.2 + k * 0.28, 1.18, 3.6 + (k % 2) * 0.1));
       ctx.add(ball, gloss(`gomme ${k % 6}`, ["#ff5aa0", "#5ad0e0", "#ffe060", "#a0e070", "#c080ff", "#ff9a5a"][k % 6]));
     }
     for (const [dx, dz] of [[-0.3, 0], [0.3, 0.15], [0, -0.3]]) {
