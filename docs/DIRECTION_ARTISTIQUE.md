@@ -238,6 +238,10 @@ Réalisme diurne, à comparer aux salles nocturnes. Béton banché (nuances, joi
 
 L'image est « imprimée » en trois encres de riso (rose fluo, bleu, jaune) sur papier blanc cassé. Le post-traitement `artRiso` sépare les couleurs de façon soustractive simplifiée : le rose vient de l'absence de vert, le bleu de l'absence de rouge, le jaune de l'absence de bleu. La composante grise commune est retirée et confiée au bleu, l'encre la plus sombre, ce qui garde des aplats nets. Chaque encre est une trame de points d'angle différent dont le rayon suit la racine de la densité ; les passages sont décalés de quelques pixels (repérage imparfait), l'encre mord irrégulièrement le papier, et les encres se multiplient comme sur papier. La scène est claire et pastel, sous une lampe à ombres douces.
 
+### 54 · Observatoire
+
+Les murs et le plafond s'ouvrent sur un ciel nocturne peint : bande laiteuse diagonale faite de nuages flous, environ 1 800 étoiles de tailles et de teintes variées, constellations tracées finement. Le ciel défile lentement, comme la rotation de la Terre. Tout l'éclairage est rouge, comme les lampes d'astronome qui préservent la vision nocturne. Télescope de laiton sur trépied qui balaie doucement le ciel, sphère armillaire aux anneaux imbriqués qui tournent sur la table, carte du ciel en plateau, noyer et cuir vert. Le sol de pierre polie (miroir plan) reflète les étoiles et les lueurs rouges.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
