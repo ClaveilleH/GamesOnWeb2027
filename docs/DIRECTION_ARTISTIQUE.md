@@ -306,6 +306,12 @@ Le rendu des portails restreint `camera.layerMask` au calque « world » pendant
 
 Démonstration de synthèse additive de la lumière. La salle et tout le mobilier sont blancs, et l'ambiance est quasi nulle. Seuls trois projecteurs larges, rouge, vert et bleu, disposés en triangle au plafond et chacun avec ses propres ombres, éclairent la scène. Là où ils se recouvrent, la lumière redevient blanche ; là où un objet en masque un, son ombre prend la couleur complémentaire (cyan sans le rouge, magenta sans le vert, jaune sans le bleu), et elle devient franchement colorée là où deux sources sont masquées. Trois boules blanches au centre rendent l'effet lisible. Les sources tournent lentement en visant le centre, ce qui fait danser les ombres du joueur et du mobilier.
 
+### 69 · Ligne claire
+
+La bande dessinée franco-belge classique. Tous les matériaux de la salle sont des aplats non éclairés (émission pure) : aucun modelé, aucune ombre. Le post-traitement `artLigneClaire` trace un contour noir d'épaisseur constante autour de chaque forme : il réutilise la carte de profondeur de la salle 67 et marque les discontinuités relatives de profondeur et les sauts de couleur sur huit voisins. Palette franche (bleu ciel, sable, rouge, jaune, vert, bleu roi). Seul le joueur, dont le matériau n'appartient pas à la salle, garde un léger modelé sous une ambiance blanche.
+
+Un premier essai gardait une ombre portée (diffuse d'un cran plus sombre que l'émission, sous un projecteur) : le dégradé angulaire du projecteur dessinait des taches concentriques, contraires à l'aplat.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
