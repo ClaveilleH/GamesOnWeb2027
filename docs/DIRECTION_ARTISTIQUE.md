@@ -234,6 +234,10 @@ Papier peint à cercles concentriques orange, moutarde, brun, rouille et crème 
 
 Réalisme diurne, à comparer aux salles nocturnes. Béton banché (nuances, joints de panneaux, trous de tiges), poutre IPN, acier noir, bois brut, cuir fauve, plantes en pot, suspensions industrielles, tout en PBR. Le mur ouest est une verrière d'atelier à petits carreaux sur un ciel bleuté nuageux. Un soleil franc la traverse et projette au sol l'ombre de sa grille (ombres douces 2048), tandis qu'une lumière bleutée de ciel sert de remplissage. Le béton ciré reflète la verrière. Occlusion ambiante, bloom léger, netteté.
 
+### 53 · Risographie
+
+L'image est « imprimée » en trois encres de riso (rose fluo, bleu, jaune) sur papier blanc cassé. Le post-traitement `artRiso` sépare les couleurs de façon soustractive simplifiée : le rose vient de l'absence de vert, le bleu de l'absence de rouge, le jaune de l'absence de bleu. La composante grise commune est retirée et confiée au bleu, l'encre la plus sombre, ce qui garde des aplats nets. Chaque encre est une trame de points d'angle différent dont le rayon suit la racine de la densité ; les passages sont décalés de quelques pixels (repérage imparfait), l'encre mord irrégulièrement le papier, et les encres se multiplient comme sur papier. La scène est claire et pastel, sous une lampe à ombres douces.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
