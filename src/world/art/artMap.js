@@ -171,9 +171,13 @@ export function createArtMap(scene) {
       mesh.dispose();
     }
     const materials = new Set(room.meshes.map((mesh) => mesh.material).filter(Boolean));
-    const nodes = new Set(room.meshes.map((mesh) => mesh.parent).filter((node) => node && !room.meshes.includes(node)));
+    // Nœuds intermédiaires (pivots, supports) : toute la chaîne des parents qui ne sont pas des maillages.
+    const nodes = new Set();
+    for (const mesh of room.meshes) {
+      for (let node = mesh.parent; node && !room.meshes.includes(node); node = node.parent) nodes.add(node);
+    }
     for (const mesh of room.meshes) mesh.dispose(false, false);
-    for (const node of nodes) node.dispose();
+    for (const node of nodes) if (!node.isDisposed()) node.dispose();
     for (const material of materials) material.dispose(false, true);
     Object.assign(room, {
       built: false, meshes: [], colliders: [], screens: [], lights: [], mirrors: [], probes: [], shadows: [], updates: [],

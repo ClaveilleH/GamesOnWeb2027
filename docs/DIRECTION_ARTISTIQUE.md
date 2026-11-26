@@ -184,6 +184,12 @@ Aucune lumière dans la salle (hémisphérique à 0) : le mobilier, en noir mat,
 
 L'inverse des salles sombres : tout est blanc (mat, laqué, acier blanc en PBR), avec trois accents pastel (corail, menthe, bleu ciel) sur la porte, les flancs des bornes, les sièges et quelques sculptures (sphère, anneau qui tourne, bille qui rebondit). La lumière est enveloppante : hémisphérique forte, une grande boîte à lumière au plafond à ombre très légère, deux remplissages. Ce sont l'occlusion ambiante (SSAO2 marquée) et les dégradés qui dessinent les volumes et les angles. Sol blanc laqué au reflet doux, sonde pour les surfaces brillantes, bloom léger.
 
+### 41 · Steampunk
+
+Atelier victorien en PBR : laiton, cuivre et fonte (sonde de reflets), acajou, cuir, parquet à bâtons rompus, papier peint damassé au-dessus d'un lambris. Trois engrenages en prise tournent sur le mur nord à des vitesses qui respectent le rapport de leurs dents (ω₂ = −ω₁·n₁/n₂). Chacun est monté sur deux nœuds : un support qui le couche contre le mur et un pivot qui tourne autour de son axe propre. Une tuyauterie de cuivre longe les murs, avec coudes et descentes. Deux manomètres, dont l'aiguille tremble, et une soupape qui lâche des jets de vapeur intermittents. Ampoules à filament au bout de leurs fils, lumière chaude et ombres douces.
+
+La libération des salles remonte désormais toute la chaîne des parents des maillages (supports, pivots) pour libérer aussi les nœuds intermédiaires.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
