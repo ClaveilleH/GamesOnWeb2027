@@ -252,6 +252,12 @@ Module d'habitat façon film de SF réaliste, en PBR. Panneaux composites blancs
 
 Les UV d'un disque Babylon sont inversés verticalement par rapport à un plan : un demi-tour sur l'axe Z remet le ciel en haut.
 
+### 57 · Écran LCD de console portable
+
+L'image passe par une matrice LCD monochrome imaginaire de 144 lignes : le post-traitement `artLcd` échantillonne une couleur par cellule, en tire la luminance (courbe resserrée par `smoothstep` pour garder du contraste) et la répartit sur quatre verts olive par un tramage ordonné de Bayer 4 × 4. Les interstices entre pixels laissent voir le fond vert clair, et une légère ombre donne du relief à la matrice. La scène est en gris neutres sous une lampe à ombres dures, pour que les volumes se lisent malgré les quatre teintes.
+
+Une rémanence (mélange avec l'image précédente) a été essayée puis retirée : la copie, dernière de la chaîne, rend directement à l'écran, et sa sortie n'est donc pas lisible par la passe suivante.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
