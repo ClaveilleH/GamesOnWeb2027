@@ -352,6 +352,10 @@ Des rayons de soleil en boîtes additives inclinées ont été essayés puis ret
 
 L'image devient un tirage au bleu de Prusse sur papier aquarelle, le procédé photographique du XIXᵉ siècle. Le post-traitement `artCyanotype` convertit la luminance en densité de bleu : ombres bleu profond, lumières au blanc cassé du papier, densité modulée par le grain du papier (bruit fractal). L'émulsion, étalée au pinceau, ne couvre qu'une zone centrale aux bords irréguliers ; au-delà, le papier reste nu avec quelques traînées de pinceau bleu pâle, et des taches d'émulsion plus dense ponctuent l'image. La scène est en gris neutres sous un plein soleil à ombres dures, pour des contrastes nets.
 
+### 78 · Pays des bonbons
+
+Tout semble en sucre. Murs à rayures obliques de sucre d'orge, sol en damier rose et menthe de guimauve laquée (miroir plan), plafond lilas et nuages de barbe à papa (grappes de sphères roses légèrement émissives). Comptoir menthe à glaçage nacré, chaises citron à pieds framboise, porte en chocolat, boules de gomme alignées sur le bar, beignets glacés sur la table. Trois sucettes géantes à spirale se dressent dans les coins. Tous les matériaux sont très brillants (spéculaire blanc, exposant 160 à 200), sous une lumière douce et une touche rose. À reprendre : la spirale des sucettes est plaquée sur un cylindre plat, dont les UV de face la rendent grisâtre de loin ; un disque (comme les hublots de la salle 56) la montrerait mieux.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
