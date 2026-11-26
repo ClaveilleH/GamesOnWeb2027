@@ -258,6 +258,10 @@ L'image passe par une matrice LCD monochrome imaginaire de 144 lignes : le post-
 
 Une rémanence (mélange avec l'image précédente) a été essayée puis retirée : la copie, dernière de la chaîne, rend directement à l'écran, et sa sortie n'est donc pas lisible par la passe suivante.
 
+### 58 · Estampe sur bois
+
+Inspirée des estampes japonaises gravées sur bois. Le post-traitement `artWoodblock` lisse légèrement l'image, puis ramène chaque pixel à l'encre la plus proche d'une palette de huit : papier, bleu de Prusse, indigo clair, vermillon, ocre, vert-de-gris, chair, noir. La distance est pondérée, plus sensible au vert. Les contours sont tracés au trait noir, le grain de la planche (veines horizontales ondulées) module les aplats, les fibres du washi texturent le tout, et un dégradé *bokashi* de bleu de Prusse assombrit le haut de l'image. Les ombres et les reflets spéculaires deviennent eux-mêmes des aplats, ce qui donne des formes très graphiques. Tatami, bar indigo, chaises vermillon, sous une lumière douce à une seule ombre nette.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
