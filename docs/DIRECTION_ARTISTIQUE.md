@@ -128,6 +128,10 @@ Rêverie numérique des années 90 : damier rose et turquoise en miroir, murs en
 
 À retenir : `active` est un mot réservé en GLSL ES. Un nom de variable comme celui-ci fait échouer la compilation du shader, ce que le test de la carte détecte par l'erreur en console.
 
+### 29 · Chalet sous la neige
+
+Réalisme chaleureux en PBR : murs en rondins, plancher de mélèze, plafond sombre, laine rouge à reflet velouté sur les sièges, fer forgé. Une cheminée en pierre (montants, hotte, linteau, âtre, bûches) abrite un feu en panneaux animés à texture dégradée qui ondulent. Sa lumière orange vacille et projette les ombres du mobilier. Un tapis en peau est posé devant l'âtre. Deux fenêtres donnent sur une nuit bleue (sapins enneigés, lune), où la neige tombe sur un calque transparent qui défile. Lanternes chaudes au bar et près des bornes, clair de lune froid par les fenêtres.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
