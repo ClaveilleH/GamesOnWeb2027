@@ -24,8 +24,9 @@ import { chalet } from "./themes/chalet.js";
 import { clay } from "./themes/clay.js";
 import { hologram } from "./themes/hologram.js";
 import { miniature } from "./themes/miniature.js";
+import { jungleTemple } from "./themes/jungleTemple.js";
 import { neonViolet } from "./themes/neonViolet.js";
 import { warmBistro } from "./themes/warmBistro.js";
 
 // Directions artistiques, une salle chacune, dans l'ordre de visite.
-export const THEMES = Object.freeze([neonViolet, warmBistro, comicToon, filmNoir, synthwave, ...REALISM, realismPlus, cyberpunk, pixel, memphis, blueprint, blacklight, iridescent, abandoned, underwater, vhs, watercolor, artDeco, lowPoly, ink, spaceship, oldCartoon, diner, vaporwave, chalet, clay, hologram, miniature]);
+export const THEMES = Object.freeze([neonViolet, warmBistro, comicToon, filmNoir, synthwave, ...REALISM, realismPlus, cyberpunk, pixel, memphis, blueprint, blacklight, iridescent, abandoned, underwater, vhs, watercolor, artDeco, lowPoly, ink, spaceship, oldCartoon, diner, vaporwave, chalet, clay, hologram, miniature, jungleTemple]);

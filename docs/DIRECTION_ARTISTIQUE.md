@@ -148,6 +148,12 @@ Une profondeur de champ très courte (`DefaultRenderingPipeline`, ouverture f/1,
 
 À retenir : `scene.pickWithRay` exige l'import à effet de bord de `@babylonjs/core/Culling/ray`, sinon une exception fige le rendu.
 
+### 33 · Temple dans la jungle
+
+Pierre en blocs irréguliers couverte de mousse (plus dense vers le bas), dalles au sol, brume verte. Une ouverture au plafond laisse tomber un soleil vertical (projecteur à ombres). Les faisceaux sont simulés par quatre cylindres ouverts, additifs, à dégradé vertical, qui respirent lentement, et des poussières flottent dans la lumière. Sous l'ouverture, un bassin d'eau sombre aux rides animées (texture de relief qui défile) reflète la salle grâce à un miroir plan, et une idole dorée se dresse sur sa margelle. Des lianes à feuilles pendent du plafond et se balancent autour de leur point d'attache, des fougères occupent les angles et deux torches vacillent près de la porte.
+
+À retenir : `VolumetricLightScatteringPostProcess` est incompatible avec le rendu du joueur ici (le squelette apparaît déformé et décalé), d'où les faisceaux en géométrie.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
