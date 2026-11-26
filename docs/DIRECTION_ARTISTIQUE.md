@@ -107,3 +107,7 @@ Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, c
 ### 23 · Encre de Chine
 
 La salle dessinée au pinceau sur papier de riz, par le post-traitement maison `artInk`. Les contours sont détectés par un filtre de Sobel sur la luminance, au pas d'un pixel et demi pour un trait épais. Le trait tremble (échantillonnage décalé par du bruit) et s'interrompt par endroits, comme sous la pression du pinceau. Les tons sont réduits à trois lavis d'encre, posés sur un papier crème à fibres et grain. Les matériaux sont de simples gris choisis pour tomber chacun dans un lavis différent. Seul le rouge vermillon (porte, sièges, soleil peint au mur, certaines bouteilles, enseigne 出口) est conservé en couleur.
+
+### 24 · Vaisseau spatial
+
+La salle de détente d'un vaisseau. Murs en panneaux de coque rivetés avec bandeau d'avertissement jaune et noir, sol en caillebotis métallique légèrement réfléchissant, composite blanc vernis pour les bornes et le comptoir, acier. Un grand hublot sur le mur ouest montre une nébuleuse et des étoiles qui défilent lentement, et devant elles une planète à anneau peinte au canevas (anneau arrière, planète, anneau avant). Des bandes bleues lumineuses courent au plafond et aux plinthes, une rangée de voyants clignote, le sas est cerclé d'orange et un gyrophare tourne à côté.
