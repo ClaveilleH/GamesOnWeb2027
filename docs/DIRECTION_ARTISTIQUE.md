@@ -176,6 +176,10 @@ Cloisons shoji rétroéclairées : une même texture (papier chaud et grille de 
 
 Noir et blanc très contrasté, sauf les rouges, qui gardent leur saturation, comme dans un roman graphique filmé. Le post-traitement `artSelective` applique une courbe en S forte sur la luminance, mesure la « rougeur » d'un pixel (rouge nettement au-dessus du vert et du bleu) et ne conserve la couleur que là, avec du grain. Sont rouges : l'enseigne EXIT, la porte, une borne, les tabourets et les chaises, une bouteille, un néon au-dessus du bar et la robe de la chanteuse sur l'affiche. Murs de briques, sol noir miroir, deux projecteurs durs à ombres franches (cercle de lumière sur la table, contre-jour sur le bar).
 
+### 39 · Ombres chinoises
+
+Aucune lumière dans la salle (hémisphérique à 0) : le mobilier, en noir mat, et le joueur deviennent des silhouettes d'encre. Seuls les murs rayonnent, peints comme un ciel de papier au couchant (dégradé violet, orange, jaune, soleil diffus, lune pâle, deux plans de collines découpées). Des découpes noires à texture d'opacité sont collées devant les murs : branches générées récursivement, nuages, et oiseaux qui traversent le mur nord en battant des ailes. Seuls les écrans des bornes gardent une lueur ambrée éteinte. Le post-traitement `artPaper` ajoute des fibres de papier (bruit à deux échelles) et un bord irrégulier comme brûlé.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
