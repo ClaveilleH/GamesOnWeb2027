@@ -312,6 +312,12 @@ La bande dessinée franco-belge classique. Tous les matériaux de la salle sont 
 
 Un premier essai gardait une ombre portée (diffuse d'un cran plus sombre que l'émission, sous un projecteur) : le dégradé angulaire du projecteur dessinait des taches concentriques, contraires à l'aplat.
 
+### 70 · Aurore boréale
+
+Refuge de pin clair (lames peintes au canevas), plancher verni qui reflète, laine rouge, poêle à bois en fonte dont le hublot rougeoie et dont la lumière vacille et porte des ombres. Le mur nord est une grande baie à montants sombres sur un ciel polaire étoilé, avec des montagnes en silhouette ; le plafond montre le même ciel. Deux couches de rideaux d'aurore, verte et violette, sont peintes en traits verticaux dont la base suit une onde et qui s'estompent vers le haut. Posées en additif devant la baie et au plafond, elles défilent à des vitesses opposées et respirent en intensité. Une faible lueur verte qui pulse en même temps descend sur la salle.
+
+Le premier réglage (ambiance et lueur verte fortes) noyait toute la salle dans le vert ; le contraste chaud/froid ne fonctionne que si l'intérieur garde des lumières orangées.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
