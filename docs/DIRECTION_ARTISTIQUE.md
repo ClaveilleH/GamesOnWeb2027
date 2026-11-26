@@ -356,6 +356,10 @@ L'image devient un tirage au bleu de Prusse sur papier aquarelle, le procédé p
 
 Tout semble en sucre. Murs à rayures obliques de sucre d'orge, sol en damier rose et menthe de guimauve laquée (miroir plan), plafond lilas et nuages de barbe à papa (grappes de sphères roses légèrement émissives). Comptoir menthe à glaçage nacré, chaises citron à pieds framboise, porte en chocolat, boules de gomme alignées sur le bar, beignets glacés sur la table. Trois sucettes géantes à spirale se dressent dans les coins. Tous les matériaux sont très brillants (spéculaire blanc, exposant 160 à 200), sous une lumière douce et une touche rose. À reprendre : la spirale des sucettes est plaquée sur un cylindre plat, dont les UV de face la rendent grisâtre de loin ; un disque (comme les hublots de la salle 56) la montrerait mieux.
 
+### 79 · Kaléidoscope
+
+Le post-traitement `artKaleidoscope` replie l'image en six secteurs de 60° en miroir autour du centre de l'écran, comme à travers les trois miroirs d'un kaléidoscope, et fait tourner lentement la symétrie. Un liseré lumineux souligne les arêtes des miroirs, et les bords s'assombrissent. La salle (violet nuit, liserés néon, mobilier et verres aux couleurs vives, quatre lumières colorées) sert de matière aux motifs. Le repli devait laisser le centre intact pour garder le joueur lisible, avec une transition de 0,12 à 0,3 de rayon. En pratique, la transition tord déjà le joueur en anneau : il faudrait un centre net plus large, ou bien ne replier que le décor, pas le joueur.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
