@@ -23,3 +23,12 @@ test("chaque salle de direction artistique s'active quand le joueur y entre, san
   await expect.poll(() => page.evaluate(() => window.gowDev.map().room), { timeout: 30_000 }).toBe(0);
   await expectCleanPage(page);
 });
+
+test("`&salle=N` fait démarrer dans la salle N", async ({ page }) => {
+  await page.goto("/?dev&map=direction-artistique&salle=3");
+  await page.getByRole("button", { name: "Jouer", exact: true }).click();
+  await page.waitForFunction(() => window.gowDev?.state().player.grounded);
+  await expect.poll(() => page.evaluate(() => window.gowDev.map().room), { timeout: 30_000 }).toBe(2);
+  expect(await page.evaluate(() => window.gowDev.state().player.x)).toBeCloseTo(60, 0);
+  await expectCleanPage(page);
+});

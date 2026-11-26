@@ -276,8 +276,11 @@ export function createArtMap(scene) {
   }
 
   const spawnOf = (index) => new Vector3(index * SPACING, 1.2, -3.5);
-  const spawn = spawnOf(0);
-  activate(0);
+  // `?salle=N` (à partir de 1) fait démarrer directement dans une salle.
+  const requested = Number(new URLSearchParams(location.search).get("salle"));
+  const first = Number.isInteger(requested) && requested >= 1 && requested <= rooms.length ? requested - 1 : 0;
+  const spawn = spawnOf(first);
+  activate(first);
 
   const interactables = rooms.map((room) => ({
     spec: { name: `${room.theme.title} · porte`, interact: { prompt: "passer à la salle suivante", radius: 1.4 } },
