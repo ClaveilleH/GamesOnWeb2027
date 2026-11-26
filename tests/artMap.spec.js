@@ -15,6 +15,11 @@ test("chaque salle de direction artistique s'active quand le joueur y entre, san
   for (let room = 0; room < count; room++) {
     await page.evaluate((x) => window.gowDev.teleportPlayer({ x, y: 0.05, z: -3.5 }), room * 30);
     await expect.poll(() => page.evaluate(() => window.gowDev.map().room), { timeout: 30_000 }).toBe(room);
+    // Les salles éloignées sont libérées : au plus la salle active et ses deux voisines restent construites.
+    expect(await page.evaluate(() => window.gowDev.map().built)).toBeLessThanOrEqual(3);
   }
+  // Retour à la première salle, libérée entre-temps : elle est reconstruite sans erreur.
+  await page.evaluate(() => window.gowDev.teleportPlayer({ x: 0, y: 0.05, z: -3.5 }));
+  await expect.poll(() => page.evaluate(() => window.gowDev.map().room), { timeout: 30_000 }).toBe(0);
   await expectCleanPage(page);
 });

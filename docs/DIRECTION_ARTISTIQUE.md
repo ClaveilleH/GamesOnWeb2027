@@ -131,3 +131,5 @@ Rêverie numérique des années 90 : damier rose et turquoise en miroir, murs en
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
+
+Inversement, en entrant dans une salle, toutes celles qui ne sont pas voisines sont libérées : maillages, matériaux et textures, lumières, miroirs, sondes, ombres et collisions. Les effets compilés restent en cache, ce qui accélère une reconstruction au retour. Au plus trois salles existent donc en même temps, et `gowDev.map().built` en donne le nombre. Le test complet tombe alors à 1,5 minute pour 28 salles.

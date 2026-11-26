@@ -157,6 +157,30 @@ export function createArtMap(scene) {
     return room;
   }
 
+  // Libère une salle éloignée : maillages, matériaux et textures, lumières, miroirs, sondes, ombres et
+  // collisions. Les effets compilés restent en cache, ce qui rend une reconstruction plus rapide.
+  function unbuild(room) {
+    if (!room.built) return;
+    for (const generator of room.shadows) generator.dispose();
+    for (const probe of room.probes) probe.dispose();
+    for (const mirror of room.mirrors) mirror.dispose();
+    for (const light of room.lights) light.dispose();
+    for (const mesh of room.colliders ?? []) {
+      mesh.physicsBody?.shape?.dispose();
+      mesh.physicsBody?.dispose();
+      mesh.dispose();
+    }
+    const materials = new Set(room.meshes.map((mesh) => mesh.material).filter(Boolean));
+    const nodes = new Set(room.meshes.map((mesh) => mesh.parent).filter((node) => node && !room.meshes.includes(node)));
+    for (const mesh of room.meshes) mesh.dispose(false, false);
+    for (const node of nodes) node.dispose();
+    for (const material of materials) material.dispose(false, true);
+    Object.assign(room, {
+      built: false, meshes: [], colliders: [], screens: [], lights: [], mirrors: [], probes: [], shadows: [], updates: [],
+      anchors: { door: room.anchors.door },
+    });
+  }
+
   // ─── Salle active ───────────────────────────────────────────────────────────────────────────────
   let current = -1;
   let time = 0;
@@ -177,6 +201,8 @@ export function createArtMap(scene) {
     if (index === current) return;
     current = index;
     build(rooms[index]);
+    // Seules la salle active et ses voisines restent construites.
+    for (const room of rooms) if (Math.abs(room.index - index) > 1) unbuild(room);
     disposePost?.();
     disposePost = null;
     for (const room of rooms) {
@@ -276,7 +302,7 @@ export function createArtMap(scene) {
       activate(index);
       for (const fn of rooms[current].updates) fn(time, dt);
     },
-    state: () => ({ room: current, theme: rooms[current].theme.key, count: rooms.length }),
+    state: () => ({ room: current, theme: rooms[current].theme.key, count: rooms.length, built: rooms.filter((room) => room.built).length }),
     dispose() {
       disposePost?.();
       scene.fogMode = sceneFog.mode;
