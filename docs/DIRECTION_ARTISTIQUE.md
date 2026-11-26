@@ -332,6 +332,12 @@ Toile rayée rouge et crème à festons dorés sur les murs et le plafond, sol d
 
 À la manière néo-impressionniste. Le post-traitement `artPointillism` recompose l'image en touches rondes sur une toile blanc cassé, en deux couches décalées qui se chevauchent. Chaque cellule d'une grille place sa touche au hasard (grille désordonnée, recherche du point le plus proche sur les 3 × 3 voisins), avec un rayon variable. La couleur vient de la scène sous la touche, sursaturée et légèrement déviée vers un pigment voisin, ce qui donne le mélange optique : de loin, les teintes se fondent ; de près, on voit les points purs et le blanc de la toile entre eux. La scène est un après-midi d'été (soleil chaud par l'ouest, ciel bleuté en ambiance) aux couleurs franches. Les petits objets, comme le squelette ou les bouteilles, perdent leur lisibilité, ce qui est la limite du style.
 
+### 74 · Piscine liminale
+
+Un espace vide et trop propre, dans l'esprit des *liminal spaces*. Faïence blanche à joints gris du sol au plafond, frise bleu canard, mobilier blanc ou carrelé lui aussi, fond turquoise inondé de quelques centimètres d'eau : une nappe translucide au-dessus d'un fond carrelé en miroir atténué, et deux couches de caustiques (réseaux de lignes ondulées en additif) qui dérivent en sens contraires. La lumière est laiteuse et sans source visible (ambiance forte et plafonniers diffus faibles), sous un léger brouillard clair et un bloom doux.
+
+Le premier réglage (exposition et brouillard plus forts) délavait tout en blanc : l'étrangeté vient de la netteté répétitive des joints, qu'il faut garder lisible.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
