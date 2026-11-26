@@ -270,6 +270,10 @@ Réalisme urbain froid, désaturé. Béton taché de coulures d'humidité, sol p
 
 L'image se corrompt par salves, environ une fois sur trois quarts de seconde, et reste presque propre entre deux. Le post-traitement `artGlitch` décale des bandes horizontales, sépare les canaux rouge, vert et bleu, fige des macroblocs de 24 px en aplats comme une compression qui décroche, étire vers le bas les couleurs claires dans certaines colonnes (tri de pixels), ajoute des lignes de données parasites cyan et inverse brièvement quelques blocs. La scène est volontairement minimaliste : noir laqué, arêtes néon cyan et magenta le long du plafond et dans les coins, sol miroir, pour que les artefacts soient la matière principale de l'image.
 
+### 61 · Riad
+
+Zelliges peints au canevas (étoiles à huit branches bleues et vertes, cœur doré, points rouges) au sol, en soubassement et sur le comptoir ; tadelakt ocre nuancé au-dessus, arcs outrepassés creusés et bordés d'or, plafond de cèdre, tapis berbère sous la table, verres à thé. Quatre lanternes de laiton suspendues, dont la flamme vacille. Leurs motifs ajourés sont projetés sur le sol et sur le mur le plus proche par des panneaux additifs (couronnes d'étoiles qui s'estompent vers le bord), puisque `projectionTexture` n'avait rien donné en salle 19. Brouillard chaud de hammam.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
