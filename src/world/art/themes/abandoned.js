@@ -3,7 +3,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 17 · Abandonnée, à la lampe torche : l'arcade fermée depuis des années. Presque aucune lumière :
+// Salle 18 · Abandonnée, à la lampe torche : l'arcade fermée depuis des années. Presque aucune lumière :
 // une lampe torche suit le regard et projette des ombres, des poussières flottent dans son faisceau, un
 // néon de secours vert grésille au-dessus de la porte. Moquette tachée, papier peint décollé, chaises
 // renversées, une borne couchée, écrans éteints.

@@ -4,7 +4,7 @@ import { CreateIcoSphere } from "@babylonjs/core/Meshes/Builders/icoSphereBuilde
 import { VertexBuffer } from "@babylonjs/core/Buffers/buffer";
 import { signTexture, std } from "../materials.js";
 
-// Salle 22 · Low poly : tout est à facettes, sans aucune texture. Sol en terrain bosselé à faces plates,
+// Salle 23 · Low poly : tout est à facettes, sans aucune texture. Sol en terrain bosselé à faces plates,
 // arbres en cônes et icosphères, rochers et cristaux grossiers. Les couleurs viennent d'aplats et d'un
 // éclairage en dégradé (ciel pêche, sol bleu-vert) avec un soleil rasant qui sépare nettement les faces.
 const palette = { background: "#264653", primary: "#e9c46a", secondary: "#e76f51", accent: "#2a9d8f", text: "#ffffff" };

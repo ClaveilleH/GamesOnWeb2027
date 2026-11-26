@@ -3,7 +3,7 @@ import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 11 · Cyberpunk sous la pluie : béton sombre détrempé, brouillard bleu-vert, enseignes verticales
+// Salle 12 · Cyberpunk sous la pluie : béton sombre détrempé, brouillard bleu-vert, enseignes verticales
 // en katakana, tuyaux apparents. La pluie tombe par une trouée du plafond dans une flaque qui reflète
 // les néons ; une enseigne grésille.
 const palette = { background: "#05121a", primary: "#00f0ff", secondary: "#ff1f8f", accent: "#f4ff3a", text: "#e6fbff" };

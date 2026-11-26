@@ -3,7 +3,7 @@ import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import { CreateTorus } from "@babylonjs/core/Meshes/Builders/torusBuilder";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 13 · Memphis pastel, plein jour : couleurs pastel, motifs géométriques (gribouillis, triangles,
+// Salle 14 · Memphis pastel, plein jour : couleurs pastel, motifs géométriques (gribouillis, triangles,
 // pois), terrazzo au sol. Le soleil entre par de grandes baies côté ouest et projette des ombres douces.
 // Formes géométriques suspendues. Pas de néon : tout est éclairé par la lumière du jour.
 const palette = { background: "#fff1e6", primary: "#ff6f91", secondary: "#2ec4b6", accent: "#ffbf69", text: "#22223b" };

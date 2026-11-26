@@ -2,7 +2,7 @@ import "@babylonjs/core/Rendering/edgesRenderer";
 import { Color4 } from "@babylonjs/core/Maths/math.color";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 14 · Plan d'architecte : tout est dessiné au trait blanc sur fond bleu, comme un tirage
+// Salle 15 · Plan d'architecte : tout est dessiné au trait blanc sur fond bleu, comme un tirage
 // de plan. Surfaces unies sans lumière, arêtes tracées par l'EdgesRenderer, grille millimétrée et
 // cotes au sol et aux murs. Une ligne de balayage parcourt la salle comme un scanner.
 const palette = { background: "#0b3d91", primary: "#ffffff", secondary: "#9ec9ff", accent: "#ffffff", text: "#ffffff" };

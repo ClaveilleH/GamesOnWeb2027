@@ -50,78 +50,78 @@ Le post-traitement passe par un nouveau crochet `theme.post(scene, camera, room)
 
 Le coût grimpe nettement : dans le navigateur logiciel des tests, le niveau 1 tourne environ 10 fois plus vite que le niveau 5.
 
-### 11 · Cyberpunk sous la pluie
+### 11 · Réalisme 6 · réflexions en espace écran
+
+Sommet de l'échelle de réalisme des salles 6 à 10 : même décor et mêmes lumières (`makeLook` et `lights` sont exportés par `realism.js`). Les reflets ne viennent plus d'un miroir plan : des réflexions en espace écran (`SSRRenderingPipeline`, via le prepass) font refléter chaque surface selon sa rugosité, avec atténuation de Fresnel et flou selon la rugosité. La sonde reste comme environnement pour ce qui sort de l'écran. S'y ajoutent SSAO2, un bloom doux, le MSAA ×4 et une vignette.
+
+À retenir : sur un diélectrique (réflectance d'environ 4 %), la SSR est invisible. Le carrelage reçoit donc une part métallique (0,4) et une faible rugosité (0,1) pour que son reflet se lise. Sous rendu logiciel, cette salle est la plus lente de la carte.
+
+### 12 · Cyberpunk sous la pluie
 
 Béton sombre détrempé, brouillard bleu-vert (nouveau champ `theme.fog: { color, density }`, brouillard exponentiel restauré en quittant la carte), tone mapping ACES et légère teinte cyan. Des enseignes verticales en katakana et des tags lumineux couvrent les murs, des tuyaux courent au plafond. La pluie tombe par une trouée du plafond dans une flaque, sous un projecteur vert froid à ombres. Une enseigne grésille. Le sol miroir presque net reflète tous les néons.
 
-### 12 · Pixel 8 bits
+### 13 · Pixel 8 bits
 
 Tout le style vient d'un post-traitement maison (`artPixel`, branché par `theme.post`). L'image est échantillonnée en cellules d'environ 180 lignes de haut, chaque cellule est ramenée à la couleur la plus proche d'une palette de 16 couleurs, avec un tramage ordonné Bayer 4×4 pour les dégradés. Les textures sont du pixel art minuscule en échantillonnage au plus proche (briques, damier, pièce), l'éclairage est simple, sans reflet. Des pièces tournent au-dessus du bar et de la table, leur flottement est quantifié par paliers ; des nuages pixelisés décorent les murs.
 
-### 13 · Memphis pastel, plein jour
+### 14 · Memphis pastel, plein jour
 
 Le contre-pied des salles de nuit : style Memphis des années 80, couleurs pastel, motifs géométriques au mur (pois, gribouillis en zigzag, triangles cernés de noir, soubassement menthe), sol en terrazzo, comptoir et flancs de bornes à rayures noires et blanches. Le soleil entre par deux grandes baies côté ouest (ciel peint, montants noirs) : c'est un projecteur placé loin dehors qui traverse les murs, puisque ceux-ci ne portent pas d'ombre, et projette les ombres douces du mobilier. Une sphère, un tore, un cône et un cylindre suspendus tournent doucement. Tone mapping neutre, aucun glow.
 
-### 14 · Plan d'architecte
+### 15 · Plan d'architecte
 
 Toute la salle est un tirage de plan : surfaces unies bleues sans éclairage, arêtes blanches du mobilier tracées par l'`EdgesRenderer` (seuil 0,95). Le sol porte une grille millimétrée, les cotes de la salle (16 000 × 12 000), l'empreinte de la table en pointillé et des annotations ; les murs sont des élévations avec cotes et cartouche. Une ligne de balayage translucide traverse la salle d'ouest en est. Seul le joueur reçoit une lumière hémisphérique bleu clair.
 
-### 15 · Lumière noire
+### 16 · Lumière noire
 
 Salle presque noire, éclairée par trois tubes UV violets et des lumières faibles. À l'inverse de la salle 1, ce sont les surfaces qui brillent : moquette d'arcade à motifs cosmiques (planètes à anneau, étoiles, éclairs, gribouillis), murs couverts d'éclaboussures et de coulures de peinture fluo, liserés, bouteilles, sièges et plateaux fluorescents, glow fort. La fluorescence respire lentement (on module `emissiveTexture.level`, car `emissiveColor` s'ajoute à la texture au lieu de la teinter) et les tubes vacillent légèrement.
 
-### 16 · Futuriste blanc irisé
+### 17 · Futuriste blanc irisé
 
 Galerie immaculée façon showroom, en PBR poussé : laque vernie (`clearCoat`) sur les bornes, le comptoir et la porte ; irisation en film mince (`iridescence`) sur les bornes aux teintes nacrées, le plateau et la sculpture suspendue (tore et orbe qui tournent au-dessus de la table) ; tissu velouté (`sheen`) sur les sièges ; chrome ; sol blanc laqué en miroir flouté. Des gorges lumineuses courent au plafond et trois projecteurs larges posent des lavis rose, cyan et violet sur les murs, pour donner des couleurs aux reflets.
 
 À retenir : un matériau accepte au plus 8 lumières (`MAX_LIGHTS`), hémisphère comprise. Au-delà, les dernières lumières créées sont ignorées sans message d'erreur.
 
-### 17 · Abandonnée, à la lampe torche
+### 18 · Abandonnée, à la lampe torche
 
 L'arcade fermée depuis des années, en ambiance d'horreur. Presque aucune lumière : une lampe torche (projecteur à ombres) suit la caméra à chaque image, tenue au-dessus de l'épaule et agitée d'un léger tremblement. S'y ajoutent un clair de lune froid venu de l'ouest et un néon de secours vert qui grésille au-dessus de la porte. Brouillard noir, image désaturée. Moquette tachée, papier peint à pois décollé par lés avec coulures d'humidité, toiles d'araignée dans les coins, poussières qui flottent dans toute la salle. Une chaise sur deux est renversée, une borne est couchée, les écrans sont éteints (simple reflet sombre).
 
-### 18 · Sous l'eau
+### 19 · Sous l'eau
 
 L'arcade engloutie : brouillard bleu dense, faïence verdie et moussue, sable ridé au sol, laiton oxydé, corail sur les sièges. Les caustiques sont trois calques additifs (`ALPHA_ADD`, sans écriture de profondeur) peints au canevas en boucles lumineuses lissées : deux au sol qui défilent en sens contraires, un au plafond pour les reflets de la surface. Une tentative avec la texture projetée d'un projecteur (`SpotLight.projectionTexture`) n'a produit qu'un éclairage uniforme et a été abandonnée. Des bulles montent en zigzag depuis cinq points, des algues ondulent le long des murs.
 
-### 19 · Caméscope VHS 1994
+### 20 · Caméscope VHS 1994
 
 Arcade de galerie marchande des années 90 (moquette à confettis, frise en zigzag turquoise et rose, plastiques brillants, caissons de tubes fluorescents), filmée comme une cassette. Post-traitement maison `artVhs` : tube cathodique bombé aux coins noirs, couches rouge et bleue décalées, chrominance floutée horizontalement (les couleurs bavent), flottement ligne par ligne, lignes de balayage, bruit, bande de tracking qui remonte l'image avec de la neige, voile chaud et vignette. Une incrustation HTML (`.vhs-osd`) affiche « ▶ PLAY », « SP » et l'heure réelle datée de 1994 ; elle est retirée en quittant la salle.
 
-### 20 · Aquarelle
+### 21 · Aquarelle
 
 La scène 3D devient une peinture grâce au post-traitement maison `artWatercolor` : filtre de Kuwahara à quatre quadrants (aplats lissés qui gardent les bords), légère dérive de l'image comme un pinceau imprécis, couleurs éclaircies et un peu désaturées, contours assombris là où la luminance varie (accumulation de pigment), taches de lavis inégal, grain de papier, et bords de l'image qui se fondent dans le papier crème. Les matériaux sont de simples aplats de couleurs douces sous une lumière de jour latérale.
 
-### 21 · Art déco, casino des années 20
+### 22 · Art déco, casino des années 20
 
 PBR orienté métaux : or brossé sur les plinthes et les liserés des bornes, laiton poli, laque noire vernie, loupe de noyer, velours bordeaux à reflet (`sheen`), tapis de jeu vert sur la table. Le sol en marbre noir veiné d'or se reflète en miroir presque net, et l'or comme le laiton reflètent la salle par une sonde. Les murs portent des panneaux vert bouteille encadrés d'or, avec éventails en soleil levant et chevrons. Un lustre de couronnes en laiton et de pampilles scintillantes pend au-dessus de la table, et des appliques chaudes rasent les panneaux. Tone mapping ACES et glow léger.
 
-### 22 · Low poly
+### 23 · Low poly
 
 Rendu à facettes sans aucune texture. Le sol est remplacé par un terrain légèrement bosselé (grille 22 × 22, relief de quelques centimètres, la physique reste plane) en ombrage plat. Des arbres (tronc hexagonal, feuillage en icosphères déformées), des rochers et des cristaux qui tournent sur la table sont déformés au hasard puis convertis en faces plates (`convertToFlatShadedMesh`). Les couleurs viennent d'aplats sous un éclairage en dégradé (ciel pêche, sol bleu-vert), et un soleil rasant d'ouest sépare nettement les faces et pose des ombres franches.
 
-## Construction à la demande
-
-Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles, le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
-
-### 23 · Encre de Chine
+### 24 · Encre de Chine
 
 La salle dessinée au pinceau sur papier de riz, par le post-traitement maison `artInk`. Les contours sont détectés par un filtre de Sobel sur la luminance, au pas d'un pixel et demi pour un trait épais. Le trait tremble (échantillonnage décalé par du bruit) et s'interrompt par endroits, comme sous la pression du pinceau. Les tons sont réduits à trois lavis d'encre, posés sur un papier crème à fibres et grain. Les matériaux sont de simples gris choisis pour tomber chacun dans un lavis différent. Seul le rouge vermillon (porte, sièges, soleil peint au mur, certaines bouteilles, enseigne 出口) est conservé en couleur.
 
-### 24 · Vaisseau spatial
+### 25 · Vaisseau spatial
 
 La salle de détente d'un vaisseau. Murs en panneaux de coque rivetés avec bandeau d'avertissement jaune et noir, sol en caillebotis métallique légèrement réfléchissant, composite blanc vernis pour les bornes et le comptoir, acier. Un grand hublot sur le mur ouest montre une nébuleuse et des étoiles qui défilent lentement, et devant elles une planète à anneau peinte au canevas (anneau arrière, planète, anneau avant). Des bandes bleues lumineuses courent au plafond et aux plinthes, une rangée de voyants clignote, le sas est cerclé d'orange et un gyrophare tourne à côté.
 
-### 25 · Dessin animé des années 30
+### 26 · Dessin animé des années 30
 
 Aplats de gris cernés d'encre (`renderOutline`), plancher et papier peint dessinés à la main, comme un vieux court métrage. Le post-traitement maison `artFilm` imite une pellicule usée : virage sépia contrasté, défauts qui changent 12 fois par seconde (image qui flotte dans le couloir du projecteur, scintillement de l'exposition, rayures verticales claires ou sombres, poussières), grain, et vignette ronde en iris. Les bornes se dandinent et les bouteilles sautillent en rythme, comme dans les dessins animés de l'époque.
 
-### 26 · Diner des années 50
+### 27 · Diner des années 50
 
 Damier noir et blanc ciré en miroir, chrome (soubassement cannelé, tabourets, pieds de table, flancs des bornes), skaï rouge, formica blanc, murs menthe à frise rouge et blanche semés d'étoiles « boomerang ». Un juke-box (caisse chromée, dôme demi-cylindre) change lentement de couleur et éclaire le coin nord-ouest. L'enseigne néon « EAT » s'allume lettre par lettre, et une horloge murale fait tourner ses aiguilles autour d'un pivot décalé. Plafonniers en globes, reflets du chrome et du skaï par une sonde.
 
-### 27 · Réalisme 6 · réflexions en espace écran
+## Construction à la demande
 
-Sommet de l'échelle de réalisme des salles 6 à 10 : même décor et mêmes lumières (`makeLook` et `lights` sont exportés par `realism.js`). Les reflets ne viennent plus d'un miroir plan : des réflexions en espace écran (`SSRRenderingPipeline`, via le prepass) font refléter chaque surface selon sa rugosité, avec atténuation de Fresnel et flou selon la rugosité. La sonde reste comme environnement pour ce qui sort de l'écran. S'y ajoutent SSAO2, un bloom doux, le MSAA ×4 et une vignette.
-
-À retenir : sur un diélectrique (réflectance d'environ 4 %), la SSR est invisible. Le carrelage reçoit donc une part métallique (0,4) et une faible rugosité (0,1) pour que son reflet se lise. Sous rendu logiciel, cette salle est la plus lente de la carte.
+Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.

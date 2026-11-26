@@ -1,6 +1,6 @@
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 15 · Lumière noire : salle presque noire, éclairée par des tubes UV violets. Ce ne sont pas les
+// Salle 16 · Lumière noire : salle presque noire, éclairée par des tubes UV violets. Ce ne sont pas les
 // lampes qui brillent mais les surfaces : moquette d'arcade à motifs cosmiques, éclaboussures de peinture
 // fluo aux murs, liserés et bouteilles fluorescents. La fluorescence « respire » au rythme des tubes.
 const palette = { background: "#07020f", primary: "#39ff14", secondary: "#ff2fd6", accent: "#fff700", text: "#ffffff" };

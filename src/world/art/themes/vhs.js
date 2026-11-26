@@ -2,7 +2,7 @@ import { Effect } from "@babylonjs/core/Materials/effect";
 import { PostProcess } from "@babylonjs/core/PostProcesses/postProcess";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 19 · Caméscope VHS 1994 : une arcade de galerie marchande des années 90 sous des tubes
+// Salle 20 · Caméscope VHS 1994 : une arcade de galerie marchande des années 90 sous des tubes
 // fluorescents, filmée comme une vieille cassette. Post-traitement maison : tube cathodique bombé,
 // couches RVB décalées, couleurs qui bavent, lignes de balayage, bruit, bande de tracking qui remonte,
 // incrustation « PLAY » et date en surimpression.

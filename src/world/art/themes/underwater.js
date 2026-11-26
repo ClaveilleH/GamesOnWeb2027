@@ -3,7 +3,7 @@ import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 18 · Sous l'eau : l'arcade engloutie. Des caustiques (lumière focalisée par les vagues)
+// Salle 19 · Sous l'eau : l'arcade engloutie. Des caustiques (lumière focalisée par les vagues)
 // ondulent au sol et au plafond ; brouillard bleu dense, bulles qui
 // montent, algues qui oscillent, sable au sol. Les couleurs chaudes disparaissent avec la profondeur.
 const palette = { background: "#022a3a", primary: "#7ff3ff", secondary: "#ffb070", accent: "#c8fff4", text: "#e0ffff" };

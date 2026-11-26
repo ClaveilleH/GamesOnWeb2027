@@ -2,7 +2,7 @@ import { Effect } from "@babylonjs/core/Materials/effect";
 import { PostProcess } from "@babylonjs/core/PostProcesses/postProcess";
 import { signTexture, std } from "../materials.js";
 
-// Salle 20 · Aquarelle : la scène 3D devient une peinture. Post-traitement maison : filtre de Kuwahara
+// Salle 21 · Aquarelle : la scène 3D devient une peinture. Post-traitement maison : filtre de Kuwahara
 // (aplats lissés qui gardent les bords), contours assombris là où le pigment s'accumule, papier grenu,
 // taches et légère dérive des couleurs, bords de l'image qui se fondent dans le blanc du papier.
 // Les matériaux restent simples : de grandes plages de couleurs douces sous une lumière de jour.

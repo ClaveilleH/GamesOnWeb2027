@@ -4,7 +4,7 @@ import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { PostProcess } from "@babylonjs/core/PostProcesses/postProcess";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 12 · Pixel 8 bits : l'image est rendue en basse définition (gros pixels nets), chaque pixel
+// Salle 13 · Pixel 8 bits : l'image est rendue en basse définition (gros pixels nets), chaque pixel
 // est ramené à une palette de 16 couleurs avec un tramage ordonné (Bayer 4×4). Textures en pixel art,
 // éclairage simple et franc, pas de reflet : tout le style vient du post-traitement.
 const palette = { background: "#1a1c2c", primary: "#ffcd75", secondary: "#ef7d57", accent: "#73eff7", text: "#f4f4f4" };

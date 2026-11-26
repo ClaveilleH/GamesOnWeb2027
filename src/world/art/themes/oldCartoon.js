@@ -4,7 +4,7 @@ import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { PostProcess } from "@babylonjs/core/PostProcesses/postProcess";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 25 · Dessin animé des années 30 : aplats de gris cernés d'encre, comme un vieux court métrage.
+// Salle 26 · Dessin animé des années 30 : aplats de gris cernés d'encre, comme un vieux court métrage.
 // Post-traitement maison de pellicule usée : virage sépia, scintillement de l'exposition, image qui
 // flotte dans le couloir du projecteur, rayures verticales, poussières et cheveux, vignette en iris.
 // Les bornes et les bouteilles dansent en rythme, comme dans les dessins animés de l'époque.

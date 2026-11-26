@@ -2,7 +2,7 @@ import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder"
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import { paintedTexture, pbr, signTexture, std } from "../materials.js";
 
-// Salle 21 · Art déco : casino des années 20. PBR orienté métaux : or brossé et laiton poli reflètent
+// Salle 22 · Art déco : casino des années 20. PBR orienté métaux : or brossé et laiton poli reflètent
 // la salle par une sonde, marbre noir veiné d'or en miroir au sol, panneaux vert bouteille à éventails
 // dorés, velours bordeaux sur les sièges, lustre de cristal scintillant au-dessus de la table.
 const palette = { background: "#0c1a14", primary: "#d4af37", secondary: "#7a1020", accent: "#f3e2a9", text: "#f3e2a9" };

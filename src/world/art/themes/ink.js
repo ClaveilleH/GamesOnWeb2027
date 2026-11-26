@@ -2,7 +2,7 @@ import { Effect } from "@babylonjs/core/Materials/effect";
 import { PostProcess } from "@babylonjs/core/PostProcesses/postProcess";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 23 · Encre de Chine : la salle dessinée au pinceau sur papier de riz. Post-traitement maison :
+// Salle 24 · Encre de Chine : la salle dessinée au pinceau sur papier de riz. Post-traitement maison :
 // contours détectés (Sobel sur la couleur), épaissis et rendus irréguliers par du bruit ; tons réduits
 // à trois lavis d'encre ; grain et fibres du papier. Une seule couleur survit : le rouge vermillon.
 const palette = { background: "#f1ead8", primary: "#1a1a1a", secondary: "#c8102e", accent: "#c8102e", text: "#1a1a1a" };

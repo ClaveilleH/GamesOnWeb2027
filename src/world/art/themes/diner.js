@@ -3,7 +3,7 @@ import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { paintedTexture, signTexture, std } from "../materials.js";
 
-// Salle 26 · Diner des années 50 : damier noir et blanc ciré en miroir, chrome partout (comptoir,
+// Salle 27 · Diner des années 50 : damier noir et blanc ciré en miroir, chrome partout (comptoir,
 // tabourets, pieds de table), skaï rouge, murs menthe, frise rouge. Un juke-box arrondi brille et change
 // de couleur, une enseigne néon « EAT » clignote, une horloge tourne au mur.
 const palette = { background: "#7fd1c7", primary: "#d7263d", secondary: "#f6f6f6", accent: "#ffd23f", text: "#1b1b1b" };

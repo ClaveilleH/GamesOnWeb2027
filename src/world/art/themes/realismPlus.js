@@ -3,7 +3,7 @@ import { SSAO2RenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipe
 import { SSRRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/ssrRenderingPipeline";
 import { lights, makeLook } from "./realism.js";
 
-// Salle 27 · Réalisme 6 : sommet de l'échelle de réalisme (salles 6 à 10), même décor et mêmes lumières.
+// Salle 11 · Réalisme 6 : sommet de l'échelle de réalisme (salles 6 à 10), même décor et mêmes lumières.
 // Les reflets ne viennent plus d'un miroir plan ni seulement d'une sonde : des réflexions en espace écran
 // (SSR) font refléter chaque surface brillante selon sa rugosité, sol, comptoir, bornes et chrome compris.
 // S'y ajoutent l'occlusion ambiante, un bloom doux et l'anticrénelage multi-échantillons.

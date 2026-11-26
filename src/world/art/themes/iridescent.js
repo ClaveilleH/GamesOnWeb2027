@@ -2,7 +2,7 @@ import { CreateTorus } from "@babylonjs/core/Meshes/Builders/torusBuilder";
 import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder";
 import { paintedTexture, pbr, signTexture, std } from "../materials.js";
 
-// Salle 16 · Futuriste blanc irisé : galerie immaculée façon showroom. PBR poussé : vernis (clearcoat)
+// Salle 17 · Futuriste blanc irisé : galerie immaculée façon showroom. PBR poussé : vernis (clearcoat)
 // sur les bornes et le comptoir, irisation (film mince) qui change de couleur avec l'angle, tissu à
 // reflet velouté (sheen) sur les sièges, sol blanc laqué en miroir. Lumière blanche, douce et abondante.
 const palette = { background: "#f2f5f8", primary: "#6c8cff", secondary: "#ff7ac6", accent: "#5be7c4", text: "#1d2433" };

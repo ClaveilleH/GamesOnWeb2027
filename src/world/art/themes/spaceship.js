@@ -1,6 +1,6 @@
 import { paintedTexture, pbr, signTexture, std } from "../materials.js";
 
-// Salle 24 · Vaisseau spatial : la salle de détente d'un vaisseau. Panneaux de coque gris clair et rivets,
+// Salle 25 · Vaisseau spatial : la salle de détente d'un vaisseau. Panneaux de coque gris clair et rivets,
 // bandes lumineuses bleues au sol et au plafond, grand hublot sur l'espace (planète à anneau, nébuleuse,
 // étoiles qui défilent lentement), voyants qui clignotent et gyrophare orange qui tourne près de la porte.
 const palette = { background: "#05070d", primary: "#4fc3ff", secondary: "#ff9f1c", accent: "#e0f2ff", text: "#e0f2ff" };
