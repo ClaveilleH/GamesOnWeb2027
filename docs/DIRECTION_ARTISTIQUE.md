@@ -296,6 +296,12 @@ Une salle de jeux de quartier des années 90, comme photographiée au compact su
 
 L'optimisme rétro-futuriste de la fin des années 50, à comparer au diner (salle 27) qui partage le damier. Murs bicolores turquoise et crème séparés d'un filet corail, étoiles « starburst » dorées et atomes à trois orbites peints, formica crème à boomerangs et paillettes sur le comptoir et la table, skaï corail, chrome très brillant. Un lustre Spoutnik tourne lentement au centre : noyau chromé et 18 bras répartis sur une spirale de Fibonacci, chacun orienté par tangage puis lacet et terminé par une ampoule. Des suspensions coniques jaunes éclairent le bar et la table. Lumière franche et gaie, ombres douces.
 
+### 67 · Scan LiDAR
+
+La salle n'est vue qu'à travers un relevé laser. Le post-traitement `artLidar` lit la carte de profondeur linéaire du *depth renderer* de Babylon : chaque point d'une grille serrée s'allume d'une couleur qui dépend de la distance (palette arc-en-ciel « turbo », rouge près, bleu loin), et rapetisse avec l'éloignement. Les discontinuités de profondeur tracent des arêtes claires, et une onde de balayage part de la caméra et parcourt la salle en ravivant les points. Près de la caméra, un quart de la couleur réelle de la scène teinte les points. La scène elle-même est en gris neutres sans éclairage particulier.
+
+Le rendu des portails restreint `camera.layerMask` au calque « world » pendant la passe principale : la carte de profondeur, qui filtre par ce masque, excluait le joueur (calque « late »). Un `renderListPredicate` sur la carte contourne le filtre. Le *depth renderer* est désactivé quand on quitte la salle.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
