@@ -328,6 +328,10 @@ Geler réellement la sortie entre deux images (cadence saccadée de l'image enti
 
 Toile rayée rouge et crème à festons dorés sur les murs et le plafond, sol de sciure (milliers de copeaux peints), mât central doré, piste ronde bordée d'un tore rouge à clous lumineux. Huit guirlandes d'ampoules descendent en chaînette du sommet du mât vers les coins et le milieu des murs ; un chenillard éteint une ampoule sur trois en faisant avancer le motif. Une poursuite blanche à ombres douces tourne sur la piste, un projecteur rose balaie la toile depuis le mât, et des lumières chaudes éclairent le bar et la table. Bar rouge, étagère de bocaux à bonbons, table bleu roi.
 
+### 73 · Pointillisme
+
+À la manière néo-impressionniste. Le post-traitement `artPointillism` recompose l'image en touches rondes sur une toile blanc cassé, en deux couches décalées qui se chevauchent. Chaque cellule d'une grille place sa touche au hasard (grille désordonnée, recherche du point le plus proche sur les 3 × 3 voisins), avec un rayon variable. La couleur vient de la scène sous la touche, sursaturée et légèrement déviée vers un pigment voisin, ce qui donne le mélange optique : de loin, les teintes se fondent ; de près, on voit les points purs et le blanc de la toile entre eux. La scène est un après-midi d'été (soleil chaud par l'ouest, ciel bleuté en ambiance) aux couleurs franches. Les petits objets, comme le squelette ou les bouteilles, perdent leur lisibilité, ce qui est la limite du style.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
