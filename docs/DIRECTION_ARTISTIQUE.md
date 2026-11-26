@@ -246,6 +246,12 @@ Les murs et le plafond s'ouvrent sur un ciel nocturne peint : bande laiteuse dia
 
 L'image est gravée comme une illustration du XIXᵉ siècle ou un billet de banque. Le post-traitement `artEngraving` trace des tailles parallèles inclinées, légèrement ondulées par la luminance locale, dont l'épaisseur suit l'obscurité. Une seconde passe croisée n'apparaît que dans les noirs. Les contours détectés par gradient sont encrés. Encre brun-noir sur papier vergé crème (vergeures et pontuseaux) ; ni trame de points ni dégradé. La scène est en gris neutres sous une lumière latérale de fenêtre à ombres douces, pour un modelé marqué.
 
+### 56 · Avant-poste martien
+
+Module d'habitat façon film de SF réaliste, en PBR. Panneaux composites blancs rivetés et marqués (« HAB-05 », bandes de danger), grille métallique au sol saupoudrée de poussière rouge, plafond gris technique avec bandeaux de LED blanc froid. Hublots ronds (disques encadrés d'un tore) sur un paysage peint : dunes rouille en plans successifs, ciel caramel, petit soleil pâle. La lumière martienne orangée entre par les hublots de l'ouest et porte des ombres douces, en contraste chaud/froid avec l'éclairage du module. Brouillard exponentiel orangé de poussière en suspension, conduites, réservoirs, voyants verts clignotants.
+
+Les UV d'un disque Babylon sont inversés verticalement par rapport à un plan : un demi-tour sur l'axe Z remet le ciel en haut.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
