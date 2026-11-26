@@ -32,7 +32,12 @@ export function createArtMap(scene) {
   const glow = new GlowLayer("néons", scene, { blurKernelSize: 64, mainTextureRatio: 0.5 });
   glow.intensity = 0;
   const playerMeshes = [];
-  const rooms = [];
+  // Salles décrites d'avance, construites à leur première visite : charger la carte ne bâtit que la première.
+  const rooms = THEMES.map((theme, index) => ({
+    theme, index, origin: new Vector3(index * SPACING, 0, 0), built: false,
+    meshes: [], lights: [], mirrors: [], probes: [], shadows: [], updates: [],
+    anchors: { door: new Vector3(index * SPACING, 0, -ROOM.depth / 2 + 0.6) },
+  }));
 
   const ground = CreateBox("salles · dalle", { width: SPACING * THEMES.length + 20, height: 1, depth: 40 }, scene);
   ground.position.set((SPACING * (THEMES.length - 1)) / 2, -0.5, 0);
@@ -40,12 +45,13 @@ export function createArtMap(scene) {
   new PhysicsAggregate(ground, PhysicsShapeType.BOX, { mass: 0, friction: 0.8 }, scene)
     .shape.filterMembershipMask = collisionLayer.terrain;
 
-  THEMES.forEach((theme, index) => {
-    const origin = new Vector3(index * SPACING, 0, 0);
+  function build(room) {
+    if (room.built) return room;
+    room.built = true;
+    const { theme, index, origin } = room;
     const name = `salle ${index + 1}`;
     const look = theme.look(scene, name);
-    const room = buildArcadeRoom(scene, name, origin, look);
-    Object.assign(room, { theme, index, origin, lights: [], mirrors: [], probes: [], shadows: [], updates: [] });
+    Object.assign(room, buildArcadeRoom(scene, name, origin, look));
     const local = (x, y, z) => new Vector3(origin.x + x, y, origin.z + z);
 
     // Outils passés à la direction artistique pour éclairer et décorer sa salle.
@@ -148,8 +154,8 @@ export function createArtMap(scene) {
       onUpdate(fn) { room.updates.push(fn); },
     };
     theme.decorate?.(ctx);
-    rooms.push(room);
-  });
+    return room;
+  }
 
   // ─── Salle active ───────────────────────────────────────────────────────────────────────────────
   let current = -1;
@@ -170,6 +176,7 @@ export function createArtMap(scene) {
   function activate(index) {
     if (index === current) return;
     current = index;
+    build(rooms[index]);
     disposePost?.();
     disposePost = null;
     for (const room of rooms) {
