@@ -202,6 +202,10 @@ La salle est dessinée au graphite sur papier crème. Le post-traitement `artPen
 
 Western de fin d'après-midi : planches verticales patinées (fibres, nœuds), plancher usé, comptoir massif avec barre de pied en laiton et crachoir, lustre en roue de chariot garni de huit bougies qui se balance un peu, portes battantes qui oscillent puis s'amortissent, affiche « WANTED » sur le mur est. Le soleil entre en biais par deux fenêtres à croisée : un projecteur rasant porte les ombres du mobilier, des faisceaux additifs inclinés matérialisent la lumière et des grains de poussière y flottent. Étalonnage sépia (saturation −35, teinte ocre via les courbes de couleur), brume chaude, vignette forte.
 
+### 45 · Vitraux
+
+Nef de pierre appareillée et dallage de marbre noir et blanc poli (miroir plan) où se reflètent trois grandes verrières en ogive du mur ouest. Chaque vitrail est peint (losanges colorés, rosace centrale, plombs noirs) et sert de vitre lumineuse (émissive avec opacité). Le même dessin, posé au sol en additif, étiré et décalé vers l'intérieur, simule les taches de couleur que le soleil y dépose. Un projecteur rasant venu de derrière les verrières porte les ombres. Un chandelier aux deux rangées de cierges près du bar, avec flammes qui dansent et lumière chaude, complète la nef. Mobilier en chêne, calices dorés.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
