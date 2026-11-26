@@ -338,6 +338,10 @@ Un espace vide et trop propre, dans l'esprit des *liminal spaces*. Faïence blan
 
 Le premier réglage (exposition et brouillard plus forts) délavait tout en blanc : l'étrangeté vient de la netteté répétitive des joints, qu'il faut garder lisible.
 
+### 75 · Papier découpé
+
+Comme un diorama de papier. Chaque surface est une feuille colorée (fibres et grain peints au canevas), éclairée surtout par l'ambiance, avec une part d'émission, pour rester presque sans modelé. Le mur nord porte un décor de découpes plaquées en couches à quelques centimètres : collines, nuages et soleil dentelé, dont la silhouette vient de la transparence de leur texture (le papier est peint dans un chemin de découpe). Le post-traitement `artPaperCut` lit la carte de profondeur (voir salle 67) pour donner l'épaisseur du papier. Il cherche, sur une diagonale vers le haut-gauche, une découpe plus proche : le pixel est alors dans son ombre portée, qui s'estompe avec l'écart. Un liseré clair souligne la tranche haute-gauche de chaque découpe.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
