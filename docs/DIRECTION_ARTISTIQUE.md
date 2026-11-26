@@ -198,6 +198,10 @@ Aucune lumière blanche : seul le vivant éclaire. La roche sombre et humide est
 
 La salle est dessinée au graphite sur papier crème. Le post-traitement `artPencil` détecte les contours sur la luminance et superpose trois couches de hachures (angles différents, tremblées par un bruit) qui apparaissent l'une après l'autre quand l'ombre s'épaissit. Il reprend aussi légèrement la couleur des objets saturés, comme un crayon de couleur (porte et flancs rouges, sièges bleus). Les traits « bouillonnent » : le tremblé change quatre fois par seconde, comme un dessin animé image par image. La scène est en gris moyens, sous une lampe latérale à ombres douces que les hachures traduisent.
 
+### 44 · Saloon
+
+Western de fin d'après-midi : planches verticales patinées (fibres, nœuds), plancher usé, comptoir massif avec barre de pied en laiton et crachoir, lustre en roue de chariot garni de huit bougies qui se balance un peu, portes battantes qui oscillent puis s'amortissent, affiche « WANTED » sur le mur est. Le soleil entre en biais par deux fenêtres à croisée : un projecteur rasant porte les ombres du mobilier, des faisceaux additifs inclinés matérialisent la lumière et des grains de poussière y flottent. Étalonnage sépia (saturation −35, teinte ocre via les courbes de couleur), brume chaude, vignette forte.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
