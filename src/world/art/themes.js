@@ -40,8 +40,9 @@ import { stainedGlass } from "./themes/stainedGlass.js";
 import { icePalace } from "./themes/icePalace.js";
 import { retro3d } from "./themes/retro3d.js";
 import { library } from "./themes/library.js";
+import { deStijl } from "./themes/deStijl.js";
 import { neonViolet } from "./themes/neonViolet.js";
 import { warmBistro } from "./themes/warmBistro.js";
 
 // Directions artistiques, une salle chacune, dans l'ordre de visite.
-export const THEMES = Object.freeze([neonViolet, warmBistro, comicToon, filmNoir, synthwave, ...REALISM, realismPlus, cyberpunk, pixel, memphis, blueprint, blacklight, iridescent, abandoned, underwater, vhs, watercolor, artDeco, lowPoly, ink, spaceship, oldCartoon, diner, vaporwave, chalet, clay, hologram, miniature, jungleTemple, ascii, volcano, thermal, izakaya, selectiveRed, shadowPuppets, highKey, steampunk, biolum, pencil, saloon, stainedGlass, icePalace, retro3d, library]);
+export const THEMES = Object.freeze([neonViolet, warmBistro, comicToon, filmNoir, synthwave, ...REALISM, realismPlus, cyberpunk, pixel, memphis, blueprint, blacklight, iridescent, abandoned, underwater, vhs, watercolor, artDeco, lowPoly, ink, spaceship, oldCartoon, diner, vaporwave, chalet, clay, hologram, miniature, jungleTemple, ascii, volcano, thermal, izakaya, selectiveRed, shadowPuppets, highKey, steampunk, biolum, pencil, saloon, stainedGlass, icePalace, retro3d, library, deStijl]);

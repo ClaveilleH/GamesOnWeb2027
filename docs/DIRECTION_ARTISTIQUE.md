@@ -218,6 +218,10 @@ L'esthétique des premières consoles 3D. Le post-traitement `artRetro3d` calcul
 
 Tous les murs sont des rayonnages du sol au plafond : dos de livres peints en couleurs de reliure, nervures et titres dorés, quelques vides, tablettes et montants. Une coursive à balustrade et main courante en laiton court le long du mur nord, avec une échelle appuyée. Trois lampes de banquier à abat-jour vert émissif (bar et table) donnent une lumière chaude et basse ; celle de la table porte les ombres. Fauteuil club et sièges en cuir rouge, globe terrestre qui tourne lentement, plancher ciré au reflet doux, poussière dorée qui flotte autour des lampes, pénombre et brume chaude dans les hauteurs.
 
+### 49 · De Stijl / Bauhaus
+
+Les murs sont une composition générée : découpe récursive en rectangles, quelques-uns remplis de rouge, bleu, jaune ou noir, le reste blanc cassé, avec d'épaisses lignes noires. Le mobilier est en volumes purs aux couleurs primaires : bar bleu à plateau noir, sièges rouges, table et porte jaunes, bornes alternées. Trois sculptures élémentaires (cube bleu qui tourne, cylindre rouge, sphère jaune) reposent sur des socles noirs. Lumière franche de grand atelier, comme une verrière zénithale, à ombres nettes ; sol blanc laqué qui reflète.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
