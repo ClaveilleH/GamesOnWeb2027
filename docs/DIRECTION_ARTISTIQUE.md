@@ -266,6 +266,10 @@ Inspirée des estampes japonaises gravées sur bois. Le post-traitement `artWood
 
 Réalisme urbain froid, désaturé. Béton taché de coulures d'humidité, sol peint avec taches d'huile, lignes jaunes des places et flèche de sens de circulation. Piliers marqués « B2 » avec bande de danger jaune et noire en pied, gaine de ventilation, sprinklers, porte coupe-feu rouge et panneau vert « sortie piétons ». Éclairage par cinq réglettes de tubes fluorescents verdâtres ; l'un d'eux grésille, avec des coupures brèves et irrégulières (somme de sinus). Le sol mouillé est un miroir partiel où se reflètent tubes et piliers. Brouillard sombre, grain de film animé, aberration chromatique et forte vignette.
 
+### 60 · Glitch numérique
+
+L'image se corrompt par salves, environ une fois sur trois quarts de seconde, et reste presque propre entre deux. Le post-traitement `artGlitch` décale des bandes horizontales, sépare les canaux rouge, vert et bleu, fige des macroblocs de 24 px en aplats comme une compression qui décroche, étire vers le bas les couleurs claires dans certaines colonnes (tri de pixels), ajoute des lignes de données parasites cyan et inverse brièvement quelques blocs. La scène est volontairement minimaliste : noir laqué, arêtes néon cyan et magenta le long du plafond et dans les coins, sol miroir, pour que les artefacts soient la matière principale de l'image.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
