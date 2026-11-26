@@ -172,6 +172,10 @@ La salle est vue par une caméra infrarouge. Le post-traitement `artThermal` lit
 
 Cloisons shoji rétroéclairées : une même texture (papier chaud et grille de bois) sert de diffuse et d'émissive, de sorte que le papier rayonne et que le bois reste sombre. Plancher clair ciré au reflet doux (miroir plan à faible intensité), comptoir et table en laque noire brillante qui reflètent la salle (sonde), coussins rouge sombre. Quatre lanternes de papier rouge marquées 酒 se balancent et éclairent d'un orange chaud. Un rideau noren bleu nuit (« 居酒屋 ») ondule devant le fond du bar, et des pétales de cerisier tombent en tournoyant.
 
+### 38 · Couleur sélective
+
+Noir et blanc très contrasté, sauf les rouges, qui gardent leur saturation, comme dans un roman graphique filmé. Le post-traitement `artSelective` applique une courbe en S forte sur la luminance, mesure la « rougeur » d'un pixel (rouge nettement au-dessus du vert et du bleu) et ne conserve la couleur que là, avec du grain. Sont rouges : l'enseigne EXIT, la porte, une borne, les tabourets et les chaises, une bouteille, un néon au-dessus du bar et la robe de la chanteuse sur l'affiche. Murs de briques, sol noir miroir, deux projecteurs durs à ombres franches (cercle de lumière sur la table, contre-jour sur le bar).
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
