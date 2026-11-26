@@ -210,6 +210,10 @@ Nef de pierre appareillée et dallage de marbre noir et blanc poli (miroir plan)
 
 Murs taillés dans la glace : blocs, fissures et bulles peints, vernis en clearcoat. Le mobilier est en glace réfringente (PBR : réfraction par sous-surface, indice 1,31, teinte cyan selon l'épaisseur) qui reflète et réfracte une sonde de la salle. Le sol gelé, poli comme un miroir, reflète le bar et les tabourets. Stalactites de glace, cristaux lumineux qui scintillent dans les angles, sièges couverts de fourrure (sheen). Lumière froide (voûte translucide, contre-jours bleus) et une seule source chaude, un brasero à ombres près de la table. Brume bleu pâle.
 
+### 47 · 3D rétro 32 bits
+
+L'esthétique des premières consoles 3D. Le post-traitement `artRetro3d` calcule l'image vers 240 lignes (gros pixels nets) et ramène les couleurs à 5 bits par canal avec un tramage ordonné de Bayer 4×4. Les textures sont minuscules (32 texels), sans filtrage ni mipmaps (`paintedTexture(..., { pixelated: true, mipmaps: false })`) : carrelage violet en damier, briques, bois et métal riveté à gros texels. Brouillard proche et épais comme une distance d'affichage courte, éclairage simple par deux ponctuelles colorées, couleurs franches pour les bornes et les sièges.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
