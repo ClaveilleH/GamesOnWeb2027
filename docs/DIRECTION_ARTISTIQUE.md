@@ -132,6 +132,10 @@ Rêverie numérique des années 90 : damier rose et turquoise en miroir, murs en
 
 Réalisme chaleureux en PBR : murs en rondins, plancher de mélèze, plafond sombre, laine rouge à reflet velouté sur les sièges, fer forgé. Une cheminée en pierre (montants, hotte, linteau, âtre, bûches) abrite un feu en panneaux animés à texture dégradée qui ondulent. Sa lumière orange vacille et projette les ombres du mobilier. Un tapis en peau est posé devant l'âtre. Deux fenêtres donnent sur une nuit bleue (sapins enneigés, lune), où la neige tombe sur un calque transparent qui défile. Lanternes chaudes au bar et près des bornes, clair de lune froid par les fenêtres.
 
+### 30 · Pâte à modeler
+
+Tout semble modelé à la main : couleurs franches et mates, léger reflet gras, et une texture de relief (`bumpTexture`) partagée par tous les matériaux, peinte comme une carte de normales approximative avec empreintes de doigts en arcs concentriques et petites bosses. Lumière de studio douce : un grand projecteur à ombres floues et un remplissage froid. Des figurines en pâte (un chat orange sur le comptoir, une plante en pot, un escargot qui longe le mur) bougent par à-coups, car leurs poses sont quantifiées à 12 images par seconde comme en stop motion. Le chat respire en se déformant et remue la queue.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
