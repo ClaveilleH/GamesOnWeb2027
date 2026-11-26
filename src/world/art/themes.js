@@ -13,8 +13,9 @@ import { underwater } from "./themes/underwater.js";
 import { vhs } from "./themes/vhs.js";
 import { watercolor } from "./themes/watercolor.js";
 import { artDeco } from "./themes/artDeco.js";
+import { lowPoly } from "./themes/lowPoly.js";
 import { neonViolet } from "./themes/neonViolet.js";
 import { warmBistro } from "./themes/warmBistro.js";
 
 // Directions artistiques, une salle chacune, dans l'ordre de visite.
-export const THEMES = Object.freeze([neonViolet, warmBistro, comicToon, filmNoir, synthwave, ...REALISM, cyberpunk, pixel, memphis, blueprint, blacklight, iridescent, abandoned, underwater, vhs, watercolor, artDeco]);
+export const THEMES = Object.freeze([neonViolet, warmBistro, comicToon, filmNoir, synthwave, ...REALISM, cyberpunk, pixel, memphis, blueprint, blacklight, iridescent, abandoned, underwater, vhs, watercolor, artDeco, lowPoly]);

@@ -95,3 +95,7 @@ La scène 3D devient une peinture grâce au post-traitement maison `artWatercolo
 ### 21 · Art déco, casino des années 20
 
 PBR orienté métaux : or brossé sur les plinthes et les liserés des bornes, laiton poli, laque noire vernie, loupe de noyer, velours bordeaux à reflet (`sheen`), tapis de jeu vert sur la table. Le sol en marbre noir veiné d'or se reflète en miroir presque net, et l'or comme le laiton reflètent la salle par une sonde. Les murs portent des panneaux vert bouteille encadrés d'or, avec éventails en soleil levant et chevrons. Un lustre de couronnes en laiton et de pampilles scintillantes pend au-dessus de la table, et des appliques chaudes rasent les panneaux. Tone mapping ACES et glow léger.
+
+### 22 · Low poly
+
+Rendu à facettes sans aucune texture. Le sol est remplacé par un terrain légèrement bosselé (grille 22 × 22, relief de quelques centimètres, la physique reste plane) en ombrage plat. Des arbres (tronc hexagonal, feuillage en icosphères déformées), des rochers et des cristaux qui tournent sur la table sont déformés au hasard puis convertis en faces plates (`convertToFlatShadedMesh`). Les couleurs viennent d'aplats sous un éclairage en dégradé (ciel pêche, sol bleu-vert), et un soleil rasant d'ouest sépare nettement les faces et pose des ombres franches.
