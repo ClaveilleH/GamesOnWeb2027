@@ -142,6 +142,12 @@ Le mobilier est une projection. Les matériaux utilisent l'effet de Fresnel : la
 
 À retenir : `clone()` sur une `DynamicTexture` ne recopie pas son dessin. Il faut peindre une seconde texture.
 
+### 32 · Maquette miniature (tilt-shift)
+
+Une profondeur de champ très courte (`DefaultRenderingPipeline`, ouverture f/1,4, focale 110 mm) fait la mise au point sur la cible de la caméra d'épaule, donc sur le joueur, et floute l'avant et l'arrière-plan : la salle se lit comme une maquette photographiée de près. La mise au point suit le joueur en douceur. Plastique de jouet brillant aux couleurs saturées, sol en plaque à picots, plein soleil à ombres nettes, contraste et saturation relevés, accentuation légère.
+
+À retenir : `scene.pickWithRay` exige l'import à effet de bord de `@babylonjs/core/Culling/ray`, sinon une exception fige le rendu.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
