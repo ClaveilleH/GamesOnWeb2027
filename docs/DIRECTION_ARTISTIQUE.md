@@ -324,6 +324,10 @@ L'image passe par une caméra de sécurité bon marché. Le post-traitement `art
 
 Geler réellement la sortie entre deux images (cadence saccadée de l'image entière) n'est pas possible simplement avec la dernière passe de la chaîne, qui se redessine à chaque image ; il faudrait recopier l'image dans une texture intermédiaire.
 
+### 72 · Chapiteau
+
+Toile rayée rouge et crème à festons dorés sur les murs et le plafond, sol de sciure (milliers de copeaux peints), mât central doré, piste ronde bordée d'un tore rouge à clous lumineux. Huit guirlandes d'ampoules descendent en chaînette du sommet du mât vers les coins et le milieu des murs ; un chenillard éteint une ampoule sur trois en faisant avancer le motif. Une poursuite blanche à ombres douces tourne sur la piste, un projecteur rose balaie la toile depuis le mât, et des lumières chaudes éclairent le bar et la table. Bar rouge, étagère de bocaux à bonbons, table bleu roi.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
