@@ -222,6 +222,10 @@ Tous les murs sont des rayonnages du sol au plafond : dos de livres peints en co
 
 Les murs sont une composition générée : découpe récursive en rectangles, quelques-uns remplis de rouge, bleu, jaune ou noir, le reste blanc cassé, avec d'épaisses lignes noires. Le mobilier est en volumes purs aux couleurs primaires : bar bleu à plateau noir, sièges rouges, table et porte jaunes, bornes alternées. Trois sculptures élémentaires (cube bleu qui tourne, cylindre rouge, sphère jaune) reposent sur des socles noirs. Lumière franche de grand atelier, comme une verrière zénithale, à ombres nettes ; sol blanc laqué qui reflète.
 
+### 50 · Bar tiki au couchant
+
+Les murs s'ouvrent sur un océan au soleil couchant : ciel violet, corail et or, deux soleils bas dont le reflet doré scintille sur la mer, îles à palmiers en silhouette sur l'horizon. Plancher de terrasse, comptoir et étagères en bambou à nœuds, auvent de chaume dont la frange de lanières ondule au vent. Trois torches tiki à flammes vacillantes, une guirlande d'ampoules colorées en chaînette qui se balance d'un mur à l'autre. Soleil rasant venu de l'ouest qui étire les ombres, remplissage rose.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
