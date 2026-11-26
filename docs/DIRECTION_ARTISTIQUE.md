@@ -226,6 +226,10 @@ Les murs sont une composition générée : découpe récursive en rectangles, qu
 
 Les murs s'ouvrent sur un océan au soleil couchant : ciel violet, corail et or, deux soleils bas dont le reflet doré scintille sur la mer, îles à palmiers en silhouette sur l'horizon. Plancher de terrasse, comptoir et étagères en bambou à nœuds, auvent de chaume dont la frange de lanières ondule au vent. Trois torches tiki à flammes vacillantes, une guirlande d'ampoules colorées en chaînette qui se balance d'un mur à l'autre. Soleil rasant venu de l'ouest qui étire les ombres, remplissage rose.
 
+### 51 · Années 70 psychédéliques
+
+Papier peint à cercles concentriques orange, moutarde, brun, rouille et crème ; moquette à poils longs (milliers de brins peints), teck, formica orange, velours moutarde, miroir fumé derrière le bar. Trois lampes à lave (socle chromé, flacon teinté) dont les bulles de cire montent, gonflent et redescendent, chacune avec sa lueur colorée. Une boule à facettes tourne au plafond : ses éclats sont des petits panneaux projetés sur le mur le plus proche dans leur direction et balaient la salle. Post-traitement `artGroovy` : ondulation radiale douce et teinte qui dérive lentement.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
