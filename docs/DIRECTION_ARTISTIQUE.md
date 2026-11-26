@@ -136,6 +136,12 @@ Réalisme chaleureux en PBR : murs en rondins, plancher de mélèze, plafond som
 
 Tout semble modelé à la main : couleurs franches et mates, léger reflet gras, et une texture de relief (`bumpTexture`) partagée par tous les matériaux, peinte comme une carte de normales approximative avec empreintes de doigts en arcs concentriques et petites bosses. Lumière de studio douce : un grand projecteur à ombres floues et un remplissage froid. Des figurines en pâte (un chat orange sur le comptoir, une plante en pot, un escargot qui longe le mur) bougent par à-coups, car leurs poses sont quantifiées à 12 images par seconde comme en stop motion. Le chat respire en se déformant et remue la queue.
 
+### 31 · Hologramme
+
+Le mobilier est une projection. Les matériaux utilisent l'effet de Fresnel : la couleur émissive (`emissiveFresnelParameters`) est forte sur les bords et faible de face, et l'opacité (`opacityFresnelParameters`) rend les centres presque transparents. Des arêtes cyan (`EdgesRenderer`) dessinent chaque objet, une texture de lignes de balayage défile sur toutes les surfaces, et l'ensemble scintille avec de brèves coupures. Salle noire quadrillée, barres de projecteurs au sol sous chaque zone et au plafond.
+
+À retenir : `clone()` sur une `DynamicTexture` ne recopie pas son dessin. Il faut peindre une seconde texture.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
