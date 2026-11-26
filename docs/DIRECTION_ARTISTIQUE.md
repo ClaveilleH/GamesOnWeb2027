@@ -348,6 +348,10 @@ Petit matin dans une serre. Le plafond et le mur ouest sont une verrière peinte
 
 Des rayons de soleil en boîtes additives inclinées ont été essayés puis retirés : orientés à la main, ils rendaient comme des panneaux lumineux aux bords durs. Il faudrait des cylindres effilés à dégradé dans la longueur, comme dans le temple (salle 33).
 
+### 77 · Cyanotype
+
+L'image devient un tirage au bleu de Prusse sur papier aquarelle, le procédé photographique du XIXᵉ siècle. Le post-traitement `artCyanotype` convertit la luminance en densité de bleu : ombres bleu profond, lumières au blanc cassé du papier, densité modulée par le grain du papier (bruit fractal). L'émulsion, étalée au pinceau, ne couvre qu'une zone centrale aux bords irréguliers ; au-delà, le papier reste nu avec quelques traînées de pinceau bleu pâle, et des taches d'émulsion plus dense ponctuent l'image. La scène est en gris neutres sous un plein soleil à ombres dures, pour des contrastes nets.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.

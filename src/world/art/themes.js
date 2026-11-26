@@ -68,8 +68,9 @@ import { pointillism } from "./themes/pointillism.js";
 import { poolrooms } from "./themes/poolrooms.js";
 import { paperCut } from "./themes/paperCut.js";
 import { greenhouse } from "./themes/greenhouse.js";
+import { cyanotype } from "./themes/cyanotype.js";
 import { neonViolet } from "./themes/neonViolet.js";
 import { warmBistro } from "./themes/warmBistro.js";
 
 // Directions artistiques, une salle chacune, dans l'ordre de visite.
-export const THEMES = Object.freeze([neonViolet, warmBistro, comicToon, filmNoir, synthwave, ...REALISM, realismPlus, cyberpunk, pixel, memphis, blueprint, blacklight, iridescent, abandoned, underwater, vhs, watercolor, artDeco, lowPoly, ink, spaceship, oldCartoon, diner, vaporwave, chalet, clay, hologram, miniature, jungleTemple, ascii, volcano, thermal, izakaya, selectiveRed, shadowPuppets, highKey, steampunk, biolum, pencil, saloon, stainedGlass, icePalace, retro3d, library, deStijl, tiki, seventies, loft, riso, observatory, engraving, mars, lcd, woodblock, parking, glitch, riad, storm, oilPainting, nightVision, expiredFilm, atomic, lidar, rgbShadows, ligneClaire, aurora, cctv, circus, pointillism, poolrooms, paperCut, greenhouse]);
+export const THEMES = Object.freeze([neonViolet, warmBistro, comicToon, filmNoir, synthwave, ...REALISM, realismPlus, cyberpunk, pixel, memphis, blueprint, blacklight, iridescent, abandoned, underwater, vhs, watercolor, artDeco, lowPoly, ink, spaceship, oldCartoon, diner, vaporwave, chalet, clay, hologram, miniature, jungleTemple, ascii, volcano, thermal, izakaya, selectiveRed, shadowPuppets, highKey, steampunk, biolum, pencil, saloon, stainedGlass, icePalace, retro3d, library, deStijl, tiki, seventies, loft, riso, observatory, engraving, mars, lcd, woodblock, parking, glitch, riad, storm, oilPainting, nightVision, expiredFilm, atomic, lidar, rgbShadows, ligneClaire, aurora, cctv, circus, pointillism, poolrooms, paperCut, greenhouse, cyanotype]);
