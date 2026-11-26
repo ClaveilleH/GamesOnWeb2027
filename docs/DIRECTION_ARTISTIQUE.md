@@ -282,6 +282,12 @@ Salon lambrissé de chêne sous un papier peint sombre, parquet ciré à bâtons
 
 Façon tableau baroque. La lumière principale est un projecteur chaud et dur tombant d'un soupirail en haut à gauche, sur des noirs profonds ; une chandelle et de faibles rebonds empêchent les ombres de se boucher complètement. Le post-traitement `artOil` applique un filtre de Kuwahara : sur les quatre quadrants de 5 × 5 échantillons autour du pixel, il garde la moyenne du moins variable, ce qui aplatit les zones en touches tout en gardant les bords nets. Le rayon suit la hauteur de l'écran. Vernis ambré qui jaunit les clairs, trame de toile visible dans les zones éclairées, forte vignette. Les petits détails (côtes du squelette, bouteilles) se fondent en taches : c'est la limite du filtre à quadrants carrés. Un Kuwahara anisotrope, qui oriente les quadrants selon le gradient, donnerait des coups de pinceau plus directionnels.
 
+### 64 · Vision nocturne
+
+La salle est quasiment noire : ambiance minimale, écrans et frontons en veille à 20-25 %, quatre petites veilleuses. L'image passe par un intensificateur de lumière simulé. Le post-traitement `artNightVision` amplifie la luminance avec une courbe exponentielle saturante, la rend en vert phosphore, ajoute un bruit de photons plus fort dans les ombres et un léger scintillement, fait baver les sources vives (halo sur huit directions), cercle l'image comme un oculaire et y superpose un réticule gradué. Un illuminateur infrarouge (projecteur large calé chaque image sur la caméra) éclaire ce que regarde le joueur, comme une lampe IR montée sur des jumelles.
+
+`camera.getForwardRay` exige l'import de `Ray` ; la direction se calcule plus simplement avec `getTarget() − position`.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
