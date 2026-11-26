@@ -190,6 +190,10 @@ Atelier victorien en PBR : laiton, cuivre et fonte (sonde de reflets), acajou, c
 
 La libération des salles remonte désormais toute la chaîne des parents des maillages (supports, pivots) pour libérer aussi les nœuds intermédiaires.
 
+### 42 · Grotte bioluminescente
+
+Aucune lumière blanche : seul le vivant éclaire. La roche sombre et humide est piquetée de mousse phosphorescente cyan. La même peinture sert de diffuse (roche et mousse) et d'émissive (mousse seule), et sa lueur respire lentement. Douze champignons aux chapeaux lumineux (cyan, magenta, vert) gonflent doucement, et six d'entre eux portent une lumière colorée. Stalactites au plafond, lucioles vert-jaune qui errent et clignotent, brume bleu nuit. Le sol mouillé (miroir plan) reflète toutes les lueurs.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
