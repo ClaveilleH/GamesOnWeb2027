@@ -70,7 +70,7 @@ function textures(scene, name) {
   return { tiles, wall, wood };
 }
 
-function makeLook(scene, name, level) {
+export function makeLook(scene, name, level) {
   const tex = level >= 3 ? textures(scene, name) : null;
   // Fabrique selon le niveau : 1 aplat, 2 diffus, 3 Blinn-Phong texturé, 4-5 PBR.
   const mat = (label, hex, { texture, glossy = 0.2, metal = false } = {}) => {
@@ -96,7 +96,7 @@ function makeLook(scene, name, level) {
     trim: mat("plinthe", C.trim, { glossy: 0.4 }),
     doorFrame: mat("cadre", C.trim, { glossy: 0.4 }),
     door: mat("porte", C.door, { glossy: 0.5 }),
-    sign: unlit("enseigne", signTexture(scene, `${name} · enseigne`, level < 5 ? `NIVEAU ${level + 1} →` : "RETOUR →", { color: "#ffffff", background: "#2a3a44" })),
+    sign: unlit("enseigne", signTexture(scene, `${name} · enseigne`, level < 5 ? `NIVEAU ${level + 1} →` : "SUITE →", { color: "#ffffff", background: "#2a3a44" })),
     counter: mat("bar", C.counter, { glossy: 0.5 }),
     counterTop: mat("plateau", C.counterTop, { glossy: 0.85 }),
     backBar: mat("fond du bar", C.wainscot, { glossy: 0.3 }),
@@ -129,7 +129,7 @@ function makeLook(scene, name, level) {
 }
 
 // Mêmes lumières à tous les niveaux (sauf le premier, sans éclairage).
-function lights(ctx, level) {
+export function lights(ctx, level) {
   const H = ctx.ROOM.height;
   const warm = "#ffe2c0";
   ctx.point("plafonnier ouest", -4.5, H - 0.3, -1, warm, 0.7, 11);

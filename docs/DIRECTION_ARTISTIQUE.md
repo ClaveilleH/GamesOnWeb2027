@@ -119,3 +119,9 @@ Aplats de gris cernés d'encre (`renderOutline`), plancher et papier peint dessi
 ### 26 · Diner des années 50
 
 Damier noir et blanc ciré en miroir, chrome (soubassement cannelé, tabourets, pieds de table, flancs des bornes), skaï rouge, formica blanc, murs menthe à frise rouge et blanche semés d'étoiles « boomerang ». Un juke-box (caisse chromée, dôme demi-cylindre) change lentement de couleur et éclaire le coin nord-ouest. L'enseigne néon « EAT » s'allume lettre par lettre, et une horloge murale fait tourner ses aiguilles autour d'un pivot décalé. Plafonniers en globes, reflets du chrome et du skaï par une sonde.
+
+### 27 · Réalisme 6 · réflexions en espace écran
+
+Sommet de l'échelle de réalisme des salles 6 à 10 : même décor et mêmes lumières (`makeLook` et `lights` sont exportés par `realism.js`). Les reflets ne viennent plus d'un miroir plan : des réflexions en espace écran (`SSRRenderingPipeline`, via le prepass) font refléter chaque surface selon sa rugosité, avec atténuation de Fresnel et flou selon la rugosité. La sonde reste comme environnement pour ce qui sort de l'écran. S'y ajoutent SSAO2, un bloom doux, le MSAA ×4 et une vignette.
+
+À retenir : sur un diélectrique (réflectance d'environ 4 %), la SSR est invisible. Le carrelage reçoit donc une part métallique (0,4) et une faible rugosité (0,1) pour que son reflet se lise. Sous rendu logiciel, cette salle est la plus lente de la carte.
