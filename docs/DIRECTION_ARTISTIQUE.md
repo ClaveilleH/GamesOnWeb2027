@@ -318,6 +318,12 @@ Refuge de pin clair (lames peintes au canevas), plancher verni qui reflète, lai
 
 Le premier réglage (ambiance et lueur verte fortes) noyait toute la salle dans le vert ; le contraste chaud/froid ne fonctionne que si l'intérieur garde des lumières orangées.
 
+### 71 · Caméra de surveillance
+
+L'image passe par une caméra de sécurité bon marché. Le post-traitement `artCctv` applique une distorsion en barillet (fish-eye, coins noirs), réduit la définition à 360 lignes, passe en noir et blanc légèrement verdâtre au contraste dur, ajoute un bruit et une bande de compression qui descend, tous deux avancés à 8 images par seconde, plus une vignette. Une texture transparente redessinée chaque seconde porte l'incrustation : « CAM 03 · SALLE DE JEUX », l'horodatage qui défile, « ● REC » qui clignote. La salle est en gris neutres sous des néons de plafond.
+
+Geler réellement la sortie entre deux images (cadence saccadée de l'image entière) n'est pas possible simplement avec la dernière passe de la chaîne, qui se redessine à chaque image ; il faudrait recopier l'image dans une texture intermédiaire.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
