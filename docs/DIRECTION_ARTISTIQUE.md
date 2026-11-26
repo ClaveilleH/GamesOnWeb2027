@@ -288,6 +288,10 @@ La salle est quasiment noire : ambiance minimale, écrans et frontons en veille 
 
 `camera.getForwardRay` exige l'import de `Ray` ; la direction se calcule plus simplement avec `getTarget() − position`.
 
+### 65 · Pellicule périmée
+
+Une salle de jeux de quartier des années 90, comme photographiée au compact sur un film couleur périmé. Décor d'époque : moquette bleue à confettis géométriques, contreplaqué, formica, skaï rouge, canettes colorées, bornes aux couleurs primaires, éclairage mixte (néons de plafond plus soleil de vitrine à ombres douces, petit flash frontal). Le post-traitement `artFilm` relève les noirs et adoucit les hautes lumières (courbe de Reinhard), vire les ombres au cyan et les hautes lumières au chaud, passe un peu les couleurs, ajoute une halation rouge orangé autour des zones claires (flou sur 24 échantillons), une fuite de lumière orangée sur le bord droit, la vignette du petit objectif, un grain fort et la date incrustée en chiffres orange (« '94 11 26 »), dessinée une fois sur une texture transparente passée au shader.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
