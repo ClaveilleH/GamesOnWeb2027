@@ -180,6 +180,10 @@ Noir et blanc très contrasté, sauf les rouges, qui gardent leur saturation, co
 
 Aucune lumière dans la salle (hémisphérique à 0) : le mobilier, en noir mat, et le joueur deviennent des silhouettes d'encre. Seuls les murs rayonnent, peints comme un ciel de papier au couchant (dégradé violet, orange, jaune, soleil diffus, lune pâle, deux plans de collines découpées). Des découpes noires à texture d'opacité sont collées devant les murs : branches générées récursivement, nuages, et oiseaux qui traversent le mur nord en battant des ailes. Seuls les écrans des bornes gardent une lueur ambrée éteinte. Le post-traitement `artPaper` ajoute des fibres de papier (bruit à deux échelles) et un bord irrégulier comme brûlé.
 
+### 40 · Studio blanc (high-key)
+
+L'inverse des salles sombres : tout est blanc (mat, laqué, acier blanc en PBR), avec trois accents pastel (corail, menthe, bleu ciel) sur la porte, les flancs des bornes, les sièges et quelques sculptures (sphère, anneau qui tourne, bille qui rebondit). La lumière est enveloppante : hémisphérique forte, une grande boîte à lumière au plafond à ombre très légère, deux remplissages. Ce sont l'occlusion ambiante (SSAO2 marquée) et les dégradés qui dessinent les volumes et les angles. Sol blanc laqué au reflet doux, sonde pour les surfaces brillantes, bloom léger.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
