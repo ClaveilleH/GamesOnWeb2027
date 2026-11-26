@@ -302,6 +302,10 @@ La salle n'est vue qu'à travers un relevé laser. Le post-traitement `artLidar`
 
 Le rendu des portails restreint `camera.layerMask` au calque « world » pendant la passe principale : la carte de profondeur, qui filtre par ce masque, excluait le joueur (calque « late »). Un `renderListPredicate` sur la carte contourne le filtre. Le *depth renderer* est désactivé quand on quitte la salle.
 
+### 68 · Ombres colorées
+
+Démonstration de synthèse additive de la lumière. La salle et tout le mobilier sont blancs, et l'ambiance est quasi nulle. Seuls trois projecteurs larges, rouge, vert et bleu, disposés en triangle au plafond et chacun avec ses propres ombres, éclairent la scène. Là où ils se recouvrent, la lumière redevient blanche ; là où un objet en masque un, son ombre prend la couleur complémentaire (cyan sans le rouge, magenta sans le vert, jaune sans le bleu), et elle devient franchement colorée là où deux sources sont masquées. Trois boules blanches au centre rendent l'effet lisible. Les sources tournent lentement en visant le centre, ce qui fait danser les ombres du joueur et du mobilier.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
