@@ -230,6 +230,10 @@ Les murs s'ouvrent sur un océan au soleil couchant : ciel violet, corail et or,
 
 Papier peint à cercles concentriques orange, moutarde, brun, rouille et crème ; moquette à poils longs (milliers de brins peints), teck, formica orange, velours moutarde, miroir fumé derrière le bar. Trois lampes à lave (socle chromé, flacon teinté) dont les bulles de cire montent, gonflent et redescendent, chacune avec sa lueur colorée. Une boule à facettes tourne au plafond : ses éclats sont des petits panneaux projetés sur le mur le plus proche dans leur direction et balaient la salle. Post-traitement `artGroovy` : ondulation radiale douce et teinte qui dérive lentement.
 
+### 52 · Loft industriel (jour)
+
+Réalisme diurne, à comparer aux salles nocturnes. Béton banché (nuances, joints de panneaux, trous de tiges), poutre IPN, acier noir, bois brut, cuir fauve, plantes en pot, suspensions industrielles, tout en PBR. Le mur ouest est une verrière d'atelier à petits carreaux sur un ciel bleuté nuageux. Un soleil franc la traverse et projette au sol l'ombre de sa grille (ombres douces 2048), tandis qu'une lumière bleutée de ciel sert de remplissage. Le béton ciré reflète la verrière. Occlusion ambiante, bloom léger, netteté.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
