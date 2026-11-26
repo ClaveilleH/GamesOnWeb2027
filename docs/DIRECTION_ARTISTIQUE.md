@@ -158,6 +158,12 @@ Pierre en blocs irréguliers couverte de mousse (plus dense vers le bas), dalles
 
 Post-traitement `artAscii` : l'image est découpée en cellules d'environ 1/64 de la hauteur d'écran, et chaque cellule devient un caractère choisi selon sa luminance (`. : * o & 8 @ #`), en phosphore vert sur noir avec une pointe de la couleur d'origine, des lignes de balayage et un léger scintillement. Les glyphes 5×5 sont codés dans un nombre (un bit par pixel) et décodés en arithmétique flottante (`floor(n / 2^k)` modulo 2), car GLSL ES 1.0 n'a pas d'opérateurs binaires. La scène est volontairement sombre (murs, sol, plafond) et le mobilier clair, sous un projecteur à ombres dures : silhouettes du joueur et des bornes lisibles en caractères denses sur fond de points.
 
+### 35 · Forge volcanique
+
+Basalte noir veiné de fissures incandescentes qui pulsent lentement, sol d'obsidienne polie (miroir plan légèrement flouté) qui reflète fissures, braises et joueur. Une rivière de lave à texture qui coule longe le mur ouest. Une forge (billot, enclume, foyer à braises) projette des ombres vacillantes, et des braises montent en tourbillonnant depuis la lave et le foyer. Lumière presque uniquement orange et rouge, venue d'en bas. Post-traitement `artHeat` : ondulation de chaleur plus forte en bas de l'image.
+
+À retenir : `StandardMaterial` multiplie l'émissif par la texture diffuse (`(diffus + émissif) × texture`). Une texture émissive sur une texture diffuse sombre reste donc éteinte. Les fissures sont peintes dans les deux textures.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
