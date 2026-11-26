@@ -214,6 +214,10 @@ Murs taillés dans la glace : blocs, fissures et bulles peints, vernis en clearc
 
 L'esthétique des premières consoles 3D. Le post-traitement `artRetro3d` calcule l'image vers 240 lignes (gros pixels nets) et ramène les couleurs à 5 bits par canal avec un tramage ordonné de Bayer 4×4. Les textures sont minuscules (32 texels), sans filtrage ni mipmaps (`paintedTexture(..., { pixelated: true, mipmaps: false })`) : carrelage violet en damier, briques, bois et métal riveté à gros texels. Brouillard proche et épais comme une distance d'affichage courte, éclairage simple par deux ponctuelles colorées, couleurs franches pour les bornes et les sièges.
 
+### 48 · Bibliothèque ancienne
+
+Tous les murs sont des rayonnages du sol au plafond : dos de livres peints en couleurs de reliure, nervures et titres dorés, quelques vides, tablettes et montants. Une coursive à balustrade et main courante en laiton court le long du mur nord, avec une échelle appuyée. Trois lampes de banquier à abat-jour vert émissif (bar et table) donnent une lumière chaude et basse ; celle de la table porte les ombres. Fauteuil club et sièges en cuir rouge, globe terrestre qui tourne lentement, plancher ciré au reflet doux, poussière dorée qui flotte autour des lampes, pénombre et brume chaude dans les hauteurs.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
