@@ -4,7 +4,7 @@ const slotNames = ["principal", "secondaire"];
 const help = "Sélectionnez une touche pour la modifier.";
 const prompt = "Appuyez sur une touche… Échap annule. Retour arrière ou Suppr efface.";
 
-export function createMenu(bindings, layout, onResume) {
+export function createMenu(bindings, layout, onResume, onOpen) {
   const dialog = document.querySelector("#pause-menu");
   const play = dialog.querySelector("#play");
   const table = dialog.querySelector("#bindings");
@@ -128,8 +128,13 @@ export function createMenu(bindings, layout, onResume) {
 
   return {
     get isOpen() { return dialog.open; },
+    // Ferme le menu et reprend la partie (après un choix fait dans le menu, comme une salle).
+    resume() {
+      if (dialog.open) resume();
+    },
     open() {
       if (dialog.open) return;
+      onOpen?.();
       announce(help);
       refresh();
       dialog.showModal();

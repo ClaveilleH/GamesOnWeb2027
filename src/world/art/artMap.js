@@ -292,10 +292,14 @@ export function createArtMap(scene) {
     },
   }));
 
+  const destinations = rooms.map((room) => ({ label: `${room.index + 1} · ${room.theme.title}`,
+    feet: { x: room.origin.x, y: 0.05, z: -3.5 }, yaw: 0 }));
+
   return {
     casters: [], crates: [], interiors: [], interactables, spawn,
-    destinations: rooms.map((room) => ({ label: `${room.index + 1} · ${room.theme.title}`,
-      feet: { x: room.origin.x, y: 0.05, z: -3.5 }, yaw: 0 })),
+    destinations,
+    // Sélecteur de salle du menu pause (src/ui/roomPicker.js).
+    rooms: { title: "Salles", items: destinations, current: () => current },
     // Le joueur se reflète dans les miroirs de la salle active.
     attachPlayer(meshes) {
       playerMeshes.push(...meshes);

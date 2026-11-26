@@ -19,6 +19,7 @@ import { createDebugMenu } from "./ui/debugMenu.js";
 import { createFpsMeter } from "./ui/fpsMeter.js";
 import { createHud } from "./ui/hud.js";
 import { createMenu } from "./ui/menu.js";
+import { createRoomPicker } from "./ui/roomPicker.js";
 import { createPlatform } from "./platform/browser.js";
 import { createSlowFrameMonitor, graphicsHelp, hasMajorPerformanceCaveat, isSoftwareRenderer } from "./platform/graphics.js";
 import { createLighting, skyPalette } from "./world/lighting.js";
@@ -276,8 +277,16 @@ async function start() {
       player.syncPreviousPose();
       for (const crate of crates) crate.capturePose();
       input.resume(key);
-    });
+    }, () => roomPicker?.refresh());
     scene.onDisposeObservable.addOnce(menu.dispose);
+    // Maps à salles numérotées : choix de la salle dans le menu pause (numéro, nom, grille, précédente/suivante).
+    const roomPicker = demos.rooms
+      ? createRoomPicker(document.querySelector("#pause-menu"), demos.rooms, ({ feet, yaw }) => {
+        debugGame.teleport(feet, yaw);
+        menu.resume();
+      })
+      : null;
+    if (roomPicker) scene.onDisposeObservable.addOnce(roomPicker.dispose);
     const input = createInput(canvas, bindings, platform, {
       isPaused: () => menu.isOpen,
       openMenu: menu.open,

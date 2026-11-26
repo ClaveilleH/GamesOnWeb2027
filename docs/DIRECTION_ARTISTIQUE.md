@@ -2,7 +2,7 @@
 
 http://localhost:5173/?map=direction-artistique (ou **Ctrl + D** › Carte › Direction artistique) charge une série de salles d'arcade identiques. Seules les lumières, les matériaux et les effets changent d'une salle à l'autre. Chaque salle contient un bar avec ses étagères et ses tabourets, une table et quatre chaises, et cinq bornes aux faux jeux originaux dessinés au canevas.
 
-**E** devant la porte du mur sud passe à la salle suivante. **Ctrl + D** › Téléportation mène directement à une salle, et `&salle=N` dans l'adresse (par exemple `?map=direction-artistique&salle=33`) fait démarrer dans la salle N. Un bandeau rappelle le nom de la salle à l'entrée.
+**E** devant la porte du mur sud passe à la salle suivante. Le menu pause (**Échap**) a une section « Salles » : taper un numéro ou un nom puis Entrée, cliquer une salle dans la grille, ou ◀ / ▶ pour la salle précédente ou suivante (code : `src/ui/roomPicker.js`, activé par le champ `rooms` que renvoie la map). **Ctrl + D** › Téléportation mène directement à une salle, et `&salle=N` dans l'adresse (par exemple `?map=direction-artistique&salle=33`) fait démarrer dans la salle N. Un bandeau rappelle le nom de la salle à l'entrée.
 
 ## Fonctionnement
 

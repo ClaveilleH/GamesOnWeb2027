@@ -211,6 +211,44 @@ kbd { padding: .12rem .28rem; font-size: .72rem; }
   .fixed-keys { padding-block: .55rem; }
 }
 
+/* Sélecteur de salle du menu pause (maps à salles numérotées). */
+.room-picker { padding: 1rem var(--pad) .9rem; border-bottom: 1px solid var(--line); }
+.room-picker-bar { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-bottom: .6rem; }
+.room-picker-current { color: var(--muted); font-size: .76rem; text-align: right; }
+.room-picker-form { display: flex; gap: .35rem; margin-bottom: .6rem; }
+.room-picker-form input {
+  flex: 1;
+  min-width: 0;
+  padding: .38rem .55rem;
+  border: 1px solid #536e67;
+  border-radius: .3rem;
+  background: #1d373a;
+  color: #ecf3e9;
+  font-size: .82rem;
+}
+.room-picker-form button, .room-grid button {
+  border: 1px solid #4c6864;
+  border-radius: .32rem;
+  background: #213b3d;
+  color: #e6efe6;
+  font-size: .8rem;
+}
+.room-picker-form button { padding: .3rem .65rem; }
+.room-picker-form button:hover, .room-grid button:hover { background: #2c4a49; border-color: #8da9a0; }
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.3rem, 1fr));
+  gap: .25rem;
+  max-height: 9.5rem;
+  margin: 0;
+  padding: 0 .1rem 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.room-grid li[hidden] { display: none; }
+.room-grid button { width: 100%; min-height: 1.85rem; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.room-grid button[aria-current="true"] { background: #f4ab7622; color: #ffd2af; border-color: var(--accent); }
+
 /* Menu debug (Ctrl+D) : panneau à droite, cliquable une fois la souris libérée par Tab. */
 #debug-menu {
   position: absolute;
