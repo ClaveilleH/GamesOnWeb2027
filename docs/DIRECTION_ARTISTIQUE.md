@@ -360,6 +360,10 @@ Tout semble en sucre. Murs à rayures obliques de sucre d'orge, sol en damier ro
 
 Le post-traitement `artKaleidoscope` replie l'image en six secteurs de 60° en miroir autour du centre de l'écran, comme à travers les trois miroirs d'un kaléidoscope, et fait tourner lentement la symétrie. Un liseré lumineux souligne les arêtes des miroirs, et les bords s'assombrissent. La salle (violet nuit, liserés néon, mobilier et verres aux couleurs vives, quatre lumières colorées) sert de matière aux motifs. Le repli devait laisser le centre intact pour garder le joueur lisible, avec une transition de 0,12 à 0,3 de rayon. En pratique, la transition tord déjà le joueur en anneau : il faudrait un centre net plus large, ou bien ne replier que le décor, pas le joueur.
 
+### 80 · Nuit américaine
+
+La technique de cinéma qui tourne de jour une scène censée se passer la nuit. La salle (crépi, plancher, bois, zinc, cuir) est éclairée par un soleil franc, bas, venu de l'ouest, à ombres très dures. Le post-traitement `artDayForNight` étalonne ensuite l'image : sous-exposition, désaturation complète, virage bleu nuit, hautes lumières argentées comme un clair de lune, vignette. Les surfaces très saturées et lumineuses sont en partie épargnées, comme de vraies sources dans une fausse nuit (l'effet touche la borne jaune plus que les écrans, trop sombres pour passer le seuil). Le résultat se lit tout de suite comme « la nuit », alors que la lumière garde la dureté et la direction du plein jour.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
