@@ -111,3 +111,7 @@ La salle dessinée au pinceau sur papier de riz, par le post-traitement maison `
 ### 24 · Vaisseau spatial
 
 La salle de détente d'un vaisseau. Murs en panneaux de coque rivetés avec bandeau d'avertissement jaune et noir, sol en caillebotis métallique légèrement réfléchissant, composite blanc vernis pour les bornes et le comptoir, acier. Un grand hublot sur le mur ouest montre une nébuleuse et des étoiles qui défilent lentement, et devant elles une planète à anneau peinte au canevas (anneau arrière, planète, anneau avant). Des bandes bleues lumineuses courent au plafond et aux plinthes, une rangée de voyants clignote, le sas est cerclé d'orange et un gyrophare tourne à côté.
+
+### 25 · Dessin animé des années 30
+
+Aplats de gris cernés d'encre (`renderOutline`), plancher et papier peint dessinés à la main, comme un vieux court métrage. Le post-traitement maison `artFilm` imite une pellicule usée : virage sépia contrasté, défauts qui changent 12 fois par seconde (image qui flotte dans le couloir du projecteur, scintillement de l'exposition, rayures verticales claires ou sombres, poussières), grain, et vignette ronde en iris. Les bornes se dandinent et les bouteilles sautillent en rythme, comme dans les dessins animés de l'époque.
