@@ -194,6 +194,10 @@ La libération des salles remonte désormais toute la chaîne des parents des ma
 
 Aucune lumière blanche : seul le vivant éclaire. La roche sombre et humide est piquetée de mousse phosphorescente cyan. La même peinture sert de diffuse (roche et mousse) et d'émissive (mousse seule), et sa lueur respire lentement. Douze champignons aux chapeaux lumineux (cyan, magenta, vert) gonflent doucement, et six d'entre eux portent une lumière colorée. Stalactites au plafond, lucioles vert-jaune qui errent et clignotent, brume bleu nuit. Le sol mouillé (miroir plan) reflète toutes les lueurs.
 
+### 43 · Croquis au crayon
+
+La salle est dessinée au graphite sur papier crème. Le post-traitement `artPencil` détecte les contours sur la luminance et superpose trois couches de hachures (angles différents, tremblées par un bruit) qui apparaissent l'une après l'autre quand l'ombre s'épaissit. Il reprend aussi légèrement la couleur des objets saturés, comme un crayon de couleur (porte et flancs rouges, sièges bleus). Les traits « bouillonnent » : le tremblé change quatre fois par seconde, comme un dessin animé image par image. La scène est en gris moyens, sous une lampe latérale à ombres douces que les hachures traduisent.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
