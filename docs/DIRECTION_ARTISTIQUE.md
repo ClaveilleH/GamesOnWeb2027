@@ -206,6 +206,10 @@ Western de fin d'après-midi : planches verticales patinées (fibres, nœuds), p
 
 Nef de pierre appareillée et dallage de marbre noir et blanc poli (miroir plan) où se reflètent trois grandes verrières en ogive du mur ouest. Chaque vitrail est peint (losanges colorés, rosace centrale, plombs noirs) et sert de vitre lumineuse (émissive avec opacité). Le même dessin, posé au sol en additif, étiré et décalé vers l'intérieur, simule les taches de couleur que le soleil y dépose. Un projecteur rasant venu de derrière les verrières porte les ombres. Un chandelier aux deux rangées de cierges près du bar, avec flammes qui dansent et lumière chaude, complète la nef. Mobilier en chêne, calices dorés.
 
+### 46 · Palais de glace
+
+Murs taillés dans la glace : blocs, fissures et bulles peints, vernis en clearcoat. Le mobilier est en glace réfringente (PBR : réfraction par sous-surface, indice 1,31, teinte cyan selon l'épaisseur) qui reflète et réfracte une sonde de la salle. Le sol gelé, poli comme un miroir, reflète le bar et les tabourets. Stalactites de glace, cristaux lumineux qui scintillent dans les angles, sièges couverts de fourrure (sheen). Lumière froide (voûte translucide, contre-jours bleus) et une seule source chaude, un brasero à ombres près de la table. Brume bleu pâle.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
