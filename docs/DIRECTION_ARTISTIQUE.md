@@ -242,6 +242,10 @@ L'image est « imprimée » en trois encres de riso (rose fluo, bleu, jaune) sur
 
 Les murs et le plafond s'ouvrent sur un ciel nocturne peint : bande laiteuse diagonale faite de nuages flous, environ 1 800 étoiles de tailles et de teintes variées, constellations tracées finement. Le ciel défile lentement, comme la rotation de la Terre. Tout l'éclairage est rouge, comme les lampes d'astronome qui préservent la vision nocturne. Télescope de laiton sur trépied qui balaie doucement le ciel, sphère armillaire aux anneaux imbriqués qui tournent sur la table, carte du ciel en plateau, noyer et cuir vert. Le sol de pierre polie (miroir plan) reflète les étoiles et les lueurs rouges.
 
+### 55 · Gravure en taille-douce
+
+L'image est gravée comme une illustration du XIXᵉ siècle ou un billet de banque. Le post-traitement `artEngraving` trace des tailles parallèles inclinées, légèrement ondulées par la luminance locale, dont l'épaisseur suit l'obscurité. Une seconde passe croisée n'apparaît que dans les noirs. Les contours détectés par gradient sont encrés. Encre brun-noir sur papier vergé crème (vergeures et pontuseaux) ; ni trame de points ni dégradé. La scène est en gris neutres sous une lumière latérale de fenêtre à ombres douces, pour un modelé marqué.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 50 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
