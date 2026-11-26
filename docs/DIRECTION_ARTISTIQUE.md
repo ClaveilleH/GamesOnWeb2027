@@ -115,3 +115,7 @@ La salle de détente d'un vaisseau. Murs en panneaux de coque rivetés avec band
 ### 25 · Dessin animé des années 30
 
 Aplats de gris cernés d'encre (`renderOutline`), plancher et papier peint dessinés à la main, comme un vieux court métrage. Le post-traitement maison `artFilm` imite une pellicule usée : virage sépia contrasté, défauts qui changent 12 fois par seconde (image qui flotte dans le couloir du projecteur, scintillement de l'exposition, rayures verticales claires ou sombres, poussières), grain, et vignette ronde en iris. Les bornes se dandinent et les bouteilles sautillent en rythme, comme dans les dessins animés de l'époque.
+
+### 26 · Diner des années 50
+
+Damier noir et blanc ciré en miroir, chrome (soubassement cannelé, tabourets, pieds de table, flancs des bornes), skaï rouge, formica blanc, murs menthe à frise rouge et blanche semés d'étoiles « boomerang ». Un juke-box (caisse chromée, dôme demi-cylindre) change lentement de couleur et éclaire le coin nord-ouest. L'enseigne néon « EAT » s'allume lettre par lettre, et une horloge murale fait tourner ses aiguilles autour d'un pivot décalé. Plafonniers en globes, reflets du chrome et du skaï par une sonde.
