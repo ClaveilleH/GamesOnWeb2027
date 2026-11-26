@@ -122,6 +122,12 @@ Aplats de gris cernés d'encre (`renderOutline`), plancher et papier peint dessi
 
 Damier noir et blanc ciré en miroir, chrome (soubassement cannelé, tabourets, pieds de table, flancs des bornes), skaï rouge, formica blanc, murs menthe à frise rouge et blanche semés d'étoiles « boomerang ». Un juke-box (caisse chromée, dôme demi-cylindre) change lentement de couleur et éclaire le coin nord-ouest. L'enseigne néon « EAT » s'allume lettre par lettre, et une horloge murale fait tourner ses aiguilles autour d'un pivot décalé. Plafonniers en globes, reflets du chrome et du skaï par une sonde.
 
+### 28 · Vaporwave
+
+Rêverie numérique des années 90 : damier rose et turquoise en miroir, murs en ciel dégradé violet, rose et cyan avec soleils à bandes, palmiers vert menthe et « ＡＥＳＴＨＥＴＩＣ » en caractères pleine chasse. Quatre colonnes grecques (fût à 16 pans, base, chapiteau) en marbre rose veiné de violet. Au centre, un nœud chromé tourne sur un piédestal, et une sphère miroir flotte. Post-traitement maison `artGlitch` : de temps en temps, une bande horizontale se décale, ses couches de couleur se séparent et sa teinte tourne, sur fond de fines lignes.
+
+À retenir : `active` est un mot réservé en GLSL ES. Un nom de variable comme celui-ci fait échouer la compilation du shader, ce que le test de la carte détecte par l'erreur en console.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
