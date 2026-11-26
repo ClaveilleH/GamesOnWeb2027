@@ -154,6 +154,10 @@ Pierre en blocs irréguliers couverte de mousse (plus dense vers le bas), dalles
 
 À retenir : `VolumetricLightScatteringPostProcess` est incompatible avec le rendu du joueur ici (le squelette apparaît déformé et décalé), d'où les faisceaux en géométrie.
 
+### 34 · Art ASCII
+
+Post-traitement `artAscii` : l'image est découpée en cellules d'environ 1/64 de la hauteur d'écran, et chaque cellule devient un caractère choisi selon sa luminance (`. : * o & 8 @ #`), en phosphore vert sur noir avec une pointe de la couleur d'origine, des lignes de balayage et un léger scintillement. Les glyphes 5×5 sont codés dans un nombre (un bit par pixel) et décodés en arithmétique flottante (`floor(n / 2^k)` modulo 2), car GLSL ES 1.0 n'a pas d'opérateurs binaires. La scène est volontairement sombre (murs, sol, plafond) et le mobilier clair, sous un projecteur à ombres dures : silhouettes du joueur et des bornes lisibles en caractères denses sur fond de points.
+
 ## Construction à la demande
 
 Chaque salle n'est construite (décor, matériaux, lumières, miroirs, sondes, collisions) qu'à sa première activation : au chargement de la carte, seule la première l'est. La position de la porte, qui sert à l'interaction « passer à la salle suivante », est calculée sans construire la salle. Avec 22 salles (il y en a 27 aujourd'hui), le test qui les traverse toutes passe de 4,4 à 2,4 minutes sous rendu logiciel.
